@@ -1530,7 +1530,11 @@ function vSet(){
   el('saveG').onclick = function(){ S.cfg.gasUrl = el('gas').value.trim(); save(); toast('저장했습니다'); };
   el('ping').onclick = function(){
     S.cfg.gasUrl = el('gas').value.trim(); save();
-    jsonp({action:'ping'}).then(function(r){ toast(r&&r.ok? '연결 정상' : '응답이 이상합니다'); })
+    jsonp({action:'ping'}).then(function(r){
+        if(!r || !r.ok) return toast('응답이 이상합니다: ' + ((r&&r.error)||''));
+        if(!r.ver) return toast('⚠️ 연결은 되지만 옛 버전입니다 — 「새 버전」으로 재배포하세요');
+        toast(r.msg || '연결 정상');
+      })
       .catch(function(e){ toast(e.message); });
   };
   el('initSh').onclick = function(){
@@ -1538,7 +1542,11 @@ function vSet(){
     if(!S.cfg.gasUrl) return toast('앱스스크립트 주소를 먼저 넣어주세요');
     toast('시트를 만드는 중…');
     jsonp({action:'initSheets', classes:S.cfg.classNames.slice(0,S.cfg.classCount).join(',')})
-      .then(function(r){ toast(r && r.ok ? (r.msg||'시트 준비 완료') : '실패 — 배포를 새 버전으로 했는지 확인하세요'); })
+      .then(function(r){
+        if(!r || !r.ok) return toast('실패: ' + ((r&&r.error) || '응답 없음'));
+        if(!r.sheets)   return toast('⚠️ 옛 버전이 배포돼 있습니다 — 배포 관리 → ✏️ → 「새 버전」으로 다시 배포하세요');
+        toast(r.msg || (r.sheets.length + '개 탭 준비 완료'));
+      })
       .catch(function(e){ toast(e.message); });
   };
   el('saveF').onclick = function(){ S.cfg.fb = el('fb').value.trim(); save(); initFB(); toast('연결을 시도합니다'); };

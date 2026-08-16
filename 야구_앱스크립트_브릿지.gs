@@ -34,6 +34,10 @@
 /* 이 스크립트를 시트 안에서 만들었다면 그대로 두세요. */
 var SHEET_ID = '';
 
+/* 배포 버전 — 앱이 이 값을 보고 「옛 버전이 배포돼 있다」를 알아챈다.
+   코드를 고쳤는데 이 값이 앱에 안 뜨면 재배포가 안 된 것이다. */
+var VER = '2026-08-16-classtabs';
+
 var HDR = ['번호', '이름', '성별', '조',
            '경기', '이닝', '타수', '안타', '타율', '득점', '타점', '수비아웃', '이닝당기여',
            '탁구포핸드', '탁구백핸드', '태도카드', '보고서충족', '갱신일시'];
@@ -137,7 +141,7 @@ function doGet(e) {
   var out;
   try {
     if (p.action === 'ping') {
-      out = { ok: true, msg: '연결 정상 · ' + SS_().getName() };
+      out = { ok: true, ver: VER, msg: '연결 정상 · ' + SS_().getName() + ' (v' + VER + ')' };
 
     } else if (p.action === 'getRoster') {
       out = { ok: true, data: getRoster_(p.cn) };
@@ -160,7 +164,7 @@ function doGet(e) {
         var x = SS_().getSheetByName(n);
         if (x && x.getLastRow() <= 1 && SS_().getSheets().length > 1) SS_().deleteSheet(x);
       });
-      out = { ok: true, msg: list.length + '개 학급 탭 준비 완료', sheets: list };
+      out = { ok: true, ver: VER, msg: list.length + '개 학급 탭 준비 완료', sheets: list };
 
     } else if (p.action === 'getCount') {
       var n = 0;
