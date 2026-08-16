@@ -2,39 +2,48 @@
  * ⚾ 야구 수행평가 — 구글 시트 브릿지
  * ══════════════════════════════════════════════════════════
  *  설치 (5분)
- *   1. 구글 스프레드시트를 하나 새로 만든다
- *   2. 상단 메뉴  확장 프로그램 → Apps Script
- *   3. 기본으로 열린 코드를 지우고 이 파일 내용을 통째로 붙여넣는다
+ *   1. 구글 스프레드시트를 하나 만든다
+ *   2. 확장 프로그램 → Apps Script
+ *   3. 기본 코드를 지우고 이 파일을 통째로 붙여넣는다
  *   4. 💾 저장 → 함수 목록에서 authorize 선택 → ▶ 실행
- *        (권한 요청이 뜨면 계정 선택 → 고급 → 안전하지 않음 이동 → 허용)
- *        실행 로그에 시트 이름이 뜨면 성공
- *   5. 오른쪽 위 배포 → 새 배포 → ⚙ → 웹 앱
- *        설명       : 아무거나
+ *        (권한 창: 계정 선택 → 고급 → 안전하지 않음 이동 → 허용)
+ *   5. 배포 → 새 배포 → ⚙ → 웹 앱
  *        실행 사용자 : 나
- *        액세스 권한 : 링크가 있는 모든 사용자
- *      → 배포 → 나오는 /exec 로 끝나는 주소를 복사
- *   6. 앱 [설정 → 구글 시트 연동]에 붙여넣고 「연결 확인」
+ *        액세스 권한 : 링크가 있는 모든 사용자   ← 꼭!
+ *      → 나오는 /exec 주소를 복사
+ *   6. 앱 [설정 → 구글 시트 연동] 에 붙여넣고 「연결 확인」 → 「시트 양식 만들기」
  *
- *  ※ 코드를 고치면 반드시 배포 → 배포 관리 → ✏️ → 버전 「새 버전」 으로 다시 배포해야
- *    반영됩니다. (이걸 안 해서 안 되는 경우가 제일 많습니다)
+ *  ※ 코드를 고치면 반드시 배포 → 배포 관리 → ✏️ → 「새 버전」 으로 다시 배포해야 반영됩니다.
  *
- *  만들어지는 시트 (자동 생성)
- *   명단      학급 | 번호 | 이름 | 성별 | 조
- *   야구기록   학급 | 번호 | 이름 | 성별 | 경기 | 이닝 | 타수 | 안타 | 타율 |
- *             득점 | 타점 | 수비아웃 | 이닝당기여 | 탁구포핸드 | 탁구백핸드 |
- *             태도카드 | 보고서충족 | 갱신일시
+ *  ══ 시트 구조 ══════════════════════════════════════════
+ *  탭 하나 = 학급 하나 (1반, 2반, …). 명단과 기록이 한 표에 들어간다.
+ *
+ *   A    B    C    D  │ E    F    G    H    I    J    K    L      M
+ *   번호 이름 성별 조 │ 경기 이닝 타수 안타 타율 득점 타점 수비아웃 이닝당기여
+ *   └── 명단 ──┘      └────────────── 기록 (앱이 채움) ──────────────
+ *
+ *   N        O        P      Q        R
+ *   탁구포핸드 탁구백핸드 태도카드 보고서충족 갱신일시
+ *
+ *  · 명단(A~D)은 시트에서 직접 입력해도 되고 앱에서 올려도 된다
+ *  · 앱의 「내보내기」는 번호·이름으로 학생을 찾아 E열 이후만 갱신한다
+ *    → 시트에서 손본 명단은 지워지지 않는다
  * ══════════════════════════════════════════════════════════
  */
 
-/* 이 스크립트를 시트 안에서 만들었다면 아래는 그대로 두면 됩니다.
-   따로 만든 경우에만 시트 ID를 넣으세요. */
+/* 이 스크립트를 시트 안에서 만들었다면 그대로 두세요. */
 var SHEET_ID = '';
+
+var HDR = ['번호', '이름', '성별', '조',
+           '경기', '이닝', '타수', '안타', '타율', '득점', '타점', '수비아웃', '이닝당기여',
+           '탁구포핸드', '탁구백핸드', '태도카드', '보고서충족', '갱신일시'];
+var NAME_COLS = 4;                 // A~D 가 명단
+var RESERVED = ['시트1', 'Sheet1'];
 
 var _SS = null;
 function SS_() {
   if (_SS) return _SS;
-  if (SHEET_ID) _SS = SpreadsheetApp.openById(SHEET_ID);
-  else _SS = SpreadsheetApp.getActiveSpreadsheet();
+  _SS = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   if (!_SS) throw new Error('시트를 찾을 수 없습니다. SHEET_ID 를 넣어주세요.');
   return _SS;
 }
@@ -46,59 +55,79 @@ function authorize() {
   return n;
 }
 
-var ROSTER_H = ['학급', '번호', '이름', '성별', '조'];
-var REC_H = ['학급', '번호', '이름', '성별', '경기', '이닝', '타수', '안타', '타율',
-             '득점', '타점', '수비아웃', '이닝당기여', '탁구포핸드', '탁구백핸드',
-             '태도카드', '보고서충족', '갱신일시'];
-
-function sh_(name, header) {
-  var s = SS_().getSheetByName(name);
+/** 학급 탭 가져오기 (없으면 머리글까지 만들어서) */
+function tab_(cn) {
+  var ss = SS_(), s = ss.getSheetByName(cn);
   if (!s) {
-    s = SS_().insertSheet(name);
-    s.getRange(1, 1, 1, header.length).setValues([header])
-      .setFontWeight('bold').setBackground('#1f3d4d').setFontColor('#ffffff');
+    s = ss.insertSheet(cn);
+    s.getRange(1, 1, 1, HDR.length).setValues([HDR])
+      .setFontWeight('bold').setFontColor('#FFFFFF').setFontSize(10)
+      .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    s.getRange(1, 1, 1, NAME_COLS).setBackground('#1f3d4d');            // 명단
+    s.getRange(1, NAME_COLS + 1, 1, HDR.length - NAME_COLS).setBackground('#2d5c3a'); // 기록
     s.setFrozenRows(1);
-    s.setColumnWidth(1, 70);
-    s.setColumnWidth(3, 90);
+    s.setFrozenColumns(2);
+    s.setColumnWidth(1, 48); s.setColumnWidth(2, 84);
+    s.setColumnWidth(3, 48); s.setColumnWidth(4, 44);
+    s.setRowHeight(1, 30);
   }
   return s;
 }
 
-/** 학급 명단 읽기 */
-function getRoster_(cn) {
-  var s = sh_('명단', ROSTER_H);
+function rowsOf_(s) {
   var last = s.getLastRow();
   if (last < 2) return [];
-  var vals = s.getRange(2, 1, last - 1, ROSTER_H.length).getDisplayValues();
+  return s.getRange(2, 1, last - 1, HDR.length).getDisplayValues();
+}
+function key_(num, name) {
+  return String(num).trim() + '|' + String(name).trim();
+}
+
+/** 명단 읽기 — A~D 만 */
+function getRoster_(cn) {
   var out = [];
-  for (var i = 0; i < vals.length; i++) {
-    var r = vals[i];
-    if (String(r[0]).trim() !== String(cn).trim()) continue;
-    if (!String(r[2]).trim()) continue;
-    out.push({
-      num: String(r[1]).trim(),
-      name: String(r[2]).trim(),
-      gender: String(r[3]).trim(),
-      group: String(r[4]).trim() || 'A'
-    });
-  }
+  rowsOf_(tab_(cn)).forEach(function (r) {
+    if (!String(r[1]).trim()) return;                // 이름 없으면 건너뜀
+    out.push({ num: String(r[0]).trim(), name: String(r[1]).trim(),
+               gender: String(r[2]).trim(), group: String(r[3]).trim() || 'A' });
+  });
   return out;
 }
 
-/** 같은 학급 행만 지우고 새로 넣는다 (다른 학급 기록은 건드리지 않음) */
-function replaceRows_(sheetName, header, cn, rows) {
-  var s = sh_(sheetName, header);
-  var last = s.getLastRow();
-  if (last > 1) {
-    var col = s.getRange(2, 1, last - 1, 1).getDisplayValues();
-    for (var i = col.length - 1; i >= 0; i--) {
-      if (String(col[i][0]).trim() === String(cn).trim()) s.deleteRow(i + 2);
-    }
-  }
-  if (rows && rows.length) {
-    s.getRange(s.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
-  }
-  return rows ? rows.length : 0;
+/** 명단 쓰기 — A~D 만 (기록 열은 건드리지 않음) */
+function saveRoster_(cn, students) {
+  var s = tab_(cn), cur = rowsOf_(s), idx = {};
+  cur.forEach(function (r, i) { idx[key_(r[0], r[1])] = i + 2; });
+  var added = 0;
+  students.forEach(function (st) {
+    var k = key_(st.num, st.name), row = idx[k];
+    if (!row) { row = s.getLastRow() + 1; added++; }
+    s.getRange(row, 1, 1, NAME_COLS)
+     .setValues([[st.num, st.name, st.gender, st.group || 'A']]);
+  });
+  return { total: students.length, added: added };
+}
+
+/** 기록 쓰기 — 번호·이름으로 찾아 E열 이후만 갱신. 없으면 줄을 새로 만든다. */
+function saveRecords_(cn, rows) {
+  var s = tab_(cn), cur = rowsOf_(s), idx = {};
+  cur.forEach(function (r, i) { idx[key_(r[0], r[1])] = i + 2; });
+  var stamp = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
+  var updated = 0, added = 0;
+
+  rows.forEach(function (r) {
+    // r = [번호,이름,성별,조, 경기,이닝,타수,안타,타율,득점,타점,수비아웃,이닝당기여,
+    //      탁구포핸드,탁구백핸드,태도카드,보고서충족]
+    var k = key_(r[0], r[1]), row = idx[k];
+    if (!row) {
+      row = s.getLastRow() + 1;
+      s.getRange(row, 1, 1, NAME_COLS).setValues([r.slice(0, NAME_COLS)]);
+      added++;
+    } else updated++;
+    var rec = r.slice(NAME_COLS).concat([stamp]);
+    s.getRange(row, NAME_COLS + 1, 1, rec.length).setValues([rec]);
+  });
+  return { updated: updated, added: added };
 }
 
 /* ── 앱이 부르는 입구 ─────────────────────────────────── */
@@ -109,31 +138,35 @@ function doGet(e) {
   try {
     if (p.action === 'ping') {
       out = { ok: true, msg: '연결 정상 · ' + SS_().getName() };
+
     } else if (p.action === 'getRoster') {
       out = { ok: true, data: getRoster_(p.cn) };
+
     } else if (p.action === 'initSheets') {
-      // 앱의 「시트 양식 만들기」 — 두 장을 머리글까지 갖춰 만든다
-      var a = sh_('명단', ROSTER_H), b = sh_('야구기록', REC_H);
-      // 예시 한 줄 (명단이 완전히 비어 있을 때만)
-      if (a.getLastRow() < 2) {
-        a.getRange(2, 1, 1, ROSTER_H.length)
-         .setValues([['1반', '1', '홍길동', '남', 'A']])
+      // 학급 탭을 한꺼번에 만든다.  classes=1반,2반,…
+      var list = String(p.classes || '').split(',')
+                   .map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!list.length) throw new Error('학급 목록이 비어 있습니다');
+      list.forEach(function (cn) { tab_(cn); });
+      // 예시 줄 (첫 학급 탭이 완전히 비어 있을 때만)
+      var f = tab_(list[0]);
+      if (f.getLastRow() < 2) {
+        f.getRange(2, 1, 1, NAME_COLS).setValues([['1', '홍길동', '남', 'A']])
          .setFontColor('#999999').setFontStyle('italic');
-        a.getRange(2, 1, 1, 1).setNote('예시 줄입니다. 지우고 실제 명단을 넣으세요.');
+        f.getRange(2, 1).setNote('예시 줄입니다. 지우고 실제 명단을 넣으세요.');
       }
-      out = { ok: true, msg: '명단 · 야구기록 시트 준비 완료',
-              sheets: [a.getName(), b.getName()] };
+      // 기본 「시트1」이 비어 있으면 정리
+      RESERVED.forEach(function (n) {
+        var x = SS_().getSheetByName(n);
+        if (x && x.getLastRow() <= 1 && SS_().getSheets().length > 1) SS_().deleteSheet(x);
+      });
+      out = { ok: true, msg: list.length + '개 학급 탭 준비 완료', sheets: list };
 
     } else if (p.action === 'getCount') {
-      // 내보내기가 실제로 들어갔는지 확인용
-      var s = sh_('야구기록', REC_H), n = 0, last = s.getLastRow();
-      if (last > 1) {
-        var col = s.getRange(2, 1, last - 1, 1).getDisplayValues();
-        for (var i = 0; i < col.length; i++) {
-          if (String(col[i][0]).trim() === String(p.cn).trim()) n++;
-        }
-      }
+      var n = 0;
+      rowsOf_(tab_(p.cn)).forEach(function (r) { if (String(r[1]).trim()) n++; });
       out = { ok: true, count: n };
+
     } else {
       out = { ok: false, error: '알 수 없는 요청: ' + p.action };
     }
@@ -155,17 +188,10 @@ function doPost(e) {
     var payload = JSON.parse(e.parameter.payload || '{}');
 
     if (action === 'saveBaseball') {
-      var stamp = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
-      var rows = (payload.rows || []).map(function (r) {
-        return [payload.cn].concat(r).concat([stamp]);
-      });
-      out = { ok: true, saved: replaceRows_('야구기록', REC_H, payload.cn, rows) };
+      out = { ok: true, result: saveRecords_(payload.cn, payload.rows || []) };
 
     } else if (action === 'saveRoster') {
-      var rr = (payload.students || []).map(function (s) {
-        return [payload.cn, s.num, s.name, s.gender, s.group || 'A'];
-      });
-      out = { ok: true, saved: replaceRows_('명단', ROSTER_H, payload.cn, rr) };
+      out = { ok: true, result: saveRoster_(payload.cn, payload.students || []) };
 
     } else {
       out = { ok: false, error: '알 수 없는 요청: ' + action };

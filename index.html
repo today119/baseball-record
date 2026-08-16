@@ -1404,7 +1404,7 @@ function vStats(){
   if(!S.cur) return needClass('v-stats');
   var c = cls();
   var t = tally(allAtbats(c), allDefense(c), inningMap(c));
-  var rows = c.roster.map(function(s){ return Object.assign({num:s.num,name:s.name,gender:s.gender}, t[s.sid]||{ab:0,h:0,r:0,rbi:0,dOut:0,inn:0,g:0,avg:0,contrib:0}); });
+  var rows = c.roster.map(function(s){ return Object.assign({num:s.num,name:s.name,gender:s.gender,group:s.group||'A'}, t[s.sid]||{ab:0,h:0,r:0,rbi:0,dOut:0,inn:0,g:0,avg:0,contrib:0}); });
   rows.sort(function(a,b){ return b.avg-a.avg || b.h-a.h; });
 
   el('v-stats').innerHTML =
@@ -1432,12 +1432,12 @@ function vStats(){
       var tt = c.tt[ (c.roster.filter(function(s){return s.name===x.name;})[0]||{}).sid ] || {};
       var rp = c.rep[ (c.roster.filter(function(s){return s.name===x.name;})[0]||{}).sid ] || {};
       var repN = [0,1,2,3,4].filter(function(i){return rp['i'+i];}).length;
-      return [x.num, x.name, x.gender, x.g, x.inn, x.ab, x.h, fmtAvg(x.avg),
+      return [x.num, x.name, x.gender, x.group, x.g, x.inn, x.ab, x.h, fmtAvg(x.avg),
               x.r, x.rbi, x.dOut, x.contrib.toFixed(2),
               tt.fh==null?'':tt.fh, tt.bh==null?'':tt.bh, tt.card==null?'':tt.card, repN];
     });
   }
-  var HDR = ['번호','이름','성별','경기','이닝','타수','안타','타율','득점','타점','수비아웃',
+  var HDR = ['번호','이름','성별','조','경기','이닝','타수','안타','타율','득점','타점','수비아웃',
              '이닝당기여','탁구포핸드','탁구백핸드','태도카드','보고서충족'];
   el('csv').onclick = function(){
     var csv = [HDR].concat(tableData()).map(function(r){
@@ -1454,8 +1454,8 @@ function vStats(){
       .then(function(){ return new Promise(function(r){ setTimeout(r, 1500); }); })
       .then(function(){ return jsonp({action:'getCount', cn:S.cur}); })
       .then(function(r){
-        if(r && r.ok && r.count === rows.length) toast('시트에 '+r.count+'명 저장 완료');
-        else if(r && r.ok) toast('시트에 '+r.count+'행 확인 (보낸 건 '+rows.length+'행)');
+        if(r && r.ok && r.count >= rows.length) toast('「'+S.cur+'」 탭에 '+rows.length+'명 저장 완료');
+        else if(r && r.ok) toast('「'+S.cur+'」 탭 '+r.count+'행 확인 (보낸 건 '+rows.length+'행)');
         else toast('보내긴 했지만 확인 실패 — 시트를 직접 봐 주세요');
       })
       .catch(function(e){ toast('실패: '+e.message); });
@@ -1537,7 +1537,7 @@ function vSet(){
     S.cfg.gasUrl = el('gas').value.trim(); save();
     if(!S.cfg.gasUrl) return toast('앱스스크립트 주소를 먼저 넣어주세요');
     toast('시트를 만드는 중…');
-    jsonp({action:'initSheets'})
+    jsonp({action:'initSheets', classes:S.cfg.classNames.slice(0,S.cfg.classCount).join(',')})
       .then(function(r){ toast(r && r.ok ? (r.msg||'시트 준비 완료') : '실패 — 배포를 새 버전으로 했는지 확인하세요'); })
       .catch(function(e){ toast(e.message); });
   };
