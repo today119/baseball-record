@@ -79,149 +79,172 @@ td.n,th.n{text-align:right}
 /* ── 전광판 ─────────────────────────────────────────────────
    야구장 전광판 배치. 세 칸으로 나눈다.
      좌·우 = 두 팀. 공격 중이면 타순표, 수비 중이면 수비 배치도.
-     가운데(좁게) = 이닝별 점수 · 현재 타자 · 주루 · 공격 버튼.
-   화면 높이를 꽉 채우고, 명단이 길면 신문처럼 옆 단으로 흘린다. */
-.board{background:#070d10;border:1px solid var(--line2);border-radius:14px;overflow:hidden;
-  display:flex;flex-direction:column;height:calc(100vh - 118px);min-height:560px}
-.brow{display:grid;grid-template-columns:1fr minmax(358px,404px) 1fr;flex:1;min-height:0}
+     가운데 = 이닝별 점수 · 큰 주루 다이아몬드 · 공격 버튼.
 
-/* 좌·우 팀 칸 */
-.pan{display:flex;flex-direction:column;min-height:0;min-width:0;padding:10px 11px;gap:8px}
+   ★ 크기는 전부 --u 의 배수로만 쓴다.
+     --u 는 화면 폭에 비례하므로 태블릿이든 4K 든 비율이 그대로 유지된다.
+     px 을 직접 박으면 큰 화면에서 글자만 작아져 따로 논다. */
+.board{
+  --u:clamp(11px, .78vw, 18px);          /* 기준 글자 단위 */
+  --w:calc(var(--u) * 33);               /* 좌·우 칸 안쪽 최대 폭 */
+  --gp:calc(var(--u) * .6);              /* 기본 간격 */
+  background:#070d10;border:1px solid var(--line2);border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;height:calc(100vh - 118px);min-height:560px}
+/* 가운데도 화면 폭에 비례해 함께 커진다 (고정 px 이면 큰 화면에서 좌우만 넓어진다) */
+.brow{display:grid;grid-template-columns:minmax(0,1fr) clamp(340px,32%,660px) minmax(0,1fr);
+  flex:1;min-height:0}
+
+/* ── 좌·우 팀 칸 ───────────────────────── */
+.pan{display:flex;flex-direction:column;align-items:center;min-height:0;min-width:0;
+  padding:calc(var(--u) * .75);gap:var(--gp)}
+.pan > *{width:100%;max-width:var(--w)}
 .pan-l{border-right:1px solid var(--line2);background:#0a1117}
 .pan-r{border-left:1px solid var(--line2);background:#0a1117}
 .pan.hide{display:none}
-.ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.pt{padding:8px 15px;border-radius:9px;font-size:clamp(18px,1.9vw,26px);font-weight:900;color:#fff;
-  letter-spacing:-.3px;white-space:nowrap}
+.ph{display:flex;align-items:center;gap:calc(var(--u) * .5);flex-wrap:wrap;flex:0 0 auto}
+.pt{padding:calc(var(--u) * .42) calc(var(--u) * .85);border-radius:calc(var(--u) * .45);
+  font-size:calc(var(--u) * 1.55);font-weight:900;color:#fff;letter-spacing:-.3px;white-space:nowrap}
 .pt.h{background:linear-gradient(180deg,#3f7fd0,#2b5fa8)}
 .pt.a{background:linear-gradient(180deg,#d2564a,#a83d33)}
-.pmode{font-size:12.5px;font-weight:900;letter-spacing:.1em;padding:4px 9px;border-radius:99px}
+.pmode{font-size:calc(var(--u) * .82);font-weight:900;letter-spacing:.1em;
+  padding:calc(var(--u) * .22) calc(var(--u) * .55);border-radius:99px}
 .pmode.on{background:var(--warn);color:#241a05}
 .pmode.off{background:#16242c;color:#7d95a3}
-.phint{margin-left:auto;font-size:13.5px;font-weight:800;color:var(--warn)}
+.phint{margin-left:auto;font-size:calc(var(--u) * .88);font-weight:800;color:var(--warn)}
 
-/* 타순표 — 높이를 다 쓰고 넘치면 옆 단으로 */
-.lineup{flex:1;min-height:0;column-count:1;column-gap:13px;column-fill:auto;overflow:auto}
-.pl{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;margin-bottom:3px;
-  font-size:clamp(16px,1.6vw,21px);break-inside:avoid}
-.pl .o{font-size:12.5px;color:var(--tx3);width:20px;flex:0 0 20px;text-align:right}
-.pl .ps{font-size:11px;font-weight:900;color:#8fd0aa;background:#123a23;border-radius:5px;
-  padding:3px 4px;width:31px;flex:0 0 31px;text-align:center;letter-spacing:-.02em}
+/* 타순표 — 높이를 다 쓰고, 인원이 많으면 신문처럼 옆 단으로 흘린다 */
+.lineup{flex:1;min-height:0;column-count:1;column-gap:calc(var(--u) * .8);
+  column-fill:auto;overflow:auto}
+.lineup{--plpad:0px}
+.pl{display:flex;align-items:center;gap:calc(var(--u) * .45);
+  padding:calc(var(--u) * .3 + var(--plpad)) calc(var(--u) * .5);border-radius:calc(var(--u) * .35);
+  margin-bottom:calc(var(--u) * .18);font-size:calc(var(--u) * 1.15);break-inside:avoid}
+.pl .o{font-size:calc(var(--u) * .82);color:var(--tx3);
+  width:calc(var(--u) * 1.25);flex:0 0 calc(var(--u) * 1.25);text-align:right}
+.pl .ps{font-size:calc(var(--u) * .72);font-weight:900;color:#8fd0aa;background:#123a23;
+  border-radius:calc(var(--u) * .25);padding:calc(var(--u) * .16) 0;
+  width:calc(var(--u) * 2);flex:0 0 calc(var(--u) * 2);text-align:center;letter-spacing:-.02em}
 .pl .ps.na{color:#5c7080;background:#141f26}
 .pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl .rs{font-size:13.5px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.pl .rs{font-size:calc(var(--u) * .88);color:var(--tx3);font-variant-numeric:tabular-nums}
 .pl.now{background:var(--warn);color:#241a05;font-weight:900}
 .pl.now .o,.pl.now .rs{color:#5a4310}
 .pl.now .ps{background:#5a4310;color:#ffd479}
 .pl.done{opacity:.38}
-.pl.onbase{box-shadow:inset 3px 0 0 var(--warn)}
-/* 두 단 이상으로 접힐 때는 한 칸이 좁아지므로 글자를 한 단계 줄인다 */
-.lineup.narrow .pl{font-size:clamp(13px,1.25vw,16px);padding:4px 6px;gap:5px}
-.lineup.narrow .pl .o{width:16px;flex:0 0 16px;font-size:11px}
-.lineup.narrow .pl .ps{width:26px;flex:0 0 26px;font-size:9.5px;padding:2px 3px}
-.lineup.narrow .pl .rs{font-size:11.5px}
+.pl.onbase{box-shadow:inset calc(var(--u) * .2) 0 0 var(--warn)}
+/* 두 단 이상으로 접히면 한 칸이 좁아지므로 한 단계 줄인다 */
+.lineup.narrow .pl{font-size:calc(var(--u) * .96);gap:calc(var(--u) * .35)}
+.lineup.narrow .pl .ps{width:calc(var(--u) * 1.7);flex:0 0 calc(var(--u) * 1.7);
+  font-size:calc(var(--u) * .64)}
 
 /* 수비 배치도 */
-.field{position:relative;width:100%;aspect-ratio:1/1.42;flex:0 1 auto;min-height:0;
-  max-width:560px;margin:auto;
+.field{position:relative;width:100%;aspect-ratio:1/1.34;flex:0 1 auto;min-height:0;
+  margin:auto;
   background:radial-gradient(ellipse at 50% 96%, #1d5c37 0%, #17492c 55%, #123a23 100%);
-  border-radius:10px;overflow:hidden}
+  border-radius:calc(var(--u) * .6);overflow:hidden}
 .field::after{content:'';position:absolute;left:50%;bottom:7%;width:56%;height:47%;
   transform:translateX(-50%) rotate(45deg);border:2px solid rgba(255,255,255,.16);border-radius:3px}
-.po{position:absolute;transform:translate(-50%,-50%);min-width:70px;padding:6px 8px;
-  background:rgba(8,20,14,.86);border:1.5px solid #2f6b48;border-radius:8px;text-align:center;
-  cursor:pointer;transition:all .12s}
-.po .pp{font-size:11px;color:#8fd0aa;font-weight:800;letter-spacing:.03em}
-.po .pn{font-size:clamp(13px,1.35vw,18px);font-weight:800;color:#eafaf1;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;max-width:104px}
+.po{position:absolute;transform:translate(-50%,-50%);
+  min-width:calc(var(--u) * 4.4);padding:calc(var(--u) * .3) calc(var(--u) * .45);
+  background:rgba(8,20,14,.86);border:1.5px solid #2f6b48;border-radius:calc(var(--u) * .45);
+  text-align:center;cursor:pointer;transition:all .12s}
+.po .pp{font-size:calc(var(--u) * .72);color:#8fd0aa;font-weight:800;letter-spacing:.03em}
+.po .pn{font-size:calc(var(--u) * 1.02);font-weight:800;color:#eafaf1;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:calc(var(--u) * 6.5)}
 .po.pick{background:var(--warn);border-color:#ffd479}
 .po.pick .pp{color:#5a4310} .po.pick .pn{color:#241a05}
 .po.swap{border-color:var(--info);border-style:dashed}
-.bench{font-size:12.5px;color:var(--tx3);text-align:center;
+.bench{font-size:calc(var(--u) * .85);color:var(--tx3);text-align:center;flex:0 0 auto;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dbtn{display:flex;gap:7px;max-width:560px;width:100%;margin:0 auto}
-.dbtn button{flex:1;padding:12px 0;border-radius:9px;font-size:15px;font-weight:800;
-  background:var(--line);border:1px solid var(--line2)}
+.dbtn{display:flex;gap:calc(var(--u) * .45);flex:0 0 auto}
+.dbtn button{flex:1;padding:calc(var(--u) * .62) 0;border-radius:calc(var(--u) * .45);
+  font-size:calc(var(--u) * 1.02);font-weight:800;background:var(--line);border:1px solid var(--line2)}
 .dbtn button.on{background:var(--info);border-color:var(--info);color:#fff}
 .dbtn button.ok{background:var(--hit);border-color:var(--hit);color:#fff}
 
-/* ── 가운데 ─────────────────────────────── */
-.ctr{display:flex;flex-direction:column;min-height:0;min-width:0;padding:10px;gap:8px;
-  overflow:hidden;
-  background:#050a0d}
+/* ── 가운데 ─────────────────────────────
+   남는 세로 공간을 블록 사이에 자동으로 나눠 갖는다(space-between).
+   그래서 큰 화면에서는 간격이 넉넉해지고 작은 화면에서는 알아서 붙는다. */
+.ctr{display:flex;flex-direction:column;justify-content:space-between;
+  min-height:0;min-width:0;padding:calc(var(--u) * .75);gap:var(--gp);
+  background:#050a0d;overflow:hidden}
 
 /* 이닝별 점수표 */
-.isc{width:100%;border-collapse:collapse;background:#000;border-radius:10px;overflow:hidden;
-  table-layout:fixed}
-.isc th{font-size:12px;font-weight:900;color:#7d95a3;background:#0e1a21;padding:4px 0;
-  vertical-align:middle;
-  letter-spacing:.06em}
+.isc{width:100%;border-collapse:collapse;background:#000;
+  border-radius:calc(var(--u) * .6);overflow:hidden;table-layout:fixed;flex:0 0 auto}
+.isc th{font-size:calc(var(--u) * 1.35);font-weight:900;color:#93aab8;background:#0e1a21;
+  padding:calc(var(--u) * .3) 0;vertical-align:middle}
 .isc th.rh{color:#ff7b6e} .isc th.hh{color:#e0a33c}
 .isc th.cur{background:#1d3540;color:var(--warn)}
-.isc th.inh{width:92px;letter-spacing:.14em}
-.isc td{text-align:center;font-weight:900;padding:5px 0;color:#cfdde5;
-  font-size:clamp(17px,1.8vw,24px);font-variant-numeric:tabular-nums;border-top:1px solid #16242c}
-.isc td.tm{font-size:clamp(15px,1.5vw,21px);color:#fff;letter-spacing:-.3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:5px 6px}
+.isc th.inh{width:calc(var(--u) * 5.2);font-size:calc(var(--u) * .82);
+  color:#5c7080;letter-spacing:.14em}
+.isc th.adjh{width:calc(var(--u) * 2.4)}
+.isc td{text-align:center;font-weight:900;padding:calc(var(--u) * .34) 0;color:#cfdde5;
+  font-size:calc(var(--u) * 1.9);font-variant-numeric:tabular-nums;border-top:1px solid #16242c}
+.isc td.tm{font-size:calc(var(--u) * 1.25);color:#fff;letter-spacing:-.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:calc(var(--u) * .34) calc(var(--u) * .4)}
 .isc tr.h td.tm{background:linear-gradient(180deg,#3f7fd0,#2b5fa8)}
 .isc tr.a td.tm{background:linear-gradient(180deg,#d2564a,#a83d33)}
-.isc td.rr{font-size:clamp(32px,3.4vw,50px);color:#fff;background:#2a0d0c;line-height:1}
+.isc td.rr{font-size:calc(var(--u) * 2.9);color:#fff;background:#2a0d0c;line-height:1}
 .isc td.hh{color:#e0a33c}
 .isc td.z{color:#3d525c}
-.isc .adj{display:flex;flex-direction:column;gap:2px;align-items:center}
-.isc .adj button{width:30px;height:19px;border-radius:4px;background:#16242c;
-  border:1px solid #2b3d45;font-size:9px;font-weight:900;color:#8aa2b0;line-height:1}
-.inbig{font-size:clamp(23px,2.3vw,31px);font-weight:900;line-height:1}
-.inhalf{font-size:13px;font-weight:900;color:var(--warn);letter-spacing:.08em}
+.isc .adj{display:flex;flex-direction:column;gap:calc(var(--u) * .12);align-items:center}
+.isc .adj button{width:calc(var(--u) * 1.7);height:calc(var(--u) * 1.05);
+  border-radius:calc(var(--u) * .25);background:#16242c;border:1px solid #2b3d45;
+  font-size:calc(var(--u) * .6);font-weight:900;color:#8aa2b0;line-height:1}
 
-/* 현재 타자 카드 */
-.bcard{background:#0b1319;border:1px solid var(--line2);border-radius:11px;padding:7px 11px;
-  text-align:center}
-.bhead{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:2px}
-.binn{font-size:13px;font-weight:900;color:var(--warn);background:#2b2109;border-radius:5px;padding:2px 8px}
-.binn b{font-size:17px}
-.bpos{font-size:12.5px;font-weight:900;color:#8fd0aa;background:#123a23;border-radius:5px;padding:2px 6px}
-.bnum{font-size:13.5px;color:var(--tx3);font-weight:800}
-.bnm{font-size:clamp(32px,3.8vw,52px);font-weight:900;letter-spacing:-1px;line-height:1.1}
-.bstat{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:5px}
-.bstat div{background:#070d10;border-radius:6px;padding:4px 0}
-.bstat i{display:block;font-size:11px;color:var(--tx3);font-style:normal;font-weight:800}
-.bstat b{display:block;font-size:clamp(18px,1.9vw,26px);font-weight:900;
-  font-variant-numeric:tabular-nums;line-height:1.25}
-.bstat .k b{color:var(--warn)}
-
-/* 주루 + B·S·O */
-.brun{display:flex;align-items:center;justify-content:center;gap:clamp(10px,2vw,26px)}
-.dia{position:relative;width:154px;height:120px;flex:0 0 154px}
-.bs{position:absolute;width:29px;height:29px;background:#1b2930;border:2px solid #33474f;
-  transform:rotate(45deg);border-radius:4px;cursor:pointer;transition:background .12s}
-.bs.on{background:var(--warn);border-color:#ffd479;box-shadow:0 0 12px rgba(224,163,60,.5)}
-.bs.b1{right:18px;top:44px} .bs.b2{left:63px;top:5px} .bs.b3{left:18px;top:44px}
-.hp{position:absolute;left:66px;bottom:3px;width:22px;height:22px;background:#2a3a42;
-  border:2px solid #3d525c;transform:rotate(45deg);border-radius:3px}
-.rn{position:absolute;font-size:11.5px;font-weight:800;color:var(--warn);white-space:nowrap;
-  pointer-events:none;text-shadow:0 1px 3px #000}
-.rn.r1{right:-8px;top:79px} .rn.r2{left:44px;top:-10px} .rn.r3{left:-8px;top:79px}
-.sbo{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-.sbo .g{display:flex;align-items:center;gap:5px}
-.sbo .lb{font-size:14px;font-weight:900;color:var(--tx3);width:16px}
-.lamp{width:18px;height:18px;border-radius:99px;background:#1a262c;border:1px solid #2b3d45}
+/* 주루 — 가운데의 주인공. 남는 높이를 전부 먹고 폭도 꽉 쓴다 */
+.brun{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:calc(var(--u) * .7)}
+.dia{position:relative;width:100%;aspect-ratio:1/.82;flex:0 1 auto;min-height:0;
+  max-height:100%;max-width:calc(var(--u) * 26);margin:0 auto}
+/* 내야 — 네 루의 중심을 그대로 이은 마름모.
+   rotate(45deg) 사각형으로는 가로·세로 비가 달라 루와 어긋나서 clip-path 로 그린다. */
+.dia::before,.dia::after{content:'';position:absolute;inset:0;
+  clip-path:polygon(50% 13.5%, 81.5% 46%, 50% 88%, 18.5% 46%)}
+.dia::before{background:rgba(255,255,255,.16)}
+.dia::after{background:linear-gradient(160deg,#1a4a30,#123522);
+  transform:scale(.975)}
+/* 루 — % 로 잡아 다이아몬드가 커지면 같이 커진다 */
+.bs{position:absolute;width:15%;aspect-ratio:1;background:#1b2930;border:2px solid #46606c;
+  transform:rotate(45deg);border-radius:14%;cursor:pointer;transition:background .12s;z-index:2}
+.bs.on{background:var(--warn);border-color:#ffd479;box-shadow:0 0 calc(var(--u)*1.1) rgba(224,163,60,.6)}
+.bs.b1{right:11%;top:38.5%} .bs.b2{left:42.5%;top:6%} .bs.b3{left:11%;top:38.5%}
+.hp{position:absolute;left:44%;bottom:6%;width:12%;aspect-ratio:1;background:#2a3a42;
+  border:2px solid #46606c;transform:rotate(45deg);border-radius:14%;z-index:2}
+.rn{position:absolute;font-size:calc(var(--u) * 1.02);font-weight:800;color:var(--warn);
+  white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px #000;z-index:3}
+.rn.r1{right:2%;top:64%} .rn.r2{left:36%;top:-2%} .rn.r3{left:2%;top:64%}
+/* B·S·O — 다이아몬드 아래 가로로 (사진의 전광판처럼) */
+.sbo{display:flex;flex-direction:row;align-items:center;justify-content:center;
+  gap:calc(var(--u) * 1.6);flex-wrap:wrap;flex:0 0 auto;margin-top:calc(var(--u) * .4)}
+.sbo .g{display:flex;align-items:center;gap:calc(var(--u) * .35)}
+.sbo .lb{font-size:calc(var(--u) * 1.02);font-weight:900;color:var(--tx3)}
+.lamp{width:calc(var(--u) * 1.15);height:calc(var(--u) * 1.15);border-radius:99px;
+  background:#1a262c;border:1px solid #2b3d45}
 .lamp.s{background:var(--warn);border-color:var(--warn)}
 .lamp.b{background:var(--hit);border-color:var(--hit)}
 .lamp.o{background:var(--out);border-color:var(--out)}
-.dlb{font-size:10px;color:var(--tx3);line-height:1.45;margin-top:2px}
+.dlb{font-size:calc(var(--u) * .78);color:var(--tx3);text-align:center}
 
-/* 공격 버튼 */
-.hits{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:100%}
-.hits button{padding:clamp(11px,1.35vh,15px) 0;border-radius:10px;font-weight:900;
-  font-size:clamp(16px,1.7vw,22px);border:1px solid transparent}
+/* 공격 버튼 — 누가 치는지 한 줄만 얹는다 (자세한 성적은 오른쪽 타순표에) */
+.bwho{text-align:center;font-size:calc(var(--u) * 1.15);font-weight:800;color:var(--tx2);
+  flex:0 0 auto}
+.bwho b{color:#fff;font-size:calc(var(--u) * 1.5);font-weight:900;letter-spacing:-.4px}
+.bwho .binn{color:var(--warn);font-weight:900}
+.bwho .bpos{color:#8fd0aa;font-weight:900}
+.hits{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u) * .45);
+  width:100%;flex:0 0 auto}
+.hits button{padding:calc(var(--u) * .8) 0;border-radius:calc(var(--u) * .55);font-weight:900;
+  font-size:calc(var(--u) * 1.35);border:1px solid transparent}
 .h1{background:#1e7a4e;color:#fff} .h2{background:#2a9160;color:#fff}
 .h3{background:#37a870;color:#fff} .h4{background:#e0a33c;color:#241a05}
 .h5{background:#3d6f9e;color:#fff} .h6{background:#7a6a3a;color:#fff}
 .h0{background:#b8443a;color:#fff;grid-column:1/-1}
 .hits button:active{transform:translateY(1px)}
-.extra{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.extra .btn{flex:1;min-width:76px;justify-content:center;text-align:center;font-size:13.5px}
+.extra{display:flex;gap:calc(var(--u) * .4);justify-content:center;flex:0 0 auto}
+.extra .btn{flex:1;justify-content:center;text-align:center;
+  font-size:calc(var(--u) * .95);padding:calc(var(--u) * .5) calc(var(--u) * .4)}
 
 /* 주자 이동 고르기 */
 .pop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;
@@ -241,21 +264,17 @@ body.fs .hdrow{display:none}
 
 /* 태블릿·폰 세로 — 세 칸을 위아래로 쌓는다. 가운데(기록하는 곳)가 맨 위. */
 @media(max-width:1000px), (orientation:portrait){
-  .board{height:auto;min-height:0}
+  .board{--u:clamp(13px, 3.4vw, 20px);--w:none;height:auto;min-height:0}
   .brow{grid-template-columns:1fr}
-  .ctr{order:1}
+  .ctr{order:1;justify-content:flex-start;overflow:visible}
   .pan-l{order:2;border-right:0;border-top:1px solid var(--line2)}
   .pan-r{order:3;border-left:0;border-top:1px solid var(--line2)}
-  .lineup{columns:240px;column-fill:balance;overflow:visible;height:auto}
-  .field{min-height:270px;max-width:380px}
-  .dia{width:126px;height:100px;flex:0 0 126px}
-  .bs{width:25px;height:25px}
-  .bs.b1{right:14px;top:36px} .bs.b2{left:51px;top:4px} .bs.b3{left:14px;top:36px}
-  .hp{left:54px;width:19px;height:19px}
-  .rn.r1{right:-6px;top:65px} .rn.r2{left:36px;top:-9px} .rn.r3{left:-6px;top:65px}
-  .isc td.rr{font-size:clamp(28px,7vw,40px)}
-  .bnm{font-size:clamp(26px,7vw,38px)}
-  .hits button{padding:16px 0}
+  .pan > *{max-width:none}
+  .lineup{columns:calc(var(--u) * 11);column-fill:balance;overflow:visible;height:auto}
+  .field{max-width:calc(var(--u) * 22);aspect-ratio:1/1.08}
+  .brun{flex:0 0 auto;padding:calc(var(--u) * .5) 0}
+  .dia{height:auto;width:min(100%, calc(var(--u) * 18));max-height:none;max-width:none}
+  .hits button{padding:calc(var(--u) * .95) 0}
 }
 @media(max-width:820px){
   .app{flex-direction:column}
@@ -1356,7 +1375,7 @@ function board(g){
     var n = g.innings;
     var head = '<tr><th class="inh">TEAM</th>';
     for(var i=1;i<=n;i++) head += '<th'+(i===g.st.inning?' class="cur"':'')+'>'+i+'</th>';
-    head += '<th class="rh">R</th><th class="hh">H</th><th style="width:36px"></th></tr>';
+    head += '<th class="rh">R</th><th class="hh">H</th><th class="adjh"></th></tr>';
     function row(side){
       var half = side==='A' ? '초' : '말';
       var o = '<tr class="'+(side==='H'?'h':'a')+'"><td class="tm">'+
@@ -1367,7 +1386,7 @@ function board(g){
       }
       o += '<td class="rr">'+(side==='H'?g.hs:g.as)+'</td>'+
            '<td class="hh">'+hitsOf(g,side)+'</td>'+
-           '<td><div class="adj"><button data-sc="'+side+'+">▲</button>'+
+           '<td class="adjc"><div class="adj"><button data-sc="'+side+'+">▲</button>'+
              '<button data-sc="'+side+'-">▼</button></div></td></tr>';
       return o;
     }
@@ -1389,24 +1408,14 @@ function board(g){
       '<div class="pan pan-l'+(g._hl?' hide':'')+'">'+panel('H')+'</div>'+
       '<div class="ctr">'+
         scoreTable()+
-        (b ? '<div class="bcard">'+
-               '<div class="bhead">'+
-                 '<span class="binn"><b>'+g.st.inning+'</b>회 '+g.st.half+'</span>'+
-                 '<span class="bpos">'+(posOf(g,atk,b.sid)||'대기')+'</span>'+
-                 '<span class="bnum">'+(g.st.idx+1)+'번 타자'+(b.dup?' · 중복':'')+'</span></div>'+
-               '<div class="bnm">'+esc(b.name)+'</div>'+
-               '<div class="bstat">'+
-                 '<div class="k"><i>시즌타율</i><b>'+fmtAvg(mine.avg)+'</b></div>'+
-                 '<div><i>타수</i><b>'+(mine.ab||0)+'</b></div>'+
-                 '<div><i>안타</i><b>'+(mine.h||0)+'</b></div>'+
-                 '<div><i>홈런</i><b>'+(mine.hr||0)+'</b></div>'+
-                 '<div><i>타점</i><b>'+(mine.rbi||0)+'</b></div>'+
-               '</div></div>'
-           : '<div class="msg">타자가 없습니다</div>')+
         '<div class="brun">'+diamondHTML(g)+
           '<div class="sbo">'+lampG('B',g._b||0,3,'b')+lampG('S',g._s||0,2,'s')+
-            lampG('O',g._o||0,3,'o')+
-            '<div class="dlb">주자를 눌러<br>진루·아웃 수정</div></div></div>'+
+            lampG('O',g._o||0,3,'o')+'</div>'+
+          '<div class="dlb">루를 눌러 주자 진루·아웃을 고칩니다</div></div>'+
+        (b ? '<div class="bwho"><span class="binn">'+g.st.inning+'회 '+g.st.half+'</span> · '+
+               (g.st.idx+1)+'번 <span class="bpos">'+(posOf(g,atk,b.sid)||'대기')+'</span> '+
+               '<b>'+esc(b.name)+'</b>'+(b.dup?' · 중복':'')+'</div>'
+           : '<div class="msg">타자가 없습니다</div>')+
         (b ? '<div class="hits">'+
                '<button class="h1" data-k="1">1루타</button>'+
                '<button class="h2" data-k="2">2루타</button>'+
@@ -1488,6 +1497,11 @@ function board(g){
       box.style.columnCount = cols;
       if(cols < 2) box.classList.remove('narrow');
     }
+    //  남는 세로 공간은 줄 간격으로 나눠 화면 하단까지 채운다
+    var rows = Math.ceil(n / cols);
+    var slack = box.clientHeight - rows * rowH;
+    var pad = Math.max(0, Math.min(rowH * 0.55, slack / rows / 2));
+    box.style.setProperty('--plpad', pad.toFixed(1)+'px');
   });
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
   el('okDef').onclick = function(){
