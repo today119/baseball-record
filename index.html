@@ -138,12 +138,9 @@ td.n,th.n{text-align:right}
   font-size:calc(var(--u) * .64)}
 
 /* 수비 배치도 */
-.field{position:relative;width:100%;aspect-ratio:1/1.34;flex:0 1 auto;min-height:0;
-  margin:auto;
-  background:radial-gradient(ellipse at 50% 96%, #1d5c37 0%, #17492c 55%, #123a23 100%);
-  border-radius:calc(var(--u) * .6);overflow:hidden}
-.field::after{content:'';position:absolute;left:50%;bottom:7%;width:56%;height:47%;
-  transform:translateX(-50%) rotate(45deg);border:2px solid rgba(255,255,255,.16);border-radius:3px}
+.field{position:relative;width:100%;aspect-ratio:1/.78;flex:0 1 auto;min-height:0;margin:auto;
+  background:#0d1f16;border-radius:calc(var(--u) * .6);overflow:hidden}
+.fbg{position:absolute;inset:0;width:100%;height:100%;display:block}
 .po{position:absolute;transform:translate(-50%,-50%);
   min-width:calc(var(--u) * 4.4);padding:calc(var(--u) * .3) calc(var(--u) * .45);
   background:rgba(8,20,14,.86);border:1.5px solid #2f6b48;border-radius:calc(var(--u) * .45);
@@ -172,7 +169,7 @@ td.n,th.n{text-align:right}
 /* 이닝별 점수표 */
 .isc{width:100%;border-collapse:collapse;background:#000;
   border-radius:calc(var(--u) * .6);overflow:hidden;table-layout:fixed;flex:0 0 auto}
-.isc th{font-size:calc(var(--u) * 1.35);font-weight:900;color:#93aab8;background:#0e1a21;
+.isc th{text-align:center;font-size:calc(var(--u) * 1.35);font-weight:900;color:#93aab8;background:#0e1a21;
   padding:calc(var(--u) * .3) 0;vertical-align:middle}
 .isc th.rh{color:#ff7b6e} .isc th.hh{color:#e0a33c}
 .isc th.cur{background:#1d3540;color:var(--warn)}
@@ -271,7 +268,7 @@ body.fs .hdrow{display:none}
   .pan-r{order:3;border-left:0;border-top:1px solid var(--line2)}
   .pan > *{max-width:none}
   .lineup{columns:calc(var(--u) * 11);column-fill:balance;overflow:visible;height:auto}
-  .field{max-width:calc(var(--u) * 22);aspect-ratio:1/1.08}
+  .field{max-width:calc(var(--u) * 24)}   /* 비율은 가로와 같아야 구장이 안 찌그러진다 */
   .brun{flex:0 0 auto;padding:calc(var(--u) * .5) 0}
   .dia{height:auto;width:min(100%, calc(var(--u) * 18));max-height:none;max-width:none}
   .hits button{padding:calc(var(--u) * .95) 0}
@@ -1258,15 +1255,15 @@ function confirmLineup(g){
 
 /* ── 전광판 ─────────────────────────────── */
 var POS = [
-  {k:'CF', n:'중견수', x:50, y:16},
-  {k:'LF', n:'좌익수', x:17, y:28},
-  {k:'RF', n:'우익수', x:83, y:28},
-  {k:'SS', n:'유격수', x:36, y:47},
-  {k:'2B', n:'2루수', x:64, y:47},
-  {k:'3B', n:'3루수', x:20, y:62},
-  {k:'1B', n:'1루수', x:80, y:62},
-  {k:'P',  n:'투수',   x:50, y:62},
-  {k:'C',  n:'포수',   x:50, y:87}
+  {k:'CF', n:'중견수', x:50, y:13},
+  {k:'LF', n:'좌익수', x:17, y:26},
+  {k:'RF', n:'우익수', x:83, y:26},
+  {k:'SS', n:'유격수', x:36, y:45},
+  {k:'2B', n:'2루수', x:64, y:45},
+  {k:'3B', n:'3루수', x:23, y:55},
+  {k:'1B', n:'1루수', x:77, y:55},
+  {k:'P',  n:'투수',   x:50, y:63},
+  {k:'C',  n:'포수',   x:50, y:92}
 ];
 /* 수비 배치 — 없으면 타순 앞 9명을 자동으로 세운다 */
 function defOf(g, side){
@@ -1289,6 +1286,31 @@ function benchOf(g, side){
 function pName(g, sid){
   var f = g.orderH.concat(g.orderA).filter(function(p){return p.sid===sid;})[0];
   return f ? f.name : '';
+}
+/* 야구장 그림 — 그림이 칸을 꽉 채우도록 세로를 78 로 잡은 좌표계.
+   홈(50,66) 에서 90도로 펼쳐진 부채꼴, 베이스 간격 34.
+   1루(74,42) 2루(50,18) 3루(26,42) 이 되고 파울선 끝이 칸의 좌우 끝에 닿는다. */
+function fieldSVG(){
+  return '<svg class="fbg" viewBox="0 0 100 78" preserveAspectRatio="none">'+
+    /* 외야 잔디 */
+    '<path d="M50,66 L3.3,19.3 A66,66 0 0,1 96.7,19.3 Z" fill="#17492c"/>'+
+    /* 내야 흙 */
+    '<path d="M50,66 L16.1,32.1 A48,48 0 0,1 83.9,32.1 Z" fill="#6b4a30"/>'+
+    /* 내야 잔디 — 네 베이스를 이은 마름모 */
+    '<polygon points="50,66 74,42 50,18 26,42" fill="#1d5c37"/>'+
+    /* 파울선 · 외야 펜스 */
+    '<path d="M50,66 L3.3,19.3 M50,66 L96.7,19.3" stroke="rgba(255,255,255,.34)" '+
+      'stroke-width=".6" fill="none"/>'+
+    '<path d="M3.3,19.3 A66,66 0 0,1 96.7,19.3" stroke="rgba(255,255,255,.22)" '+
+      'stroke-width=".8" fill="none"/>'+
+    /* 베이스 · 투수판 · 홈플레이트 */
+    '<g fill="#eef6f1">'+
+      '<rect x="71.8" y="39.8" width="4.4" height="4.4" transform="rotate(45 74 42)"/>'+
+      '<rect x="47.8" y="15.8" width="4.4" height="4.4" transform="rotate(45 50 18)"/>'+
+      '<rect x="23.8" y="39.8" width="4.4" height="4.4" transform="rotate(45 26 42)"/>'+
+      '<polygon points="47.4,63.6 52.6,63.6 52.6,66.2 50,68.4 47.4,66.2"/>'+
+      '<rect x="46" y="48.2" width="8" height="1.8" rx=".6"/>'+
+    '</g></svg>';
 }
 /* 이 선수가 맡은 자리 (없으면 '') */
 function posOf(g, side, sid){
@@ -1356,7 +1378,7 @@ function board(g){
       lineupHTML(side==='H'?g.orderH:g.orderA, g, side, atk, cum)+'</div>';
     var bench = benchOf(g, side);
     return head +
-      '<div class="field">'+POS.map(function(P){
+      '<div class="field">'+fieldSVG()+POS.map(function(P){
           var sid = dmap[P.k], on = g._pick.indexOf(sid)>=0;
           return '<div class="po'+(on?' pick':'')+(g._swap?' swap':'')+'" data-pos="'+P.k+'" '+
             'style="left:'+P.x+'%;top:'+P.y+'%"><div class="pp">'+P.n+'</div>'+
