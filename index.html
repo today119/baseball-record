@@ -77,90 +77,124 @@ td.n,th.n{text-align:right}
 .sw button.on{background:var(--info);color:#fff}
 
 /* ── 전광판 ─────────────────────────────── */
-.board{background:#070d10;border:1px solid var(--line2);border-radius:16px;overflow:hidden;
-  display:flex;flex-direction:column}
+/* 화면 한 판에 다 들어오게 — 남는 높이는 명단이 먹고, 넘치면 명단만 스크롤 */
+.board{background:#070d10;border:1px solid var(--line2);border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;height:calc(100vh - 118px);min-height:520px}
 .brow{display:grid;grid-template-columns:auto 1fr auto;gap:0;flex:1;min-height:0}
-.center{display:grid;grid-template-columns:1fr auto 1fr;min-width:0}
+.center{display:grid;grid-template-columns:1fr auto 1fr;min-width:0;align-items:center}
 
-/* 팀 밴드 + 거대 점수 */
-.team{display:flex;flex-direction:column;min-width:0}
-.tband{padding:11px 14px;text-align:center;font-size:clamp(17px,2.4vw,27px);font-weight:900;
-  letter-spacing:-.5px;color:#fff;border-radius:11px;margin:11px 11px 0;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 팀 밴드 + 점수 — 작게 */
+.team{display:flex;align-items:center;gap:8px;padding:8px 10px;min-width:0}
+.tband{padding:7px 10px;text-align:center;font-size:clamp(14px,1.5vw,18px);font-weight:900;
+  letter-spacing:-.3px;color:#fff;border-radius:8px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;flex:0 0 88px}
 .tband.h{background:linear-gradient(180deg,#3f7fd0,#2b5fa8)}
 .tband.a{background:linear-gradient(180deg,#d2564a,#a83d33)}
-.tbox{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;padding:8px 11px 11px}
-.tnum{background:#000;border-radius:13px;flex:1;display:flex;align-items:center;justify-content:center;
-  font-size:clamp(58px,15vw,150px);font-weight:900;line-height:.9;letter-spacing:-5px;color:#fff;
-  min-height:96px;font-variant-numeric:tabular-nums}
-.updn{display:flex;flex-direction:column;gap:6px}
-.updn button{width:42px;height:42px;border-radius:10px;background:var(--panel2);
-  border:1px solid var(--line2);font-size:17px;font-weight:900;color:var(--tx2)}
-.updn button:active{background:var(--line2)}
+.tnum{background:#000;border-radius:9px;flex:1;text-align:center;
+  font-size:clamp(34px,4.4vw,54px);font-weight:900;line-height:1.05;letter-spacing:-2px;color:#fff;
+  font-variant-numeric:tabular-nums;padding:2px 6px}
+.updn{display:flex;flex-direction:column;gap:4px}
+.updn button{width:30px;height:26px;border-radius:6px;background:var(--panel2);
+  border:1px solid var(--line2);font-size:12px;font-weight:900;color:var(--tx2)}
 
 /* 가운데 — 이닝 + 다이아몬드 */
-.mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
-  padding:11px 14px;min-width:150px}
-.iscore{background:#000;border-radius:10px;padding:6px 15px;font-size:clamp(17px,2.2vw,25px);
-  font-weight:900;letter-spacing:-.5px}
-.inbig{font-size:clamp(24px,3.4vw,40px);font-weight:900;line-height:1;letter-spacing:-1px}
-.inhalf{font-size:12px;font-weight:800;color:var(--warn);letter-spacing:.1em}
-.dia{position:relative;width:112px;height:112px}
-.bs{position:absolute;width:31px;height:31px;background:#1b2930;border:2px solid #33474f;
-  transform:rotate(45deg);border-radius:4px;transition:background .15s}
-.bs.on{background:var(--warn);border-color:#ffd479;box-shadow:0 0 14px rgba(224,163,60,.55)}
-.bs.b1{right:0;top:40px} .bs.b2{left:40px;top:0} .bs.b3{left:0;top:40px}
-.hp{position:absolute;left:44px;bottom:0;width:23px;height:23px;background:#2a3a42;
+.mid{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 12px;min-width:170px}
+.iscore{background:#000;border-radius:7px;padding:3px 11px;font-size:15px;font-weight:900}
+.inbig{font-size:20px;font-weight:900;line-height:1}
+.inhalf{font-size:10.5px;font-weight:800;color:var(--warn);letter-spacing:.08em}
+.dia{position:relative;width:150px;height:118px}
+.bs{position:absolute;width:27px;height:27px;background:#1b2930;border:2px solid #33474f;
+  transform:rotate(45deg);border-radius:4px;cursor:pointer;transition:background .12s}
+.bs.on{background:var(--warn);border-color:#ffd479;box-shadow:0 0 12px rgba(224,163,60,.5)}
+.bs.b1{right:20px;top:44px} .bs.b2{left:61px;top:6px} .bs.b3{left:20px;top:44px}
+.hp{position:absolute;left:64px;bottom:4px;width:21px;height:21px;background:#2a3a42;
   border:2px solid #3d525c;transform:rotate(45deg);border-radius:3px}
-.dlb{font-size:10.5px;color:var(--tx3);font-weight:700;text-align:center}
+.rn{position:absolute;font-size:10px;font-weight:800;color:var(--warn);white-space:nowrap;
+  pointer-events:none;text-shadow:0 1px 3px #000}
+.rn.r1{right:-4px;top:76px} .rn.r2{left:44px;top:-8px} .rn.r3{left:-4px;top:76px}
+.dlb{font-size:9.5px;color:var(--tx3);text-align:center}
 
-/* 명단 사이드 */
-.side-l,.side-r{width:150px;flex:0 0 150px;background:#0c141a;padding:9px 7px;overflow-y:auto;
-  border-right:1px solid var(--line)}
+/* 명단 사이드 — 크게 */
+.side-l,.side-r{width:210px;flex:0 0 210px;background:#0c141a;padding:8px 6px;overflow-y:auto;
+  border-right:1px solid var(--line);min-height:0}
 .side-r{border-right:0;border-left:1px solid var(--line)}
 .side-l.hide,.side-r.hide{display:none}
-.lh{font-size:10px;color:var(--tx3);font-weight:800;margin-bottom:6px;letter-spacing:.05em;
-  text-align:center}
-.pl{display:flex;align-items:center;gap:5px;padding:5px 6px;border-radius:6px;margin-bottom:2px;
-  font-size:12px}
-.pl .o{font-size:10px;color:var(--tx3);width:13px;flex:0 0 13px}
+.lh{font-size:11px;color:var(--tx3);font-weight:800;margin-bottom:5px;letter-spacing:.04em;text-align:center}
+.pl{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;margin-bottom:2px;
+  font-size:15px}
+.pl .o{font-size:11px;color:var(--tx3);width:16px;flex:0 0 16px}
 .pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl .rs{font-size:10px;color:var(--tx3)}
+.pl .rs{font-size:11px;color:var(--tx3)}
 .pl.now{background:var(--warn);color:#241a05;font-weight:900}
 .pl.now .o,.pl.now .rs{color:#5a4310}
 .pl.done{opacity:.4}
 .pl.onbase{box-shadow:inset 3px 0 0 var(--warn)}
 
-/* 타석 카드 */
-.atbat{background:#0c141a;border-top:1px solid var(--line);padding:13px 15px;
-  display:flex;flex-direction:column;align-items:center;gap:10px}
-.bnum{font-size:12px;color:var(--tx3);font-weight:800}
-.bnm{font-size:clamp(24px,4vw,40px);font-weight:900;letter-spacing:-1px;line-height:1}
-.bst{font-size:13px;color:var(--tx2)}
-.bst b{color:var(--warn);font-size:20px;font-weight:900}
-.hits{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;width:100%;max-width:820px}
-.hits button{padding:17px 0;border-radius:12px;font-size:clamp(14px,1.7vw,18px);font-weight:900;
-  border:1px solid transparent}
+/* 하단 — 좌 공격 / 우 수비 */
+.deck{display:grid;grid-template-columns:1fr 262px;border-top:1px solid var(--line2)}
+.atk{padding:10px 13px;display:flex;flex-direction:column;align-items:center;gap:7px}
+.bnum{font-size:11.5px;color:var(--tx3);font-weight:800}
+.bnm{font-size:clamp(20px,2.6vw,30px);font-weight:900;letter-spacing:-.8px;line-height:1}
+.bst{font-size:12.5px;color:var(--tx2)}
+.bst b{color:var(--warn);font-size:17px;font-weight:900}
+.hits{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:100%;max-width:520px}
+.hits button{padding:13px 0;border-radius:10px;font-size:15px;font-weight:900;border:1px solid transparent}
 .h1{background:#1e7a4e;color:#fff} .h2{background:#2a9160;color:#fff}
 .h3{background:#37a870;color:#fff} .h4{background:#e0a33c;color:#241a05}
-.h0{background:#b8443a;color:#fff}
+.h5{background:#3d6f9e;color:#fff} .h6{background:#7a6a3a;color:#fff}
+.h0{background:#b8443a;color:#fff;grid-column:1/-1}
 .hits button:active{transform:translateY(1px)}
-.sbo{display:flex;gap:18px;justify-content:center;align-items:center;
-  background:#070d10;border-top:1px solid var(--line);padding:10px;flex-wrap:wrap}
+
+/* 수비 배치도 */
+.def{border-left:1px solid var(--line2);padding:9px 11px;background:#08110c;
+  display:flex;flex-direction:column;min-height:0}
+.dhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.dhd .t{font-size:11.5px;font-weight:800;color:var(--tx2)}
+.field{position:relative;width:100%;flex:1;min-height:190px;
+  background:radial-gradient(ellipse at 50% 96%, #1d5c37 0%, #17492c 55%, #123a23 100%);
+  border-radius:10px;overflow:hidden}
+.field::after{content:'';position:absolute;left:50%;bottom:6%;width:52%;height:52%;
+  transform:translateX(-50%) rotate(45deg);border:2px solid rgba(255,255,255,.16);border-radius:3px}
+.po{position:absolute;transform:translate(-50%,-50%);min-width:52px;padding:4px 5px;
+  background:rgba(8,20,14,.86);border:1.5px solid #2f6b48;border-radius:7px;text-align:center;
+  cursor:pointer;transition:all .12s}
+.po .pp{font-size:8.5px;color:#8fd0aa;font-weight:800;letter-spacing:.03em}
+.po .pn{font-size:11px;font-weight:800;color:#eafaf1;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:64px}
+.po.pick{background:var(--warn);border-color:#ffd479}
+.po.pick .pp{color:#5a4310} .po.pick .pn{color:#241a05}
+.po.swap{border-color:var(--info);border-style:dashed}
+.dbtn{display:flex;gap:6px;margin-top:7px}
+.dbtn button{flex:1;padding:8px 0;border-radius:8px;font-size:12px;font-weight:800;
+  background:var(--line);border:1px solid var(--line2)}
+.dbtn button.on{background:var(--info);border-color:var(--info);color:#fff}
+.dbtn button.ok{background:var(--hit);border-color:var(--hit);color:#fff}
+
+.sbo{display:flex;gap:16px;justify-content:center;align-items:center;
+  background:#070d10;border-top:1px solid var(--line);padding:8px;flex-wrap:wrap}
 .sbo .g{display:flex;align-items:center;gap:5px}
 .sbo .lb{font-size:11px;font-weight:900;color:var(--tx3);width:13px}
-.lamp{width:14px;height:14px;border-radius:99px;background:#1a262c;border:1px solid #2b3d45}
+.lamp{width:13px;height:13px;border-radius:99px;background:#1a262c;border:1px solid #2b3d45}
 .lamp.s{background:var(--warn);border-color:var(--warn)}
 .lamp.b{background:var(--hit);border-color:var(--hit)}
 .lamp.o{background:var(--out);border-color:var(--out)}
-.extra{display:flex;gap:7px;padding:9px;border-top:1px solid var(--line);flex-wrap:wrap;
-  justify-content:center}
-.extra .btn{flex:1;min-width:84px;justify-content:center;text-align:center}
+.extra{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line);flex-wrap:wrap;justify-content:center}
+.extra .btn{flex:1;min-width:80px;justify-content:center;text-align:center}
 
-/* 전체화면 */
+/* 주자 이동 고르기 */
+.pop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;
+  justify-content:center;z-index:80;padding:20px}
+.popbox{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;
+  max-width:400px;width:100%}
+.popbox h4{margin:0 0 4px;font-size:15px;font-weight:800}
+.popbox p{margin:0 0 12px;font-size:12px;color:var(--tx3)}
+.popgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.popgrid button{padding:13px 0;border-radius:9px;font-size:14px;font-weight:800;
+  background:var(--line);border:1px solid var(--line2)}
+
 body.fs .side{display:none}
 body.fs .main{padding:0}
-body.fs .board{border-radius:0;border:0;height:100vh}
+body.fs .board{border-radius:0;border:0}
 body.fs .hdrow{display:none}
 
 /* 태블릿·폰 세로 — 팀을 위아래로 쌓고, 이닝·주루를 그 아래에 둔다 */
@@ -187,6 +221,12 @@ body.fs .hdrow{display:none}
   .hits button{padding:16px 0}
   .atbat{padding:12px}
   .bnm{font-size:clamp(22px,6vw,32px)}
+  /* 세로에선 명단이 숨으므로 높이를 묶지 않고, 공격/수비를 위아래로 쌓는다 */
+  .board{height:auto;min-height:0}
+  .deck{grid-template-columns:1fr}
+  .def{border-left:0;border-top:1px solid var(--line2)}
+  .field{min-height:250px;max-width:360px;width:100%;margin:0 auto}
+  .dbtn{max-width:360px;margin-left:auto;margin-right:auto;width:100%}
 }
 @media(max-width:820px){
   .app{flex-direction:column}
@@ -272,9 +312,13 @@ function nextState(st, orderLen){
 function isGameOver(st,maxInning){ return st.inning>maxInning; }
 function tally(atbats, defense, innings){
   var m={};
-  function slot(sid){ if(!m[sid]) m[sid]={sid:sid,ab:0,h:0,r:0,rbi:0,dOut:0,inn:0,g:0}; return m[sid]; }
+  function slot(sid){ if(!m[sid]) m[sid]={sid:sid,pa:0,ab:0,bb:0,h:0,r:0,rbi:0,dOut:0,inn:0,g:0}; return m[sid]; }
   (atbats||[]).forEach(function(a){
-    var x=slot(a.sid); x.ab+=1; if(a.result==='H') x.h+=1;
+    var x=slot(a.sid);
+    x.pa+=1;
+    if(a.kind!==5) x.ab+=1;                 // 포볼은 타수에서 뺀다
+    if(a.kind>=1 && a.kind<=4) x.h+=1;      // 1·2·3루타·홈런만 안타
+    if(a.kind===5) x.bb+=1;
     x.r+=(a.run||0); x.rbi+=(a.rbi||0);
   });
   (defense||[]).forEach(function(d){ slot(d.sid).dOut+=1; });
@@ -286,23 +330,45 @@ function tally(atbats, defense, innings){
 }
 function fmtAvg(v){ var s=(Math.round(v*1000)/1000).toFixed(3); return s.charAt(0)==='0'?s.slice(1):s; }
 function canAddDefense(list){ return (list||[]).length<2; }
-/* 주루: bases=[1루,2루,3루] 각 칸에 sid 또는 null.
-   kind 0=아웃 1=1루타 2=2루타 3=3루타 4=홈런.
-   뒤쪽 주자부터 밀어 진루시키고, 3루를 넘어가면 득점 처리한다. */
+/* 주루 — bases=[1루,2루,3루], 각 칸에 sid 또는 null.
+   kind: 0=아웃  1=1루타  2=2루타  3=3루타  4=홈런  5=포볼(밀어내기)  6=야수선택
+   안타·홈런은 모든 주자를 그만큼 밀고, 포볼은 「차 있는 루만」 연쇄로 민다. */
 function advance(bases, batterSid, kind){
   var b = (bases||[null,null,null]).slice(), runs=[];
   if(kind===0) return {bases:b, runs:runs};
-  for(var i=2;i>=0;i--){
+
+  if(kind===5){                       // 포볼 — 강제 진루만
+    if(b[0]){                         // 1루가 비어 있으면 아무도 안 움직인다
+      if(b[1]){
+        if(b[2]) runs.push(b[2]);     // 만루 → 3루 주자 밀려서 득점
+        b[2]=b[1];
+      }
+      b[1]=b[0];
+    }
+    b[0]=batterSid;
+    return {bases:b, runs:runs};
+  }
+  if(kind===6){                       // 야수선택 — 타자만 1루로, 주자는 그대로
+    b[0] = b[0] || null;              // (죽은 주자는 다이아몬드에서 따로 지운다)
+    var tmp = b[0];
+    b[0] = batterSid;
+    if(tmp){ /* 1루에 있던 주자는 보통 아웃 — 화면에서 확인·수정 */ }
+    return {bases:b, runs:runs, fc:true};
+  }
+
+  for(var i=2;i>=0;i--){              // 안타·홈런
     if(!b[i]) continue;
     var to = i + kind;
-    if(to>=3){ runs.push(b[i]); }
-    else { b[to] = b[i]; }
+    if(to>=3) runs.push(b[i]); else b[to] = b[i];
     b[i] = null;
   }
   if(kind>=4) runs.push(batterSid);
   else b[kind-1] = batterSid;
   return {bases:b, runs:runs};
 }
+/* 타석 결과 → 타수에 넣을지 (포볼은 타수에서 뺀다) */
+function isAB(kind){ return kind !== 5; }
+function isHit(kind){ return kind>=1 && kind<=4; }
 
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
@@ -1103,24 +1169,60 @@ function confirmLineup(g){
 
 
 /* ── 전광판 ─────────────────────────────── */
+var POS = [
+  {k:'CF', n:'중견수', x:50, y:16},
+  {k:'LF', n:'좌익수', x:17, y:28},
+  {k:'RF', n:'우익수', x:83, y:28},
+  {k:'SS', n:'유격수', x:36, y:47},
+  {k:'2B', n:'2루수', x:64, y:47},
+  {k:'3B', n:'3루수', x:20, y:62},
+  {k:'1B', n:'1루수', x:80, y:62},
+  {k:'P',  n:'투수',   x:50, y:62},
+  {k:'C',  n:'포수',   x:50, y:87}
+];
+/* 수비 배치 — 없으면 타순 앞 9명을 자동으로 세운다 */
+function defOf(g, side){
+  g.def = g.def || {};
+  if(!g.def[side]){
+    var order = side==='H' ? g.orderH : g.orderA, m = {}, seen = {};
+    var pool = order.filter(function(p){ if(seen[p.sid]) return false; seen[p.sid]=1; return true; });
+    POS.forEach(function(P,i){ if(pool[i]) m[P.k] = pool[i].sid; });
+    g.def[side] = m;
+  }
+  return g.def[side];
+}
+function benchOf(g, side){
+  var d = defOf(g, side), on = {};
+  Object.keys(d).forEach(function(k){ on[d[k]] = 1; });
+  var order = side==='H' ? g.orderH : g.orderA, seen = {};
+  return order.filter(function(p){
+    if(seen[p.sid] || on[p.sid]) return false; seen[p.sid]=1; return true; });
+}
+function pName(g, sid){
+  var f = g.orderH.concat(g.orderA).filter(function(p){return p.sid===sid;})[0];
+  return f ? f.name : '';
+}
+
 function board(g){
   var c = cls();
   watchGame(S.cur, g.no);
   var atk = g.st.half==='초' ? 'A' : 'H';
+  var dside = atk==='H' ? 'A' : 'H';          // 수비팀
   var order = atk==='H' ? g.orderH : g.orderA;
   var b = order[g.st.idx];
   var st = tally(g.atbats, g.defense, {});
   var cum = tally(allAtbats(c), allDefense(c), {});
   var mine = b ? (cum[b.sid] || {ab:0,h:0,avg:0}) : {ab:0,h:0,avg:0};
   g.bases = g.bases || [null,null,null];
-  var hideL = g._hl, hideR = g._hr;
+  var dmap = defOf(g, dside);
+  g._pick = g._pick || [];                    // 아웃 기여로 고른 선수
+  g._swap = !!g._swap;                        // 교대 모드
 
   el('v-game').innerHTML =
-  '<div class="row hdrow" style="margin-bottom:10px;justify-content:space-between">'+
+  '<div class="row hdrow" style="margin-bottom:9px;justify-content:space-between">'+
     '<div><h2 class="t">경기 #'+g.no+'</h2>'+
     '<p class="st" style="margin:0">'+(g.mode==='intra'?'학급내':'학급대항')+' · 최대 '+g.innings+'이닝 · 전원타격제</p></div>'+
-    '<div class="row">'+
-      '<button class="btn sm" id="tgL">◀ 명단</button>'+
+    '<div class="row"><button class="btn sm" id="tgL">◀ 명단</button>'+
       '<button class="btn sm" id="tgR">명단 ▶</button>'+
       '<button class="btn sm" id="fsB">전체화면</button>'+
       '<button class="btn sm" id="undo">되돌리기</button>'+
@@ -1128,110 +1230,145 @@ function board(g){
 
   '<div class="board">'+
     '<div class="brow">'+
-      '<div class="side-l'+(hideL?' hide':'')+'">'+lineupHTML(g.orderH, g, "H", atk)+'</div>'+
+      '<div class="side-l'+(g._hl?' hide':'')+'">'+lineupHTML(g.orderH, g, "H", atk)+'</div>'+
       '<div class="center">'+
-        teamHTML(g, 'H', g.home, g.hs)+
+        teamHTML(g,'H',g.home,g.hs)+
         '<div class="mid">'+
           '<div class="iscore">'+g.hs+' : '+g.as+'</div>'+
-          '<div style="text-align:center"><div class="inbig">'+g.st.inning+'</div>'+
-            '<div class="inhalf">'+g.st.half+' / '+g.innings+'이닝</div></div>'+
+          '<div style="text-align:center"><span class="inbig">'+g.st.inning+'</span> '+
+            '<span class="inhalf">'+g.st.half+' / '+g.innings+'이닝</span></div>'+
           diamondHTML(g)+
-          '<div class="dlb">주루 (눌러서 수정)</div>'+
+          '<div class="dlb">주자를 눌러 진루·아웃 수정</div>'+
         '</div>'+
-        teamHTML(g, 'A', g.away, g.as)+
+        teamHTML(g,'A',g.away,g.as)+
       '</div>'+
-      '<div class="side-r'+(hideR?' hide':'')+'">'+lineupHTML(g.orderA, g, "A", atk)+'</div>'+
+      '<div class="side-r'+(g._hr?' hide':'')+'">'+lineupHTML(g.orderA, g, "A", atk)+'</div>'+
     '</div>'+
 
-    '<div class="atbat">'+
-      (b ? '<div class="bnum">'+(g.st.idx+1)+'번 타자'+(b.dup?' <span class="tag dup">중복</span>':'')+
-             ' · '+(atk==='H'?esc(g.home):esc(g.away))+'</div>'+
-           '<div class="bnm">'+esc(b.name)+'</div>'+
-           '<div class="bst">누적 <b>'+fmtAvg(mine.avg)+'</b> &nbsp; '+(mine.ab||0)+'타수 '+(mine.h||0)+'안타</div>'+
-           '<div class="hits">'+
-             '<button class="h1" data-k="1">1루타</button>'+
-             '<button class="h2" data-k="2">2루타</button>'+
-             '<button class="h3" data-k="3">3루타</button>'+
-             '<button class="h4" data-k="4">홈런</button>'+
-             '<button class="h0" data-k="0">아웃</button>'+
-           '</div>'
-         : '<div class="msg">타자가 없습니다</div>')+
+    '<div class="deck">'+
+      '<div class="atk">'+
+        (b ? '<div class="bnum">'+(g.st.idx+1)+'번 타자'+(b.dup?' <span class="tag dup">중복</span>':'')+
+               ' · '+(atk==='H'?esc(g.home):esc(g.away))+'</div>'+
+             '<div class="bnm">'+esc(b.name)+'</div>'+
+             '<div class="bst">누적 <b>'+fmtAvg(mine.avg)+'</b> &nbsp; '+(mine.ab||0)+'타수 '+(mine.h||0)+'안타</div>'+
+             '<div class="hits">'+
+               '<button class="h1" data-k="1">1루타</button>'+
+               '<button class="h2" data-k="2">2루타</button>'+
+               '<button class="h3" data-k="3">3루타</button>'+
+               '<button class="h4" data-k="4">홈런</button>'+
+               '<button class="h5" data-k="5">포볼</button>'+
+               '<button class="h6" data-k="6">야수선택</button>'+
+               '<button class="h0" data-k="0">아웃</button>'+
+             '</div>'
+           : '<div class="msg">타자가 없습니다</div>')+
+      '</div>'+
+      '<div class="def">'+
+        '<div class="dhd"><span class="t">⚾ '+esc(dside==='H'?g.home:g.away)+' 수비</span>'+
+          '<span class="t" style="color:var(--warn)">'+(g._swap?'교대할 자리를 누르세요':(g._pick.length? g._pick.length+'명 선택':'아웃 기여자 탭'))+'</span></div>'+
+        '<div class="field">'+POS.map(function(P){
+            var sid = dmap[P.k], on = g._pick.indexOf(sid)>=0;
+            return '<div class="po'+(on?' pick':'')+(g._swap?' swap':'')+'" data-pos="'+P.k+'" '+
+              'style="left:'+P.x+'%;top:'+P.y+'%"><div class="pp">'+P.n+'</div>'+
+              '<div class="pn">'+esc(sid? pName(g,sid) : '—')+'</div></div>';
+          }).join('')+'</div>'+
+        '<div class="dbtn">'+
+          '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
+          '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">기여 확정'+(g._pick.length?' ('+g._pick.length+')':'')+'</button>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
-    '<div class="sbo">'+
-      lampG('S', g._s||0, 2, 's')+lampG('B', g._b||0, 3, 'b')+lampG('O', g._o||0, 3, 'o')+
-    '</div>'+
+
+    '<div class="sbo">'+lampG('S',g._s||0,2,'s')+lampG('B',g._b||0,3,'b')+lampG('O',g._o||0,3,'o')+'</div>'+
     '<div class="extra">'+
       '<button class="btn" id="pS">스트라이크</button>'+
       '<button class="btn" id="pB">볼</button>'+
-      '<button class="btn" id="dOut">수비 아웃 참여'+((g._pendOut||[]).length?' ('+g._pendOut.length+'/2)':'')+'</button>'+
       '<button class="btn" id="clrB">주자 비우기</button>'+
     '</div>'+
   '</div>'+
-  '<div class="card hdrow" style="margin-top:12px"><h3>이 경기 기록</h3>'+
+  '<div class="card hdrow" style="margin-top:11px"><h3>이 경기 기록</h3>'+
     (Object.keys(st).length ?
-      '<table><tr><th>이름</th><th class="n">타수</th><th class="n">안타</th><th class="n">타율</th>'+
-      '<th class="n">득점</th><th class="n">타점</th><th class="n">수비</th></tr>'+
+      '<table><tr><th>이름</th><th class="n">타석</th><th class="n">타수</th><th class="n">안타</th>'+
+      '<th class="n">타율</th><th class="n">볼넷</th><th class="n">득점</th><th class="n">타점</th><th class="n">수비</th></tr>'+
       Object.keys(st).map(function(k){ var x=st[k];
-        return '<tr><td>'+esc(nameOf(g,k))+'</td><td class="n">'+x.ab+'</td><td class="n">'+x.h+'</td>'+
-          '<td class="n">'+fmtAvg(x.avg)+'</td><td class="n">'+x.r+'</td><td class="n">'+x.rbi+'</td>'+
-          '<td class="n">'+x.dOut+'</td></tr>'; }).join('')+'</table>'
+        return '<tr><td>'+esc(nameOf(g,k))+'</td><td class="n">'+x.pa+'</td><td class="n">'+x.ab+'</td>'+
+          '<td class="n">'+x.h+'</td><td class="n">'+fmtAvg(x.avg)+'</td><td class="n">'+x.bb+'</td>'+
+          '<td class="n">'+x.r+'</td><td class="n">'+x.rbi+'</td><td class="n">'+x.dOut+'</td></tr>'; }).join('')+'</table>'
       : '<div class="msg">아직 기록이 없습니다</div>')+'</div>';
 
-  function lampG(lb, v, n, cl){
-    var s='<div class="g"><span class="lb">'+lb+'</span>';
-    for(var i=0;i<n;i++) s += '<span class="lamp'+(i<v?' '+cl:'')+'"></span>';
-    return s+'</div>';
+  function lampG(lb,v,n,cl){
+    var o='<div class="g"><span class="lb">'+lb+'</span>';
+    for(var i=0;i<n;i++) o+='<span class="lamp'+(i<v?' '+cl:'')+'"></span>';
+    return o+'</div>';
   }
 
-  el('v-game').querySelectorAll('.hits button').forEach(function(btn){
-    btn.onclick = function(){ swing(+btn.dataset.k); };
+  el('v-game').querySelectorAll('.hits button').forEach(function(x){
+    x.onclick = function(){ swing(+x.dataset.k); };
   });
-  el('v-game').querySelectorAll('.bs').forEach(function(base){
-    base.onclick = function(){
-      var i = +base.dataset.b;
-      g.bases[i] = g.bases[i] ? null : (b ? b.sid : 'x');
+  el('v-game').querySelectorAll('[data-sc]').forEach(function(x){
+    x.onclick = function(){
+      var k=x.dataset.sc, w=k.charAt(0), d=k.charAt(1)==='+'?1:-1;
+      if(w==='H') g.hs=Math.max(0,g.hs+d); else g.as=Math.max(0,g.as+d);
       syncGame(S.cur,g); board(g);
     };
   });
-  el('v-game').querySelectorAll('[data-sc]').forEach(function(btn){
-    btn.onclick = function(){
-      var k = btn.dataset.sc, who = k.charAt(0), dir = k.charAt(1)==='+'?1:-1;
-      if(who==='H') g.hs = Math.max(0, g.hs+dir); else g.as = Math.max(0, g.as+dir);
-      syncGame(S.cur,g); board(g);
+  //  다이아몬드 — 주자 이동/아웃 고르기
+  el('v-game').querySelectorAll('.bs').forEach(function(x){
+    x.onclick = function(){
+      var i = +x.dataset.b, sid = g.bases[i];
+      if(!sid){ g.bases[i] = b ? b.sid : 'x'; syncGame(S.cur,g); board(g); return; }
+      runnerPop(g, i, sid);
     };
   });
-  el('tgL').onclick = function(){ g._hl = !g._hl; board(g); };
-  el('tgR').onclick = function(){ g._hr = !g._hr; board(g); };
+  //  수비 배치도
+  el('v-game').querySelectorAll('[data-pos]').forEach(function(x){
+    x.onclick = function(){
+      var k = x.dataset.pos;
+      if(g._swap) return swapPop(g, dside, k);
+      var sid = dmap[k]; if(!sid) return;
+      var i = g._pick.indexOf(sid);
+      if(i>=0) g._pick.splice(i,1); else g._pick.push(sid);
+      board(g);
+    };
+  });
+  el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
+  el('okDef').onclick = function(){
+    if(!g._pick.length) return toast('기여한 선수를 먼저 누르세요');
+    g._pick.forEach(function(sid){ g.defense.push({sid:sid, ts:Date.now()}); });
+    var n = g._pick.length; g._pick = [];
+    syncGame(S.cur, g, {defense:g.defense}); board(g);
+    toast('수비 기여 '+n+'명 기록');
+  };
+  el('tgL').onclick = function(){ g._hl=!g._hl; board(g); };
+  el('tgR').onclick = function(){ g._hr=!g._hr; board(g); };
+  /* 명단이 길어 스크롤될 때 — 지금 타자가 늘 보이게 */
+  el('v-game').querySelectorAll('.side-l,.side-r').forEach(function(box){
+    var cur = box.querySelector('.pl.now');
+    if(!cur || box.scrollHeight <= box.clientHeight) return;
+    var top = cur.offsetTop - box.clientHeight/2 + cur.offsetHeight/2;
+    box.scrollTop = Math.max(0, top);
+  });
   el('fsB').onclick = function(){
     document.body.classList.toggle('fs');
-    if(document.body.classList.contains('fs')){
-      if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
-    }else if(document.exitFullscreen && document.fullscreenElement){ document.exitFullscreen(); }
+    if(document.body.classList.contains('fs') && document.documentElement.requestFullscreen)
+      document.documentElement.requestFullscreen().catch(function(){});
+    else if(document.exitFullscreen && document.fullscreenElement) document.exitFullscreen();
   };
-  el('pS').onclick = function(){ g._s=((g._s||0)+1)%3; save(); board(g); };  // 볼카운트는 로컬만
+  el('pS').onclick = function(){ g._s=((g._s||0)+1)%3; save(); board(g); };
   el('pB').onclick = function(){ g._b=((g._b||0)+1)%4; save(); board(g); };
   el('clrB').onclick = function(){ g.bases=[null,null,null]; syncGame(S.cur,g); board(g); toast('주자를 비웠습니다'); };
-  el('dOut').onclick = function(){
-    if(!canAddDefense(g._pendOut)) return toast('한 아웃당 2명까지입니다');
-    pickPlayer(defSide(g, atk), function(sid){
-      g.defense.push({sid:sid, ts:Date.now()});
-      g._pendOut = (g._pendOut||[]).concat([sid]);
-      syncGame(S.cur,g,{defense:g.defense}); board(g); toast('수비 아웃 참여 기록');
-    });
-  };
   el('undo').onclick = function(){
     if(!g.atbats.length) return toast('되돌릴 기록이 없습니다');
     var last = g.atbats.pop();
     if(last.run) (last.side==='H') ? g.hs-=last.run : g.as-=last.run;
     if(last.stBefore) g.st = last.stBefore;
     if(last.basesBefore) g.bases = last.basesBefore;
-    g._s=0; g._b=0; g._pendOut=[];
+    g._s=0; g._b=0; g._pick=[];
     syncGame(S.cur,g,{atbats:g.atbats}); board(g); toast('한 타석 되돌림');
   };
   el('fin').onclick = function(){
     if(!confirm('경기를 종료할까요?')) return;
     g.status='done'; document.body.classList.remove('fs');
-    delete g._s; delete g._b; delete g._o; delete g._pendOut;
+    ['_s','_b','_o','_pick','_swap'].forEach(function(k){ delete g[k]; });
     unwatch(); syncGameFull(S.cur,g); render(); toast('경기 #'+g.no+' 종료');
   };
 
@@ -1242,61 +1379,106 @@ function board(g){
     g.bases = res.bases;
     var scored = res.runs.length;
 
-    var rec = {side:atk, sid:b.sid, name:b.name, result: kind===0?'O':'H', kind:kind,
-               dup:!!b.dup, run:0, rbi:scored, inning:g.st.inning, half:g.st.half,
+    var rec = {side:atk, sid:b.sid, name:b.name, kind:kind,
+               result: (kind>=1&&kind<=4)?'H':'O', dup:!!b.dup,
+               run:0, rbi:(kind===5?0:scored), inning:g.st.inning, half:g.st.half,
                stBefore:Object.assign({},g.st), basesBefore:before};
     g.atbats.push(rec);
-
-    //  홈을 밟은 주자들에게 득점을 1씩 준다 (타자 본인이면 그 타석에).
-    //  바뀐 타석의 번호를 모아 뒀다가, 그 칸만 서버로 보낸다.
-    var touched = [];
+    var touched=[];
     res.runs.forEach(function(sid){
-      if(sid===b.sid){ rec.run += 1; }
-      else{
-        for(var i=g.atbats.length-2;i>=0;i--){
-          if(g.atbats[i].sid===sid){
-            g.atbats[i].run = (g.atbats[i].run||0)+1;
-            if(touched.indexOf(i)<0) touched.push(i);
-            break;
-          }
-        }
+      if(sid===b.sid){ rec.run+=1; }
+      else for(var i=g.atbats.length-2;i>=0;i--){
+        if(g.atbats[i].sid===sid){ g.atbats[i].run=(g.atbats[i].run||0)+1;
+          if(touched.indexOf(i)<0) touched.push(i); break; }
       }
     });
-    if(atk==='H') g.hs += scored; else g.as += scored;
-
+    if(atk==='H') g.hs+=scored; else g.as+=scored;
     if(kind===0) g._o = Math.min(3,(g._o||0)+1);
-    g._s=0; g._b=0; g._pendOut=[];
+    g._s=0; g._b=0; g._pick=[];
     g.st = nextState(g.st, order.length);
-    if(g.st.idx===0){ g._o=0; g.bases=[null,null,null]; }   // 공수교대 → 주자·아웃 리셋
+    /* 공수교대 — 주자·아웃 리셋. 교대 모드도 꺼서 다음 회에 헛눌리지 않게 한다 */
+    if(g.st.idx===0){ g._o=0; g.bases=[null,null,null]; g._swap=false; }
     if(isGameOver(g.st, g.innings)){
       g.status='done'; document.body.classList.remove('fs');
-      unwatch(); syncGameFull(S.cur, g); render(); toast('경기 종료'); return;
+      unwatch(); syncGameFull(S.cur,g); render(); toast('경기 종료'); return;
     }
-    //  바뀐 칸만 올린다 — 방금 타석 + 득점이 붙은 앞 타석들
-    var d = {};
-    d['atbats/'+(g.atbats.length-1)] = rec;
-    touched.forEach(function(i){ d['atbats/'+i+'/run'] = g.atbats[i].run; });
+    var d={}; d['atbats/'+(g.atbats.length-1)]=rec;
+    touched.forEach(function(i){ d['atbats/'+i+'/run']=g.atbats[i].run; });
     syncGame(S.cur, g, d);
     board(g);
-    if(scored) toast(b.name+' · '+scored+'점 득점');
+    if(kind===6) toast('야수선택 — 죽은 주자를 다이아몬드에서 눌러 지우세요');
+    else if(scored) toast(b.name+' · '+scored+'점');
   }
+}
+
+/* 주자를 눌렀을 때 — 어디로 갔는지 고른다 */
+function runnerPop(g, idx, sid){
+  var d = document.createElement('div');
+  d.className='pop';
+  d.innerHTML = '<div class="popbox"><h4>'+esc(pName(g,sid))+'</h4>'+
+    '<p>'+(idx+1)+'루 주자가 어디로 갔나요?</p>'+
+    '<div class="popgrid">'+
+      (idx<1?'<button data-to="1">2루</button>':'')+
+      (idx<2?'<button data-to="2">3루</button>':'')+
+      '<button data-to="H">홈 (득점)</button>'+
+      '<button data-to="O">아웃</button>'+
+      '<button data-to="X" style="grid-column:1/-1">취소</button>'+
+    '</div></div>';
+  document.body.appendChild(d);
+  d.onclick = function(e){ if(e.target===d) d.remove(); };
+  d.querySelectorAll('[data-to]').forEach(function(btn){
+    btn.onclick = function(){
+      var to = btn.dataset.to;
+      if(to==='X'){ d.remove(); return; }
+      g.bases[idx] = null;
+      if(to==='H'){
+        var side = g.st.half==='초' ? 'A' : 'H';
+        if(side==='H') g.hs++; else g.as++;
+        for(var i=g.atbats.length-1;i>=0;i--)
+          if(g.atbats[i].sid===sid){ g.atbats[i].run=(g.atbats[i].run||0)+1; break; }
+      } else if(to!=='O'){ g.bases[+to] = sid; }
+      d.remove(); syncGame(S.cur,g,{atbats:g.atbats}); board(g);
+      toast(pName(g,sid)+' → '+(to==='H'?'득점':to==='O'?'아웃':(+to+1)+'루'));
+    };
+  });
+}
+/* 수비 교대 — 자리를 누르면 대기 선수 목록 */
+function swapPop(g, side, posKey){
+  var bench = benchOf(g, side), d = document.createElement('div');
+  var P = POS.filter(function(x){return x.k===posKey;})[0];
+  d.className='pop';
+  d.innerHTML = '<div class="popbox"><h4>'+P.n+' 교체</h4>'+
+    '<p>대기 '+bench.length+'명 · 누구를 넣을까요?</p>'+
+    '<div class="popgrid">'+
+      bench.map(function(p){ return '<button data-sid="'+p.sid+'">'+esc(p.name)+'</button>'; }).join('')+
+      '<button data-sid="" style="grid-column:1/-1">취소</button>'+
+    '</div></div>';
+  document.body.appendChild(d);
+  d.onclick = function(e){ if(e.target===d) d.remove(); };
+  d.querySelectorAll('[data-sid]').forEach(function(btn){
+    btn.onclick = function(){
+      var sid = btn.dataset.sid;
+      if(sid){ g.def[side][posKey] = sid; syncGame(S.cur,g,{def:g.def}); toast(P.n+' → '+pName(g,sid)); }
+      d.remove(); board(g);
+    };
+  });
 }
 function teamHTML(g, side, name, score){
   return '<div class="team">'+
+    (side==='A'?'<div class="updn"><button data-sc="A+">▲</button><button data-sc="A-">▼</button></div>':'')+
     '<div class="tband '+(side==='H'?'h':'a')+'">'+esc(name)+'</div>'+
-    '<div class="tbox">'+
-      (side==='A' ? '<div class="updn"><button data-sc="A+">▲</button><button data-sc="A-">▼</button></div>' : '')+
-      '<div class="tnum">'+score+'</div>'+
-      (side==='H' ? '<div class="updn"><button data-sc="H+">▲</button><button data-sc="H-">▼</button></div>' : '')+
-    '</div></div>';
+    '<div class="tnum">'+score+'</div>'+
+    (side==='H'?'<div class="updn"><button data-sc="H+">▲</button><button data-sc="H-">▼</button></div>':'')+
+  '</div>';
 }
 function diamondHTML(g){
   var b = g.bases||[null,null,null];
+  function nm(i){ return b[i] ? '<div class="rn r'+(i+1)+'">'+esc(pName(g,b[i]))+'</div>' : ''; }
   return '<div class="dia">'+
     '<div class="bs b2'+(b[1]?' on':'')+'" data-b="1"></div>'+
     '<div class="bs b1'+(b[0]?' on':'')+'" data-b="0"></div>'+
     '<div class="bs b3'+(b[2]?' on':'')+'" data-b="2"></div>'+
-    '<div class="hp"></div></div>';
+    '<div class="hp"></div>'+nm(0)+nm(1)+nm(2)+'</div>';
 }
 function defSide(g, atk){ return atk==='H' ? g.orderA : g.orderH; }
 function nameOf(g, sid){

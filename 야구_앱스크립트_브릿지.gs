@@ -26,8 +26,8 @@
  *   탁구포핸드 탁구백핸드 태도카드 보고서충족 갱신일시
  *
  *  · 명단(A~D)은 시트에서 직접 입력해도 되고 앱에서 올려도 된다
- *  · 앱의 「내보내기」는 번호·이름으로 학생을 찾아 E열 이후만 갱신한다
- *    → 시트에서 손본 명단은 지워지지 않는다
+ *  · 앱의 「내보내기」는 번호·이름으로 학생을 찾아 **조(D) + E열 이후**를 갱신한다
+ *    → 번호·이름·성별은 시트 것을 그대로 둔다
  * ══════════════════════════════════════════════════════════
  */
 
@@ -36,7 +36,7 @@ var SHEET_ID = '';
 
 /* 배포 버전 — 앱이 이 값을 보고 「옛 버전이 배포돼 있다」를 알아챈다.
    코드를 고쳤는데 이 값이 앱에 안 뜨면 재배포가 안 된 것이다. */
-var VER = '2026-08-16-classtabs';
+var VER = '2026-08-16-defense';
 
 var HDR = ['번호', '이름', '성별', '조',
            '경기', '이닝', '타수', '안타', '타율', '득점', '타점', '수비아웃', '이닝당기여',
@@ -127,7 +127,11 @@ function saveRecords_(cn, rows) {
       row = s.getLastRow() + 1;
       s.getRange(row, 1, 1, NAME_COLS).setValues([r.slice(0, NAME_COLS)]);
       added++;
-    } else updated++;
+    } else {
+      // 「조」(D열)는 앱이 원본이므로 함께 갱신한다. 번호·이름·성별은 건드리지 않는다.
+      s.getRange(row, 4).setValue(r[3]);
+      updated++;
+    }
     var rec = r.slice(NAME_COLS).concat([stamp]);
     s.getRange(row, NAME_COLS + 1, 1, rec.length).setValues([rec]);
   });
