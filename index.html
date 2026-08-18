@@ -611,6 +611,13 @@ function syncGameFull(cn, g){
   if(g.atbats.length)  patch(gPath(cn,g)+'/ab', mapOf(g.atbats));
   if(g.defense.length) patch(gPath(cn,g)+'/df', mapOf(g.defense));
 }
+/* 타순은 자주 안 바뀌니 바뀔 때만 통째로 (작은 배열이다) */
+function syncOrder(cn, g){
+  save();
+  if(!DB) return;
+  patch(gPath(cn,g), {orderH:g.orderH, orderA:g.orderA, date:g.date||null});
+  syncState(cn, g);                       // st.idx 가 같이 움직였을 수 있다
+}
 function syncRoster(cn){
   save();
   push('classes/'+ck(cn)+'/roster', cls(cn).roster);
@@ -664,6 +671,16 @@ function watchGame(cn, gno){
     var g=G(); if(!g) return;
     var i = g.atbats.findIndex(function(x){ return x.id===s.key; });
     if(i>=0){ g.atbats.splice(i,1); done(); say('다른 기기 되돌리기 반영'); }
+  });
+
+  /* 2-1) 타순 — 세팅 화면에서 바뀌면 다른 기기에도 반영 */
+  ['orderH','orderA'].forEach(function(k){
+    on(base.child(k), 'value', function(s){
+      var v = s.val(), g = G();
+      if(!g || !v || !v.length) return;
+      if(JSON.stringify(g[k]) === JSON.stringify(v)) return;   // 내가 올린 것과 같으면 넘어간다
+      g[k] = v; done(); say('다른 기기 타순 반영');
+    });
   });
 
   /* 3) 수비 기여 */
@@ -1241,9 +1258,10 @@ function vGame(){
     '<div class="row" style="margin-top:12px"><button class="btn pri" id="startG">경기 시작</button></div></div>' +
     '<div class="card"><h3>지난 경기 '+c.games.length+'</h3>' +
     (c.games.length ?
-      '<table><tr><th>#</th><th>구분</th><th>대진</th><th class="n">점수</th><th></th></tr>' +
+      '<table><tr><th>#</th><th>날짜</th><th>구분</th><th>대진</th><th class="n">점수</th><th></th></tr>' +
       c.games.slice().reverse().map(function(g){
-        return '<tr><td>'+g.no+'</td><td>'+(g.mode==='intra'?'학급내':'학급대항')+'</td>'+
+        return '<tr><td>'+g.no+'</td><td>'+esc(gDate(g)||'—')+'</td>'+
+          '<td>'+(g.mode==='intra'?'학급내':'학급대항')+'</td>'+
           '<td>'+esc(g.home)+' vs '+esc(g.away)+'</td>'+
           '<td class="n">'+g.hs+' : '+g.as+'</td>'+
           '<td class="n"><button class="btn sm dn" data-dg="'+g.no+'">삭제</button></td></tr>';
@@ -1364,27 +1382,25 @@ function lineupView(g){
       '<table>'+seq.map(function(sid,i){
         var p = findP(g,sid); if(!p) return '';
         var on = out.indexOf(sid)<0;
-        var pos = posOf(g, side, sid);
         return '<tr'+(on?'':' style="opacity:.38"')+'>'+
           '<td style="width:26px"><input type="checkbox" style="width:auto" data-ck="'+side+'" data-sid="'+sid+'"'+(on?' checked':'')+'></td>'+
           '<td style="width:24px;color:var(--tx3)">'+(i+1)+'</td>'+
           '<td>'+esc(p.name)+'</td>'+
           '<td style="width:32px"><span class="tag '+(p.gender==='남'?'m':'f')+'">'+esc(p.gender)+'</span></td>'+
           '<td style="width:96px"><select data-pos="'+side+'" data-sid="'+sid+'"'+(on?'':' disabled')+'>'+
-            '<option value=""'+(pos?'':' selected')+'>대기</option>'+
-            POS.map(function(P){
-              return '<option value="'+P.k+'"'+(pos===P.k?' selected':'')+'>'+P.n+'</option>'; }).join('')+
+            posOptions(g, side, sid)+
             '</select></td>'+
           '<td class="n" style="width:76px">'+
             '<button class="btn sm" data-mv="'+side+':'+i+':-1">▲</button> '+
             '<button class="btn sm" data-mv="'+side+':'+i+':1">▼</button></td></tr>';
       }).join('')+'</table>'+
       '<p class="st" style="margin:9px 0 0">포지션은 <b>그날그날 바꾸는 것</b>이라 여기서 정합니다. '+
-      '비워 두면 경기 시작할 때 타순대로 채워지고, 경기 중에는 <b>[수비 교대]</b>로 바꿉니다.</p></div>';
+      '<b>이미 찬 자리는 목록에 안 나옵니다</b> — 남은 자리만 고르면 됩니다. '+
+      '비워 두면 경기 시작할 때 타순대로 채워지고, 경기가 시작된 뒤에는 <b>[경기 세팅]</b>에서 바꿉니다.</p></div>';
   }
 
   el('v-game').innerHTML =
-    '<h2 class="t">경기 #'+g.no+' 라인업</h2>'+
+    '<h2 class="t">'+gLabel(g)+' 라인업</h2>'+
     '<p class="st">오늘 안 나온 학생은 <b>체크를 끄세요.</b> ▲▼ 로 타순을 바꿉니다.</p>'+
     '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(288px,1fr))">'+
       col('H', g.home)+col('A', g.away)+'</div>'+
@@ -1490,6 +1506,97 @@ function confirmLineup(g){
 }
 
 
+/* ── 경기 세팅 (경기 중 타순·수비 위치 고치기) ──────────────
+   ★ 라인업 화면처럼 타순을 「다시 만들지」 않는다. orderH/orderA 를 그 자리에서 바꾼다.
+     다시 만들면 지금 타자(st.idx)가 엉뚱한 사람을 가리키게 되기 때문이다.
+     지금 타자는 자리를 위아래로 옮겨도 계속 「지금 타자」로 따라간다. */
+function setupView(g){
+  var atk = g.st.half==='초' ? 'A' : 'H';
+
+  function col(side, name){
+    var order = side==='H' ? g.orderH : g.orderA;
+    var taken = (g.def||{})[side] || {};
+    var cur = (side===atk) ? order[g.st.idx] : null;
+    if(!order.length) return '<div class="card"><h3>'+esc(name)+'</h3><div class="msg">타순이 없습니다</div></div>';
+    return '<div class="card"><h3>'+esc(name)+' · '+order.length+'타석'+
+      ' <span class="tag">수비 '+Object.keys(taken).length+'/9</span></h3>'+
+      '<div class="row" style="margin-bottom:9px">'+
+        '<button class="btn sm" data-sauto="'+side+'">빈 자리 자동 채우기</button>'+
+        '<button class="btn sm dn" data-sclr="'+side+'">수비 비우기</button></div>'+
+      '<table>'+order.map(function(pp,i){
+        var isNow = (pp===cur);
+        return '<tr'+(isNow?' style="background:rgba(224,163,60,.13)"':'')+'>'+
+          '<td style="width:24px;color:var(--tx3)">'+(i+1)+'</td>'+
+          '<td>'+esc(pp.name)+
+            (pp.dup?' <span class="tag dup">중복</span>':'')+
+            (isNow?' <span class="tag" style="background:var(--warn);color:#241a05">지금 타자</span>':'')+'</td>'+
+          '<td style="width:104px"><select data-sp="'+side+'" data-si="'+i+'">'+
+            posOptions(g, side, pp.sid)+'</select></td>'+
+          '<td class="n" style="width:76px">'+
+            '<button class="btn sm" data-sm="'+side+':'+i+':-1">▲</button> '+
+            '<button class="btn sm" data-sm="'+side+':'+i+':1">▼</button></td></tr>';
+      }).join('')+'</table></div>';
+  }
+
+  el('v-game').innerHTML =
+    '<div class="row" style="margin-bottom:9px;justify-content:space-between">'+
+      '<div><h2 class="t">'+gLabel(g)+' 세팅</h2>'+
+      '<p class="st" style="margin:0">타순은 ▲▼ 로, 수비는 오른쪽에서 고릅니다 · '+
+      '<b>이미 찬 자리는 목록에 안 나옵니다</b></p></div>'+
+      '<div class="row" style="align-items:flex-end">'+
+        '<div><label style="font-size:11.5px;color:var(--tx3)">경기 날짜</label>'+
+        '<input type="date" id="gDt" value="'+esc(g.date||'')+'" style="width:154px"></div>'+
+      '<button class="btn pri" id="setDone">경기로 돌아가기</button></div></div>'+
+    '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(288px,1fr))">'+
+      col('H', g.home)+col('A', g.away)+'</div>'+
+    '<div class="card"><p class="st" style="margin:0">'+
+      '타순을 바꿔도 <b>지금 타자는 그대로 따라갑니다</b> — 순서만 바뀌고 차례를 건너뛰지 않습니다.<br>'+
+      '이미 기록한 타석은 그대로 남습니다.</p></div>';
+
+  /* 타순 위아래 — 지금 타자를 놓치지 않게 「사람」을 기억했다가 자리를 다시 찾는다 */
+  el('v-game').querySelectorAll('[data-sm]').forEach(function(b){
+    b.onclick = function(){
+      var q = b.dataset.sm.split(':'), side = q[0];
+      var order = side==='H' ? g.orderH : g.orderA;
+      var i = +q[1], j = i + (+q[2]);
+      if(j<0 || j>=order.length) return;
+      var keep = (side===atk) ? order[g.st.idx] : null;
+      var t = order[i]; order[i] = order[j]; order[j] = t;
+      if(keep){ var k = order.indexOf(keep); if(k>=0) g.st.idx = k; }
+      syncOrder(S.cur, g); setupView(g);
+    };
+  });
+  /* 수비 자리 — 이미 찬 자리는 목록에 없으므로 밀려나는 사람도 안 생긴다 */
+  el('v-game').querySelectorAll('[data-sp]').forEach(function(sel){
+    sel.onchange = function(){
+      var side = sel.dataset.sp;
+      var order = side==='H' ? g.orderH : g.orderA;
+      var pp = order[+sel.dataset.si]; if(!pp) return;
+      setPos(g, side, pp.sid, sel.value);
+      syncState(S.cur, g); setupView(g);
+      toast(pp.name+' → '+(sel.value ? (POS.filter(function(P){return P.k===sel.value;})[0]||{}).n : '대기'));
+    };
+  });
+  el('v-game').querySelectorAll('[data-sauto]').forEach(function(b){
+    b.onclick = function(){
+      var n = autoPos(g, b.dataset.sauto);
+      syncState(S.cur, g); setupView(g); toast(n+'명을 빈 자리에 세웠습니다');
+    };
+  });
+  el('v-game').querySelectorAll('[data-sclr]').forEach(function(b){
+    b.onclick = function(){
+      g.def = g.def || {}; g.def[b.dataset.sclr] = {};
+      syncState(S.cur, g); setupView(g); toast('수비 배치를 비웠습니다');
+    };
+  });
+  if(el('gDt')) el('gDt').onchange = function(){
+    g.date = el('gDt').value || g.date;
+    syncOrder(S.cur, g);            // 날짜는 meta 라 같은 경로로 올라간다
+    setupView(g); toast('경기 날짜를 '+(gDate(g)||g.date)+'로 바꿨습니다');
+  };
+  el('setDone').onclick = function(){ delete g._setup; save(); render(); };
+}
+
 /* ── 전광판 ─────────────────────────────── */
 /* z:'of' = 외야수(파란 배지), 나머지는 내야수(주황 배지) */
 var POS = [
@@ -1503,6 +1610,33 @@ var POS = [
   {k:'P',  n:'투수',   x:50, y:63},
   {k:'C',  n:'포수',   x:50, y:92}
 ];
+/* 경기 이름에 날짜를 같이 보여준다 — 「경기 #3」만으로는 언제 한 경기인지 모른다 */
+function gDate(g){
+  if(!g || !g.date) return '';
+  var t = new Date(g.date + 'T00:00:00');
+  if(isNaN(t.getTime())) return g.date;
+  var W = ['일','월','화','수','목','금','토'];
+  return (t.getMonth()+1) + '월 ' + t.getDate() + '일(' + W[t.getDay()] + ')';
+}
+function gLabel(g){
+  var d = gDate(g);
+  return '경기 #' + g.no + (d ? ' · ' + d : '');
+}
+
+/* 그 학생이 고를 수 있는 자리 — 남이 이미 차지한 자리는 목록에서 뺀다.
+   (자기가 지금 맡은 자리는 남겨야 드롭다운에 표시된다) */
+function freePos(g, side, sid){
+  var taken = (g.def||{})[side] || {};
+  return POS.filter(function(P){ return !taken[P.k] || taken[P.k]===sid; });
+}
+function posOptions(g, side, sid){
+  var pos = posOf(g, side, sid);
+  return '<option value=""'+(pos?'':' selected')+'>대기</option>'+
+    freePos(g, side, sid).map(function(P){
+      return '<option value="'+P.k+'"'+(pos===P.k?' selected':'')+'>'+esc(P.n)+'</option>';
+    }).join('');
+}
+
 /* 수비 배치 — 없으면 타순 앞 9명을 자동으로 세운다 */
 function defOf(g, side){
   g.def = g.def || {};
@@ -1591,6 +1725,7 @@ function halfPlayed(g, inning, half){
 function board(g){
   var c = cls();
   watchGame(S.cur, g.no);
+  if(g._setup) return setupView(g);      // 경기 세팅 화면 (감시는 붙인 채로 둔다)
   var atk = g.st.half==='초' ? 'A' : 'H';
   var dside = atk==='H' ? 'A' : 'H';          // 수비팀
   var order = atk==='H' ? g.orderH : g.orderA;
@@ -1655,10 +1790,11 @@ function board(g){
 
   el('v-game').innerHTML =
   '<div class="row hdrow" style="margin-bottom:9px;justify-content:space-between">'+
-    '<div><h2 class="t">경기 #'+g.no+'</h2>'+
+    '<div><h2 class="t">'+gLabel(g)+'</h2>'+
     '<p class="st" style="margin:0">'+(g.mode==='intra'?'학급내':'학급대항')+' · 최대 '+g.innings+'이닝 · 전원타격제</p></div>'+
     '<div class="row"><button class="btn sm" id="tgL">◀ '+esc(g.home)+'</button>'+
       '<button class="btn sm" id="tgR">'+esc(g.away)+' ▶</button>'+
+      '<button class="btn sm" id="setB">경기 세팅</button>'+
       '<button class="btn sm" id="fsB">전체화면</button>'+
       '<button class="btn sm" id="undo">되돌리기</button>'+
       '<button class="btn sm dn" id="fin">경기 종료</button></div></div>'+
@@ -1775,6 +1911,7 @@ function board(g){
   };
   el('tgL').onclick = function(){ g._hl=!g._hl; board(g); };
   el('tgR').onclick = function(){ g._hr=!g._hr; board(g); };
+  el('setB').onclick = function(){ g._setup = true; document.body.classList.remove('fs'); save(); render(); };
   el('fsB').onclick = function(){
     document.body.classList.toggle('fs');
     if(document.body.classList.contains('fs') && document.documentElement.requestFullscreen)
@@ -1798,7 +1935,7 @@ function board(g){
     if(!confirm('경기를 종료할까요?')) return;
     g.status='done'; document.body.classList.remove('fs');
     ['_s','_b','_o','_pick','_swap'].forEach(function(k){ delete g[k]; });
-    unwatch(); syncGameFull(S.cur,g); render(); toast('경기 #'+g.no+' 종료');
+    unwatch(); syncGameFull(S.cur,g); render(); toast(gLabel(g)+' 종료');
   };
 
   function swing(kind){
