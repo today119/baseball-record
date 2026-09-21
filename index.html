@@ -407,7 +407,7 @@ function isGameOver(st,maxInning){ return st.inning>maxInning; }
 function tally(atbats, defense, innings){
   var m={};
   function slot(sid){ if(!m[sid]) m[sid]={sid:sid,pa:0,ab:0,bb:0,h:0,h2:0,h3:0,hr:0,tb:0,
-                                          r:0,rbi:0,dOut:0,inn:0,g:0}; return m[sid]; }
+                                          r:0,rbi:0,dOut:0,dPlay:0,inn:0,g:0}; return m[sid]; }
   (atbats||[]).forEach(function(a){
     var x=slot(a.sid);
     x.pa+=1;
@@ -422,7 +422,13 @@ function tally(atbats, defense, innings){
     if(a.kind===5) x.bb+=1;
     x.r+=(a.run||0); x.rbi+=(a.rbi||0);
   });
-  (defense||[]).forEach(function(d){ slot(d.sid).dOut+=1; });
+  /* 수비 기록 — kind:'play' 는 「공을 처리했다」, 그 밖(옛 기록 포함)은 「아웃으로 이어졌다」.
+     아웃을 만든 플레이는 참여이기도 하므로 두 칸에 모두 들어간다. */
+  (defense||[]).forEach(function(d){
+    var x = slot(d.sid);
+    x.dPlay += 1;
+    if(d.kind !== 'play') x.dOut += 1;
+  });
   Object.keys(innings||{}).forEach(function(sid){
     var x=slot(sid); x.inn=innings[sid].inn||0; x.g=innings[sid].g||0; });
   Object.keys(m).forEach(function(sid){
@@ -432,7 +438,10 @@ function tally(atbats, defense, innings){
     x.obp  = (x.ab+x.bb) ? (x.h+x.bb)/(x.ab+x.bb) : 0;  // 출루율 (희생타 없음)
     x.ops  = x.obp + x.slg;
     x.xbh  = x.h2 + x.h3 + x.hr;                        // 장타 (2루타 이상)
-    x.contrib = x.inn ? (x.r+x.rbi+x.dOut)/x.inn : 0;   // 평가에 쓰는 이닝당 기여도
+    /* 기여 분자 — 평가계획서: 득점 + 타점 + 수비 참여 + 수비 아웃 처리 참여 */
+    x.dSum     = x.r + x.rbi + x.dPlay + x.dOut;
+    x.contrib  = x.inn ? x.dSum/x.inn : 0;   // 이닝당 — 기록·순위·특기사항용 (선생님 요청)
+    x.contribG = x.g   ? x.dSum/x.g   : 0;   // 경기당 — 평가 점수 환산용 (계획서 기준)
   });
   return m;
 }
@@ -1831,7 +1840,8 @@ function board(g){
       '<span class="pmode '+(isAtk?'on':'off')+'">'+(isAtk?'공격':'수비')+'</span>'+
       (isAtk ? '' : '<span class="phint">'+
         (g._swap ? '교대할 자리를 누르세요'
-                 : (g._pick.length ? g._pick.length+'명 선택 — 기여 확정' : '아웃에 기여한 선수를 누르세요'))+'</span>')+
+                 : (g._pick.length ? g._pick.length+'명 선택 — 아웃/참여를 고르세요'
+                                   : '공을 처리한 선수를 누르세요'))+'</span>')+
       '</div>';
     if(isAtk) return head + '<div class="lineup">'+
       lineupHTML(side==='H'?g.orderH:g.orderA, g, side, atk, cum)+'</div>';
@@ -1847,7 +1857,8 @@ function board(g){
         (bench.length ? ' · '+bench.map(function(p){return esc(p.name);}).join(', ') : '')+'</div>'+
       '<div class="dbtn">'+
         '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
-        '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">기여 확정'+(g._pick.length?' ('+g._pick.length+')':'')+'</button>'+
+        '<button id="okPlay" class="'+(g._pick.length?'ok2':'')+'">수비 참여'+(g._pick.length?' ('+g._pick.length+')':'')+'</button>'+
+        '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">아웃 처리'+(g._pick.length?' ('+g._pick.length+')':'')+'</button>'+
       '</div>';
   }
 
@@ -1986,15 +1997,20 @@ function board(g){
     box.style.setProperty('--plpad', pad.toFixed(1)+'px');
   });
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
-  el('okDef').onclick = function(){
-    if(!g._pick.length) return toast('기여한 선수를 먼저 누르세요');
+  /* 수비 기록 — 「아웃 처리」는 참여+아웃 둘 다, 「수비 참여」는 참여만 (아웃은 못 만들었지만 공을 처리함) */
+  function logDefense(kind){
+    if(!g._pick.length) return toast('선수를 먼저 누르세요');
     var made = g._pick.map(function(sid){
-      var r = {id:newId(), sid:sid, ts:stamp()}; g.defense.push(r); return r; });
+      var r = {id:newId(), sid:sid, ts:stamp()};
+      if(kind==='play') r.kind = 'play';
+      g.defense.push(r); return r; });
     var n = g._pick.length; g._pick = [];
     made.forEach(function(r){ syncDF(S.cur, g, r); });
     syncState(S.cur, g); board(g);
-    toast('수비 기여 '+n+'명 기록');
-  };
+    toast((kind==='play'?'수비 참여 ':'아웃 처리 ')+n+'명 기록');
+  }
+  el('okDef').onclick  = function(){ logDefense('out'); };
+  el('okPlay').onclick = function(){ logDefense('play'); };
   el('tgL').onclick = function(){ g._hl=!g._hl; board(g); };
   el('tgR').onclick = function(){ g._hr=!g._hr; board(g); };
   el('setB').onclick = function(){ g._setup = true; document.body.classList.remove('fs'); save(); render(); };
@@ -2172,103 +2188,261 @@ function inningMap(c){
   return m;
 }
 
-/* ── 탁구 ─────────────────────────────── */
-/* 평가계획서의 척도 그대로 (2026-2학기 스포츠 생활2)
-   포핸드 20점 : 9개↑ 20 / 7~8 16 / 5~6 12 / 3~4 8 / 2개↓ 4
-   백핸드 Ⓐ 15점 : 9개↑ 15 / 7~8 12 / 5~6 9 / 3~4 6 / 2개↓ 4
-   백핸드 영역 = Ⓐ + 태도카드(1장 1점, 최대 5장), 영역 만점 20점을 넘지 못한다 */
-function ttFH(n){
+/* ══ 2026-2학기 평가계획 점수 환산 ═══════════════════════
+   탁구 스트로크 20 + 탁구 리그전 20 + 야구 40 + 보고서 20 = 100점       */
+
+/* 탁구 스트로크 20점 — 포핸드 5개 + 백핸드 5개 성공 횟수를 «합산» 한 값 */
+function scStroke(n){
   if(n==null || n==='') return null;
   n = +n; return n>=9?20 : n>=7?16 : n>=5?12 : n>=3?8 : 4;
 }
-function ttBH(n){
-  if(n==null || n==='') return null;
-  n = +n; return n>=9?15 : n>=7?12 : n>=5?9 : n>=3?6 : 4;
+/* 탁구 리그전 Ⓐ — 모든 경기 득점 합 ÷ 경기 수 = 평균 득점 */
+function scTTLg(avg){
+  if(avg==null) return null;
+  return avg>=9?20 : avg>=7?16 : avg>=5?12 : avg>=3?8 : 4;
 }
-function ttBHArea(bh, card){
-  var a = ttBH(bh);
-  if(a==null) return null;                       // 백핸드를 아직 안 쟀으면 영역 점수도 없다
-  return Math.min(20, a + Math.max(0, Math.min(5, +card || 0)));
+/* 야구 Ⓐ 타율 30점 */
+function scBA(a){
+  if(a==null) return null;
+  return a>=0.500?30 : a>=0.400?25 : a>=0.300?20 : a>=0.200?15 : 10;
 }
+/* 야구 Ⓑ 평균 기여도 10점 — «경기당» 으로 잰다 (계획서 기준) */
+function scCon(v){
+  if(v==null) return null;
+  return v>=2.0?10 : v>=1.5?8 : v>=1.0?6 : v>=0.5?4 : 2;
+}
+/* 보고서 20점 — 6개 항목 중 충족 개수 */
+function scRep(n){
+  n = +n||0; return n>=6?20 : n>=5?16 : n>=4?12 : n>=3?8 : 4;
+}
+
+/* 타율 — 계획서: 최소 4경기. 경기 수가 모자라면 «부족한 경기 수 만큼 아웃» 을 더해 계산한다. */
+var MIN_GAMES = 4;
+function adjBA(x){
+  if(!x || (!x.ab && !x.g)) return null;
+  var add = Math.max(0, MIN_GAMES - (x.g||0));   // 부족 경기 1개 = 아웃 1개
+  var ab  = (x.ab||0) + add;
+  return ab ? (x.h||0)/ab : 0;
+}
+
+/* 「11,7,9」 처럼 적은 경기별 득점을 숫자 배열로 */
+function parseScores(str){
+  return String(str==null?'':str).split(/[^0-9.]+/)
+           .filter(function(v){ return v!==''; }).map(Number)
+           .filter(function(v){ return isFinite(v); });
+}
+/* 스트로크 합계 — 손으로 적은 합계가 있으면 그것을, 없으면 포핸드+백핸드를 쓴다.
+   (포핸드·백핸드를 따로 재지 않고 합산 횟수만 기록해 둔 반이 있어서 둘 다 받는다) */
+function strokeSum(t){
+  t = t || {};
+  if(t.sum != null && t.sum !== '') return +t.sum;
+  var fh = (t.fh==null||t.fh==='') ? null : +t.fh;
+  var bh = (t.bh==null||t.bh==='') ? null : +t.bh;
+  return (fh==null && bh==null) ? null : (fh||0)+(bh||0);
+}
+
+/* 탁구 리그전 한 학생 집계 */
+function ttLeague(t){
+  var v = parseScores(t && t.scores);
+  if(!v.length) return {n:0, sum:0, avg:null, a:null, area:null};
+  var sum = v.reduce(function(a,b){ return a+b; }, 0);
+  var avg = sum / v.length;
+  var a   = scTTLg(avg);
+  var card= Math.max(0, Math.min(4, +(t && t.card) || 0));   // 계획서: 탁구는 최대 4장
+  return {n:v.length, sum:sum, avg:avg, a:a, area:Math.min(20, a + card)};
+}
+
+/* ── 탁구 ─────────────────────────────── */
 function vTT(){
   if(!S.cur) return needClass('v-tt');
   var c = cls();
-  function cells(s){
+  c.tt = c.tt || {};
+
+  function row(s){
     var t = c.tt[s.sid] || {};
-    var f = ttFH(t.fh), a = ttBHArea(t.bh, t.card);
-    return {f: f==null?'—':f, a: a==null?'—':a,
-            sum: (f==null && a==null) ? '—' : ((f||0)+(a||0))};
+    var fh = (t.fh==null||t.fh==='') ? null : +t.fh;
+    var bh = (t.bh==null||t.bh==='') ? null : +t.bh;
+    var sum = strokeSum(t);
+    var st  = scStroke(sum);
+    var lg  = ttLeague(t);
+    return {fh:fh, bh:bh, sum:sum, st:st, lg:lg,
+            total:(st==null && lg.area==null) ? null : (st||0)+(lg.area||0)};
   }
+  function dash(v){ return v==null ? '—' : v; }
+
   el('v-tt').innerHTML =
     '<h2 class="t">'+esc(S.cur)+' 탁구</h2>'+
-    '<p class="st">10구 중 성공 횟수를 넣으면 <b>옆 칸에 점수가 바로 계산</b>됩니다 · '+
-    '포핸드 20점 + 백핸드 영역 20점 = 40점</p>'+
+    '<p class="st">스트로크 20점 + 리그전 20점 = <b>40점</b> · '+
+    '포핸드·백핸드를 따로 넣으면 <b>합계가 자동</b>으로 잡히고, '+
+    '합산 횟수만 쟀다면 <b>합계 칸에 바로</b> 넣으면 됩니다 · '+
+    '리그전 득점은 <b>쉼표로 나열</b>하면 평균이 자동 계산됩니다 (예: 11,7,9)</p>'+
     '<div class="card">'+
+    '<div class="row" style="margin-bottom:10px">'+
+      '<button class="btn" id="ttBulk">합계 일괄 입력</button>'+
+      '<button class="btn" id="ttLgBulk">리그 득점 일괄 입력</button></div>'+
+    '<div id="ttPaste" style="display:none;margin-bottom:11px">'+
+      '<p class="st" id="ttPasteHint" style="margin:0 0 5px"></p>'+
+      '<textarea id="ttPasteBox" rows="4" style="width:100%;font-family:ui-monospace,monospace;font-size:13px" '+
+        'placeholder="2:9 3:5 4:6 …"></textarea>'+
+      '<div class="row" style="margin-top:6px">'+
+        '<button class="btn pri" id="ttPasteOk">적용</button>'+
+        '<button class="btn" id="ttPasteNo">취소</button></div></div>'+
     (c.roster.length ?
-      '<div style="overflow-x:auto"><table><tr><th>번호</th><th>이름</th>'+
-      '<th class="n">포핸드</th><th class="n">점수</th>'+
-      '<th class="n">백핸드</th><th class="n">태도카드</th><th class="n">백핸드 영역</th>'+
-      '<th class="n">합계</th></tr>'+
+      '<div style="overflow-x:auto"><table><tr>'+
+      '<th>번호</th><th>이름</th>'+
+      '<th class="n">포핸드</th><th class="n">백핸드</th><th class="n">합계</th><th class="n">스트로크<br>점수</th>'+
+      '<th>리그 득점 기록</th><th class="n">경기</th><th class="n">평균</th>'+
+      '<th class="n">카드</th><th class="n">리그<br>점수</th><th class="n">탁구<br>합계</th></tr>'+
       c.roster.map(function(s){
-        var t = c.tt[s.sid] || {}, v = cells(s);
-        function inp(k, mx){
-          return '<td class="n"><input type="number" min="0" max="'+mx+'" style="width:62px;text-align:right" '+
+        var t = c.tt[s.sid] || {}, v = row(s);
+        function num(k, mx){
+          return '<td class="n"><input type="number" min="0" max="'+mx+'" style="width:58px;text-align:right" '+
                  'data-tt="'+k+'" data-s="'+s.sid+'" value="'+(t[k]!=null?t[k]:'')+'"></td>';
         }
         return '<tr><td>'+esc(s.num)+'</td><td>'+esc(s.name)+'</td>'+
-          inp('fh',10)+
-          '<td class="n sc" id="scF_'+s.sid+'">'+v.f+'</td>'+
-          inp('bh',10)+ inp('card',5)+
-          '<td class="n sc" id="scA_'+s.sid+'">'+v.a+'</td>'+
-          '<td class="n sc tot" id="scT_'+s.sid+'">'+v.sum+'</td></tr>';
+          num('fh',5)+ num('bh',5)+
+          '<td class="n"><input type="number" min="0" max="10" style="width:58px;text-align:right;font-weight:700" '+
+              'data-tt="sum" data-s="'+s.sid+'" value="'+(t.sum!=null?t.sum:'')+'" '+
+              'placeholder="'+(v.sum==null?'':v.sum)+'"></td>'+
+          '<td class="n sc" id="ttSt_'+s.sid+'">'+dash(v.st)+'</td>'+
+          '<td><input type="text" inputmode="numeric" style="width:122px" placeholder="11,7,9" '+
+              'data-tt="scores" data-s="'+s.sid+'" value="'+esc(t.scores||'')+'"></td>'+
+          '<td class="n sc" id="ttN_'+s.sid+'">'+(v.lg.n||'—')+'</td>'+
+          '<td class="n sc" id="ttAvg_'+s.sid+'">'+(v.lg.avg==null?'—':v.lg.avg.toFixed(2))+'</td>'+
+          num('card',4)+
+          '<td class="n sc" id="ttLg_'+s.sid+'">'+dash(v.lg.area)+'</td>'+
+          '<td class="n sc tot" id="ttT_'+s.sid+'">'+dash(v.total)+'</td></tr>';
       }).join('')+'</table></div>'
       : '<div class="msg">명단이 없습니다</div>')+
-    '<p class="st" style="margin:11px 0 0">참여한 학생의 최하점은 두 영역 모두 <b>4점</b>입니다. '+
-    '태도카드는 백핸드 점수에 더해지되 영역 만점 20점을 넘지 않습니다.</p></div>';
+    '<p class="st" style="margin:11px 0 0">'+
+    '스트로크 — 포핸드 5구·백핸드 5구의 성공 횟수를 <b>합산</b>해 매깁니다 '+
+    '(9개↑ 20 / 7~8 16 / 5~6 12 / 3~4 8 / 2개↓ 4).<br>'+
+    '리그전 — 11점 단세트 조별 풀리그, <b>평균 득점</b>으로 매깁니다 '+
+    '(9.0↑ 20 / 7.0~ 16 / 5.0~ 12 / 3.0~ 8 / 미만 4). '+
+    '스포츠퍼슨십 카드는 1장 1점, <b>최대 4장</b>이며 리그전 영역 20점을 넘지 않습니다.</p></div>';
 
-  /* 입력하는 즉시 옆 칸 점수를 고쳐 준다 (화면을 다시 그리면 입력칸에서 커서가 튄다) */
+  /* 입력하는 즉시 옆 칸만 고쳐 준다 (다시 그리면 입력칸에서 커서가 튄다) */
   function repaint(sid){
-    var s = {sid:sid}, v = cells(s);
-    var f = el('scF_'+sid), a = el('scA_'+sid), tt = el('scT_'+sid);
-    if(f) f.textContent = v.f;
-    if(a) a.textContent = v.a;
-    if(tt) tt.textContent = v.sum;
+    var st = c.roster.filter(function(x){ return x.sid===sid; })[0];
+    if(!st) return;
+    var v = row(st);
+    function put(id, val){ var e = el(id); if(e) e.textContent = val; }
+    var sb = el('v-tt').querySelector('[data-tt="sum"][data-s="'+sid+'"]');
+    if(sb) sb.placeholder = (v.sum==null ? '' : v.sum);
+    put('ttSt_'+sid,  dash(v.st));
+    put('ttN_'+sid,   v.lg.n||'—');
+    put('ttAvg_'+sid, v.lg.avg==null?'—':v.lg.avg.toFixed(2));
+    put('ttLg_'+sid,  dash(v.lg.area));
+    put('ttT_'+sid,   dash(v.total));
   }
   el('v-tt').querySelectorAll('[data-tt]').forEach(function(i){
     function apply(){
-      var sid = i.dataset.s;
+      var sid = i.dataset.s, k = i.dataset.tt;
       c.tt[sid] = c.tt[sid] || {};
-      c.tt[sid][i.dataset.tt] = i.value===''? null : +i.value;
+      c.tt[sid][k] = (k==='scores') ? i.value : (i.value===''? null : +i.value);
+      /* 포핸드·백핸드를 새로 재면 손으로 적어둔 합계는 버린다 */
+      if(k==='fh' || k==='bh') c.tt[sid].sum = null;
       repaint(sid);
     }
-    i.oninput  = function(){ apply(); save(); };          // 치는 동안엔 화면만
-    i.onchange = function(){ apply(); syncMisc(S.cur,'tt'); };  // 칸을 벗어날 때 올린다
+    i.oninput  = function(){ apply(); save(); };
+    i.onchange = function(){ apply(); syncMisc(S.cur,'tt'); };
   });
+
+  /* ── 일괄 입력 ──
+     「번호:값」 을 줄바꿈·공백·쉼표 아무거나로 구분해 받는다.
+     시트에서 두 열(번호 / 값)을 그대로 복사해 붙여도 되게 탭도 받는다. */
+  var bulkKind = null;
+  function openBulk(kind){
+    bulkKind = kind;
+    el('ttPaste').style.display = '';
+    el('ttPasteBox').value = '';
+    el('ttPasteHint').innerHTML = (kind==='sum')
+      ? '<b>스트로크 합계</b> — <code>번호(또는 이름):값</code> 형식. 예) <code>2:9 3:5 4:6</code><br>'+
+        '시트에서 번호·값 두 열을 복사해 붙여넣어도 됩니다.'
+      : '<b>리그 득점</b> — <code>번호(또는 이름):득점,득점,…</code> 형식. 예) <code>2:11,9,8</code> 또는 <code>김철수:11,9,8</code> (한 줄에 한 명)';
+    el('ttPasteBox').focus();
+  }
+  function applyBulk(){
+    var txt = el('ttPasteBox').value || '';
+    /* 번호로도 이름으로도 찾을 수 있게 — 매치메이커에서 긁어온 자료는 이름만 있다 */
+    var byNum = {}, byName = {};
+    c.roster.forEach(function(s){
+      byNum[String(s.num).trim()] = s.sid;
+      byName[String(s.name).replace(/\s+/g,'')] = s.sid;
+    });
+    function findSid(k){
+      k = String(k).trim();
+      return byNum[k] || byName[k.replace(/\s+/g,'')] || null;
+    }
+    var okN = 0, miss = [];
+    txt.split(/[\n\r]+/).forEach(function(line){
+      /* 한 줄에 여러 쌍이 올 수 있다 (스트로크 합계). 리그 득점은 값에 쉼표가 있으므로 줄 단위. */
+      /* 합계는 한 줄에 여러 쌍이 올 수 있다. 이름에 공백이 없다는 전제로 공백·쉼표로 쪼갠다.
+         리그 득점은 값 자체에 쉼표가 들어가므로 줄 단위로만 읽는다. */
+      var pairs = (bulkKind==='sum')
+        ? line.split(/[\s,;]+/).filter(Boolean)
+        : (line.trim() ? [line.trim()] : []);
+      pairs.forEach(function(tok){
+        var m = tok.match(/^\s*([^:\t=]+?)\s*[:\t=]\s*(.+?)\s*$/);
+        if(!m) return;
+        var sid = findSid(m[1]);
+        if(!sid){ miss.push(m[1]); return; }
+        c.tt[sid] = c.tt[sid] || {};
+        if(bulkKind==='sum'){
+          var v = parseFloat(m[2]);
+          if(!isFinite(v)) return;
+          c.tt[sid].sum = v;
+        }else{
+          c.tt[sid].scores = m[2];
+        }
+        okN++;
+      });
+    });
+    save(); syncMisc(S.cur,'tt');
+    toast(okN + '명 적용' + (miss.length ? ' · 명단에 없는 번호 ' + miss.join(',') : ''));
+    el('ttPaste').style.display = 'none';
+    vTT();
+  }
+  el('ttBulk').onclick   = function(){ openBulk('sum'); };
+  el('ttLgBulk').onclick = function(){ openBulk('lg'); };
+  el('ttPasteOk').onclick= applyBulk;
+  el('ttPasteNo').onclick= function(){ el('ttPaste').style.display = 'none'; };
 }
 
 /* ── 보고서 ───────────────────────────── */
+/* 계획서 6항목 (2026-2학기) */
+var REP_ITEMS = ['탁구 기록 분석', '야구 기록 분석', '팀 안에서 나의 역할',
+                 '인상 깊은 경기 장면', '리그를 통해 깨달은 점', '좋아하는 프로 구단'];
+function repCount(r){
+  r = r || {};
+  return REP_ITEMS.filter(function(_,i){ return r['i'+i]; }).length;
+}
 function vRep(){
   if(!S.cur) return needClass('v-rep');
   var c = cls();
-  var ITEMS = ['기록 분석','팀 내 역할','인상 깊은 장면','깨달은 점','좋아하는 구단'];
   el('v-rep').innerHTML =
     '<h2 class="t">'+esc(S.cur)+' 리그 결산 보고서</h2>'+
-    '<p class="st">항목 충족 개수를 체크하면 점수가 자동으로 계산됩니다</p>'+
+    '<p class="st">6개 항목 중 충족 개수로 점수가 정해집니다 · '+
+    '6개 20 / 5개 16 / 4개 12 / 3개 8 / 2개↓ 4</p>'+
     '<div class="card">'+
     (c.roster.length ?
-      '<table><tr><th>번호</th><th>이름</th>'+ITEMS.map(function(t,i){
-        return '<th class="n" style="font-size:10.5px">'+(i+1)+'</th>'; }).join('')+
-      '<th class="n">충족</th></tr>'+
+      '<div style="overflow-x:auto"><table><tr><th>번호</th><th>이름</th>'+
+      REP_ITEMS.map(function(t,i){
+        return '<th class="n" style="font-size:10.5px" title="'+esc(t)+'">'+(i+1)+'</th>'; }).join('')+
+      '<th class="n">충족</th><th class="n">점수</th></tr>'+
       c.roster.map(function(s){
-        var r = c.rep[s.sid] || {};
-        var n = ITEMS.filter(function(_,i){ return r['i'+i]; }).length;
+        var r = c.rep[s.sid] || {}, k = repCount(r);
         return '<tr><td>'+esc(s.num)+'</td><td>'+esc(s.name)+'</td>'+
-          ITEMS.map(function(_,i){
+          REP_ITEMS.map(function(_,i){
             return '<td class="n"><input type="checkbox" style="width:auto" data-rp="'+i+'" data-s="'+s.sid+'"'+
                    (r['i'+i]?' checked':'')+'></td>'; }).join('')+
-          '<td class="n"><b>'+n+'</b>/5</td></tr>';
-      }).join('')+'</table>'+
-      '<p class="st" style="margin-top:9px">항목: '+ITEMS.map(function(t,i){return (i+1)+'.'+t;}).join(' · ')+'</p>'
+          '<td class="n"><b>'+k+'</b>/6</td>'+
+          '<td class="n sc tot">'+scRep(k)+'</td></tr>';
+      }).join('')+'</table></div>'+
+      '<p class="st" style="margin-top:9px">'+REP_ITEMS.map(function(t,i){
+         return (i+1)+'. '+t; }).join(' · ')+'</p>'+
+      '<p class="st" style="margin-top:6px">※ 일반적인 내용을 옮겨 적은 것이 아니라 '+
+      '<b>자신의 기록과 경험을 근거로 구체적으로 서술</b>한 경우에만 충족으로 봅니다.</p>'
       : '<div class="msg">명단이 없습니다</div>')+'</div>';
   el('v-rep').querySelectorAll('[data-rp]').forEach(function(cb){
     cb.onchange = function(){
@@ -2337,8 +2511,8 @@ function vStats(){
   if(!S.cur) return needClass('v-stats');
   var c = cls();
   var t = tally(allAtbats(c), allDefense(c), inningMap(c));
-  var ZERO = {ab:0,bb:0,h:0,h2:0,h3:0,hr:0,tb:0,xbh:0,r:0,rbi:0,dOut:0,inn:0,g:0,
-              avg:0,slg:0,obp:0,ops:0,contrib:0};
+  var ZERO = {ab:0,bb:0,h:0,h2:0,h3:0,hr:0,tb:0,xbh:0,r:0,rbi:0,dOut:0,dPlay:0,inn:0,g:0,
+              avg:0,slg:0,obp:0,ops:0,contrib:0,contribG:0,dSum:0};
   var rows = c.roster.map(function(s){ return Object.assign({num:s.num,name:s.name,gender:s.gender,group:s.group||'A'}, ZERO, t[s.sid]||{}); });
   rows.sort(function(a,b){ return b.avg-a.avg || b.h-a.h; });
 
@@ -2354,7 +2528,8 @@ function vStats(){
       '<th class="n">타수</th><th class="n">안타</th><th class="n">2루타</th><th class="n">3루타</th>'+
       '<th class="n">홈런</th><th class="n">볼넷</th><th class="n">타율</th>'+
       '<th class="n">출루율</th><th class="n">장타율</th><th class="n">OPS</th>'+
-      '<th class="n">득점</th><th class="n">타점</th><th class="n">수비</th><th class="n">이닝당 기여</th></tr>'+
+      '<th class="n">득점</th><th class="n">타점</th><th class="n">수비<br>참여</th><th class="n">아웃<br>처리</th>'+
+      '<th class="n">이닝당<br>기여</th><th class="n">경기당<br>기여</th></tr>'+
       rows.map(function(x){
         return '<tr><td>'+esc(x.num)+'</td><td>'+esc(x.name)+'</td>'+
           '<td class="n">'+x.g+'</td><td class="n">'+x.inn+'</td>'+
@@ -2364,40 +2539,107 @@ function vStats(){
           '<td class="n"><b>'+fmtAvg(x.avg)+'</b></td>'+
           '<td class="n">'+fmtAvg(x.obp)+'</td><td class="n">'+fmtAvg(x.slg)+'</td>'+
           '<td class="n">'+fmtAvg(x.ops)+'</td>'+
-          '<td class="n">'+x.r+'</td><td class="n">'+x.rbi+'</td><td class="n">'+x.dOut+'</td>'+
-          '<td class="n"><b>'+x.contrib.toFixed(2)+'</b></td></tr>';
+          '<td class="n">'+x.r+'</td><td class="n">'+x.rbi+'</td>'+
+          '<td class="n">'+x.dPlay+'</td><td class="n">'+x.dOut+'</td>'+
+          '<td class="n"><b>'+x.contrib.toFixed(2)+'</b></td>'+
+          '<td class="n">'+x.contribG.toFixed(2)+'</td></tr>';
       }).join('')+'</table></div>'
-      : '<div class="msg">기록이 없습니다</div>')+'</div>';
+      : '<div class="msg">기록이 없습니다</div>')+'</div>'+
+    scoreCard();
 
+  /* ── 평가 점수표 (2026-2학기 계획: 스트로크20 + 리그20 + 야구40 + 보고서20) ── */
+  function scoreCard(){
+    if(!c.roster.length) return '';
+    var srt = rows.slice().sort(function(a,b){
+      return String(a.num).padStart(3,'0') < String(b.num).padStart(3,'0') ? -1 : 1; });
+    return '<div class="card"><h3 class="t" style="font-size:15px;margin:0 0 4px">평가 점수</h3>'+
+      '<p class="st">탁구 스트로크 20 + 탁구 리그 20 + 야구 40 + 보고서 20 = <b>100점</b> · '+
+      '야구 스포츠퍼슨십 카드만 여기서 넣습니다 (최대 5장)</p>'+
+      '<div style="overflow-x:auto"><table><tr><th>번호</th><th>이름</th>'+
+      '<th class="n">스트로크</th><th class="n">탁구<br>리그</th>'+
+      '<th class="n">타율<br>(보정)</th><th class="n">경기당<br>기여</th>'+
+      '<th class="n">야구<br>카드</th><th class="n">야구</th>'+
+      '<th class="n">보고서</th><th class="n">총점</th></tr>'+
+      srt.map(function(x){
+        var v = scoreOf(x), sid = sidOf(x);
+        function d(n){ return n==null ? '—' : n; }
+        return '<tr><td>'+esc(x.num)+'</td><td>'+esc(x.name)+'</td>'+
+          '<td class="n sc">'+d(v.st)+'</td><td class="n sc">'+d(v.lg.area)+'</td>'+
+          '<td class="n">'+(v.ba==null?'—':fmtAvg(v.ba))+'</td>'+
+          '<td class="n">'+(x.g?x.contribG.toFixed(2):'—')+'</td>'+
+          '<td class="n"><input type="number" min="0" max="5" style="width:52px;text-align:right" '+
+              'data-bc="'+sid+'" value="'+((c.tt[sid]||{}).bcard!=null?(c.tt[sid]||{}).bcard:'')+'"></td>'+
+          '<td class="n sc">'+d(v.bs)+'</td>'+
+          '<td class="n sc">'+d(v.rs)+'</td>'+
+          '<td class="n sc tot"><b>'+v.total+'</b></td></tr>';
+      }).join('')+'</table></div>'+
+      '<p class="st" style="margin-top:9px">※ 타율은 <b>최소 '+MIN_GAMES+'경기</b> 기준입니다. '+
+      '경기 수가 모자라면 부족한 경기 수만큼 아웃을 더해 계산합니다.<br>'+
+      '※ 기여도는 기록·순위엔 <b>이닝당</b>을, 점수 환산엔 계획서대로 <b>경기당</b>을 씁니다.</p></div>';
+  }
+
+  /* 한 학생의 평가 산출물 한 줄 — 기록 + 환산 점수 + 총점 */
+  function sidOf(x){ return (c.roster.filter(function(s){ return s.name===x.name; })[0]||{}).sid; }
+  function scoreOf(x){
+    var sid = sidOf(x), tt = c.tt[sid] || {}, rp = c.rep[sid] || {};
+    var fh  = (tt.fh==null||tt.fh==='') ? null : +tt.fh;
+    var bh  = (tt.bh==null||tt.bh==='') ? null : +tt.bh;
+    var sum = strokeSum(tt);
+    var st  = scStroke(sum);                       // 탁구 스트로크 20
+    var lg  = ttLeague(tt);                        // 탁구 리그전 20
+    var ba  = adjBA(x);                            // 최소 4경기 보정 타율
+    var bA  = scBA(ba);                            // 야구 Ⓐ 타율 30
+    var bB  = x.g ? scCon(x.contribG) : null;      // 야구 Ⓑ 경기당 기여 10
+    var bC  = Math.max(0, Math.min(5, +tt.bcard || 0));  // 야구 카드 (최대 5장)
+    var bs  = (bA==null && bB==null) ? null : Math.min(40, (bA||0)+(bB||0)+bC);
+    var rn  = repCount(rp), rs = rn ? scRep(rn) : null;
+    return {tt:tt, fh:fh, bh:bh, sum:sum, st:st, lg:lg, ba:ba, bcard:bC, bs:bs,
+            repN:rn, rs:rs,
+            total:(st||0)+(lg.area||0)+(bs||0)+(rs||0)};
+  }
+  function blank(v){ return v==null ? '' : v; }
   function tableData(){
     return rows.map(function(x){
-      var tt = c.tt[ (c.roster.filter(function(s){return s.name===x.name;})[0]||{}).sid ] || {};
-      var rp = c.rep[ (c.roster.filter(function(s){return s.name===x.name;})[0]||{}).sid ] || {};
-      var repN = [0,1,2,3,4].filter(function(i){return rp['i'+i];}).length;
-      return [x.num, x.name, x.gender, x.group, x.g, x.inn, x.ab, x.h, fmtAvg(x.avg),
-              x.r, x.rbi, x.dOut, x.contrib.toFixed(2),
-              tt.fh==null?'':tt.fh, tt.bh==null?'':tt.bh, tt.card==null?'':tt.card, repN];
+      var v = scoreOf(x);
+      return [x.num, x.name, x.gender, x.group,
+              blank(v.fh), blank(v.bh), blank(v.sum), blank(v.st),
+              v.lg.n||'', v.lg.n?v.lg.sum:'', v.lg.avg==null?'':v.lg.avg.toFixed(2),
+              v.tt.card==null?'':v.tt.card, blank(v.lg.area),
+              x.g, x.inn, x.ab, x.h, v.ba==null?'':fmtAvg(v.ba),
+              x.r, x.rbi, x.dPlay, x.dOut,
+              x.contrib.toFixed(2), x.contribG.toFixed(2), v.bcard, blank(v.bs),
+              v.repN, blank(v.rs), v.total];
     });
   }
-  var HDR = ['번호','이름','성별','조','경기','이닝','타수','안타','타율','득점','타점','수비아웃',
-             '이닝당기여','탁구포핸드','탁구백핸드','태도카드','보고서충족'];
-  /* CSV 는 새 기록(2·3루타·홈런·출루율·장타율·OPS)까지 전부 넣는다.
-     구글시트는 평가 산출물이라 예전 17열 그대로 둔다 — 시트 양식·Apps Script 를
-     건드리지 않기 위해서다. */
-  var CHDR = HDR.slice(0,8).concat(['2루타','3루타','홈런','볼넷','타율','출루율','장타율','OPS'],
-                                   HDR.slice(9));
+  /* ★ Apps Script 브릿지의 HDR 과 «순서·개수가 정확히 같아야» 한다 (2026-09-21 평가계획 개정판, 30열).
+     갱신일시는 시트 쪽에서 붙이므로 여기선 보내지 않는다. */
+  var HDR = ['번호','이름','성별','조',
+             '탁구포핸드','탁구백핸드','스트로크합계','스트로크점수',
+             '탁구경기수','탁구총득점','탁구평균득점','탁구카드','탁구리그점수',
+             '경기','이닝','타수','안타','타율','득점','타점',
+             '수비참여','수비아웃','이닝당기여','경기당기여','야구카드','야구점수',
+             '보고서충족','보고서점수','총점'];
+  /* CSV 에는 평가에 안 들어가는 기록(2·3루타·홈런·볼넷·출루율·장타율·OPS)까지 얹는다 */
+  var CHDR = HDR.slice(0, 17).concat(['2루타','3루타','홈런','볼넷','출루율','장타율','OPS'],
+                                     HDR.slice(17));
   function csvData(){
-    return rows.map(function(x){
-      var sid = (c.roster.filter(function(s){return s.name===x.name;})[0]||{}).sid;
-      var tt = c.tt[sid] || {}, rp = c.rep[sid] || {};
-      var repN = [0,1,2,3,4].filter(function(i){return rp['i'+i];}).length;
-      return [x.num, x.name, x.gender, x.group, x.g, x.inn, x.ab, x.h,
-              x.h2, x.h3, x.hr, x.bb,
-              fmtAvg(x.avg), fmtAvg(x.obp), fmtAvg(x.slg), fmtAvg(x.ops),
-              x.r, x.rbi, x.dOut, x.contrib.toFixed(2),
-              tt.fh==null?'':tt.fh, tt.bh==null?'':tt.bh, tt.card==null?'':tt.card, repN];
+    return tableData().map(function(r, i){
+      var x = rows[i];
+      return r.slice(0, 17).concat([x.h2, x.h3, x.hr, x.bb,
+                                    fmtAvg(x.obp), fmtAvg(x.slg), fmtAvg(x.ops)],
+                                   r.slice(17));
     });
   }
+  /* 야구 스포츠퍼슨십 카드 입력 (최대 5장) — 탁구 카드와 별개 칸(bcard)에 담는다 */
+  el('v-stats').querySelectorAll('[data-bc]').forEach(function(i){
+    i.onchange = function(){
+      var sid = i.dataset.bc;
+      c.tt[sid] = c.tt[sid] || {};
+      c.tt[sid].bcard = i.value==='' ? null : Math.max(0, Math.min(5, +i.value));
+      syncMisc(S.cur,'tt'); vStats();
+    };
+  });
+
   el('csv').onclick = function(){
     var csv = [CHDR].concat(csvData()).map(function(r){
       return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
