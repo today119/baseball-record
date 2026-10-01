@@ -1037,16 +1037,65 @@ function el(id){ return document.getElementById(id); }
    예전엔 안 떼서, 설정을 고칠 때마다 죽은 연결의 감시가 쌓이고
    경기 감시(_w)가 사라진 DB 를 가리킨 채 남아 있었다. */
 var _connRef = null;
-function initFB(){
+/* ───── 기본 Firebase 연결 (2026-10-02) ─────────────────────
+   기기마다 설정을 다시 넣던 문제 → 연결 정보는 앱에 넣고, 기기는 「학교 코드」만 입력한다.
+   ★ firebaseConfig 는 비밀번호가 아니다(브라우저에 그대로 내려가는 값, 구글도 공개 전제).
+     학생 기록을 지키는 건 «학교 코드» 다. DB 규칙을 baseball/$학교코드 로만 열어 두어
+     코드를 모르면 어떤 학교가 있는지 목록조차 못 본다. → 학교 코드는 화면·코드에 노출하지 않는다.
+   ★ 구글시트 주소·학급 수·학급 이름은 Firebase 의 그 학교 칸(cfg)에 두어 기기끼리 공유한다. */
+var FB_DEFAULT = {
+  apiKey: "AIzaSyCtoPLR_PP2RBaQqSLxUZfIBwu8emH-wpg",
+  authDomain: "baseball-record-1d9a5.firebaseapp.com",
+  databaseURL: "https://baseball-record-1d9a5-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "baseball-record-1d9a5"
+};
+/* 예전 짧은 코드는 쓰지 않는다(추측하기 쉬움) — 이 코드가 남아 있는 기기는 새 코드를 다시 묻는다 */
+var RETIRED_CODES = ['YJ'];
+function fbConf(){
   var raw = (S.cfg.fb||'').trim();
-  setNet(false, raw? '연결 중…' : '로컬 저장');
+  if(raw){ try{ return JSON.parse(raw); }catch(e){} }
+  return FB_DEFAULT;
+}
+/* 공유 설정 — 한 기기에서 바꾸면 모든 기기에 */
+var SHARED_KEYS = ['gasUrl','classCount','classNames'];
+function pushSharedCfg(){
+  if(!DB || !S.cfg.school) return;
+  var o = {_by:DEVICE, _at:Date.now()};
+  SHARED_KEYS.forEach(function(k){ o[k] = S.cfg[k]; });
+  DB.ref(ROOT()+'/cfg').update(o).catch(function(){});
+}
+var _cfgRef = null;
+function watchSharedCfg(){
+  if(_cfgRef){ try{ _cfgRef.off(); }catch(e){} _cfgRef = null; }
+  if(!DB || !S.cfg.school) return;
+  _cfgRef = DB.ref(ROOT()+'/cfg');
+  _cfgRef.on('value', function(snap){
+    var v = snap.val();
+    if(!v){                                   // 아직 아무 기기도 안 올렸으면 이 기기 설정으로 채운다
+      if(S.cfg.gasUrl) pushSharedCfg();
+      return;
+    }
+    var changed = false;
+    SHARED_KEYS.forEach(function(k){
+      if(v[k]==null || v[k]==='') return;
+      if(JSON.stringify(S.cfg[k]) !== JSON.stringify(v[k])){ S.cfg[k] = v[k]; changed = true; }
+    });
+    if(changed){ save(); render(); if(v._by!==DEVICE) toast('공유 설정을 받았습니다'); }
+  });
+}
+
+function initFB(){
+  if(RETIRED_CODES.indexOf(S.cfg.school) >= 0){ S.cfg.school = ''; save(); }
+  var raw = S.cfg.school ? 'on' : '';
+  setNet(false, raw? '연결 중…' : '학교 코드 필요');
+  if(_cfgRef){ try{ _cfgRef.off(); }catch(e){} _cfgRef = null; }
   unwatch(); unwatchClass();
   if(_connRef){ try{ _connRef.off(); }catch(e){} _connRef = null; }
   if(FB){ try{ FB.delete(); }catch(e){} FB = null; }
   DB = null;
   if(!raw) return;
   try{
-    var conf = JSON.parse(raw);
+    var conf = fbConf();
     FB = firebase.initializeApp(conf, 'bb'+Date.now());
     DB = firebase.database(FB);
     _connRef = DB.ref('.info/connected');
@@ -1054,6 +1103,7 @@ function initFB(){
       setNet(!!s.val(), s.val()? 'Firebase 연결' : '오프라인 (로컬 저장)');
       if(s.val() && S.cur) watchClass(S.cur);   // 붙자마자 지금 학급 자료를 받아 온다
     });
+    watchSharedCfg();
   }catch(e){ DB=null; setNet(false,'설정 오류 — 로컬 저장'); }
 }
 function setNet(ok, txt){
@@ -1080,7 +1130,7 @@ function b64d(s){
 }
 function setupLink(){
   var p = {v:1, school:S.cfg.school||'', gas:S.cfg.gasUrl||'', fb:S.cfg.fb||''};
-  if(!p.gas && !p.fb) return '';
+  if(!p.school) return '';
   return location.origin + location.pathname + '#setup=' + b64e(JSON.stringify(p));
 }
 /* ★ 이 링크를 태블릿 바탕화면 바로가기로 걸어 두는 걸 권한다.
@@ -1097,9 +1147,10 @@ function applySetupLink(){
   catch(e){ location.hash = ''; }
   if(!p) return false;
   var changed = false;
-  if(p.school && S.cfg.school !== p.school){ S.cfg.school = p.school; changed = true; }
+  if(p.school && RETIRED_CODES.indexOf(p.school)<0 && S.cfg.school !== p.school){ S.cfg.school = p.school; changed = true; }
   if(p.gas    && S.cfg.gasUrl !== p.gas   ){ S.cfg.gasUrl = p.gas;    changed = true; }
-  if(p.fb     && S.cfg.fb     !== p.fb    ){ S.cfg.fb     = p.fb;     changed = true; }
+  /* 예전 링크에 든 Firebase 설정이 기본 연결과 같은 프로젝트면 따로 저장하지 않는다 */
+  if(p.fb && p.fb.indexOf(FB_DEFAULT.projectId) < 0 && S.cfg.fb !== p.fb){ S.cfg.fb = p.fb; changed = true; }
   if(changed) save();
   return changed;
 }
@@ -1153,11 +1204,12 @@ function render(){
 
 /* ── 학급 ─────────────────────────────── */
 function vHome(){
+  if(!S.cfg.school) return codeGate();
   var all = S.cfg.classNames.slice(0, S.cfg.classCount);
   var mine = (S.cfg.mine||[]).filter(function(n){ return all.indexOf(n)>=0; });
   var names = (mine.length && !S.cfg.showAll) ? mine : all;
   el('v-home').innerHTML =
-    '<h2 class="t">학급 선택</h2><p class="st">' + esc(S.cfg.school||'학교명은 설정에서 입력') +
+    '<h2 class="t">학급 선택</h2><p class="st">' + (DB ? '🔗 학교 코드로 연결됨' : '학교 코드 연결 중') +
     ' · ' + (mine.length && !S.cfg.showAll ? '담당 ' + names.length + '개 (전체 ' + all.length + ')'
                                            : '학급 ' + names.length + '개') + '</p>' +
     (mine.length ? '<div class="row" style="margin-bottom:12px">'+
@@ -1178,6 +1230,29 @@ function vHome(){
       nav(c.roster.length ? 'game' : 'roster');
     });
   });
+}
+
+/* 처음 여는 기기 — 학교 코드 한 칸만 넣으면 명단·기록·구글시트 설정까지 Firebase 에서 받아 온다 */
+function codeGate(){
+  el('v-home').innerHTML =
+    '<div class="card" style="max-width:460px;margin:40px auto;padding:26px 24px">'+
+    '<h2 class="t" style="font-size:22px">⚾ 학교 코드 입력</h2>'+
+    '<p class="st" style="margin:6px 0 16px">선생님끼리 정한 <b>학교 코드</b>를 넣으면 명단·경기 기록·구글시트 연결이 '+
+    '이 기기로 자동으로 들어옵니다. <b>처음 한 번만</b> 넣으면 됩니다.</p>'+
+    '<input id="gcode" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" '+
+      'placeholder="학교 코드" style="font-size:18px;padding:12px 14px">'+
+    '<div class="row" style="margin-top:12px"><button class="btn pri" id="gok" style="flex:1;padding:12px">연결</button></div>'+
+    '<p class="st" style="margin:12px 0 0">학생에게 보이지 않게 입력하세요. 코드는 화면에 표시되지 않습니다.</p></div>';
+  function go(){
+    var v = el('gcode').value.trim().toLowerCase();
+    if(v.length < 4) return toast('학교 코드를 확인하세요');
+    if(RETIRED_CODES.map(function(x){return x.toLowerCase();}).indexOf(v)>=0) return toast('예전 코드입니다 — 새 학교 코드를 넣어 주세요');
+    S.cfg.school = v; save(); initFB();
+    toast('연결합니다 — 설정과 명단을 받아 오는 중');
+    render();
+  }
+  el('gok').onclick = go;
+  el('gcode').onkeydown = function(e){ if(e.key==='Enter') go(); };
 }
 
 /* ── 명단 ─────────────────────────────── */
@@ -3064,8 +3139,8 @@ function vSet(){
   el('v-set').innerHTML =
     '<h2 class="t">설정</h2><p class="st">학급 수는 최대 13개까지 (다른 학교에도 쓸 수 있게)</p>'+
     '<div class="card"><h3>학교 · 학급</h3>'+
-    '<div class="row"><div style="flex:2"><label style="font-size:11.5px;color:var(--tx3)">학교명</label>'+
-    '<input id="sch" value="'+esc(S.cfg.school)+'"></div>'+
+    '<div class="row"><div style="flex:2"><label style="font-size:11.5px;color:var(--tx3)">학교 코드 (기록 저장 위치 · 선생님끼리만)</label>'+
+    '<input id="sch" type="password" autocomplete="off" autocapitalize="none" value="'+esc(S.cfg.school)+'"></div>'+
     '<div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">학급 수</label>'+
     '<select id="cc">'+Array.from({length:13},function(_,i){var n=i+1;
       return '<option value="'+n+'"'+(S.cfg.classCount===n?' selected':'')+'>'+n+'개</option>';}).join('')+
@@ -3094,12 +3169,12 @@ function vSet(){
     '<button class="btn ok" id="initSh">시트 양식 만들기</button></div>'+
     '<p class="st" style="margin:9px 0 0">명단 가져오기와 기록 내보내기에 씁니다. 없어도 앱은 다 돌아갑니다.</p></div>'+
 
-    '<div class="card"><h3>Firebase 동기화 (선택)</h3>'+
+    '<div class="card"><h3>Firebase 동기화 (고급 · 보통은 비워 두세요)</h3>'+
     '<label style="font-size:11.5px;color:var(--tx3)">firebaseConfig JSON</label>'+
     '<textarea id="fb" rows="6" placeholder=\'{"apiKey":"…","databaseURL":"https://…","projectId":"…"}\'>'+esc(S.cfg.fb)+'</textarea>'+
     '<div class="row" style="margin-top:9px"><button class="btn pri" id="saveF">저장 후 연결</button></div>'+
-    '<p class="st" style="margin:9px 0 0"><b>비워두면 이 기기에만 저장</b>됩니다. 여러 기기로 같이 기록하려면 '+
-    'Firebase 프로젝트를 새로 만들어 Realtime Database 설정을 붙여넣으세요.</p></div>'+
+    '<p class="st" style="margin:9px 0 0"><b>비워 두면 앱에 들어 있는 기본 연결</b>을 씁니다. '+
+    '다른 학교가 자기 Firebase 프로젝트를 쓸 때만 붙여넣으세요.</p></div>'+
 
     '<div class="card"><h3>설정 링크 (새 기기 연결)</h3>'+
     '<p class="st" style="margin:0 0 10px">위 <b>학교명 · 앱스스크립트 주소 · Firebase 설정</b>을 링크 하나에 담습니다. '+
@@ -3116,13 +3191,15 @@ function vSet(){
     '<button class="btn dn" id="rst">전체 초기화</button></div></div>';
 
   el('saveC').onclick = function(){
-    S.cfg.school = el('sch').value.trim();
+    var code = el('sch').value.trim().toLowerCase(), codeChanged = code !== S.cfg.school;
     S.cfg.classCount = +el('cc').value;
     var names = el('cn').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
     S.cfg.classNames = names.length ? names : defaultClassNames(S.cfg.classCount);
     while(S.cfg.classNames.length < S.cfg.classCount)
       S.cfg.classNames.push((S.cfg.classNames.length+1)+'반');
-    save(); toast('저장했습니다'); vSet();
+    if(codeChanged){ S.cfg.school = code; save(); initFB(); }
+    else { save(); pushSharedCfg(); }
+    toast(codeChanged ? '학교 코드를 바꿔 다시 연결합니다' : '저장했습니다 — 다른 기기에도 공유됩니다'); vSet();
   };
   el('v-set').querySelectorAll('[data-my]').forEach(function(b){
     b.onclick = function(){
@@ -3133,7 +3210,7 @@ function vSet(){
   });
   el('myAll').onclick  = function(){ S.cfg.mine = S.cfg.classNames.slice(0,S.cfg.classCount); save(); vSet(); };
   el('myNone').onclick = function(){ S.cfg.mine = []; save(); vSet(); };
-  el('saveG').onclick = function(){ S.cfg.gasUrl = el('gas').value.trim(); save(); toast('저장했습니다'); };
+  el('saveG').onclick = function(){ S.cfg.gasUrl = el('gas').value.trim(); save(); pushSharedCfg(); toast('저장했습니다 — 다른 기기에도 공유됩니다'); };
   el('mkLink').onclick = function(){
     var url = setupLink();
     if(!url) return toast('앱스스크립트 주소나 Firebase 설정을 먼저 넣어주세요');
@@ -3149,7 +3226,8 @@ function vSet(){
     jsonp({action:'ping'}).then(function(r){
         if(!r || !r.ok) return toast('응답이 이상합니다: ' + ((r&&r.error)||''));
         if(!r.ver) return toast('⚠️ 연결은 되지만 옛 버전입니다 — 「새 버전」으로 재배포하세요');
-        toast(r.msg || '연결 정상');
+        pushSharedCfg();                       // 확인된 주소는 다른 기기에도 공유
+        toast((r.msg || '연결 정상') + ' — 다른 기기에도 공유됩니다');
       })
       .catch(function(e){ toast(e.message); });
   };
