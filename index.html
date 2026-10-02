@@ -208,6 +208,10 @@ td.sc.tot{color:var(--warn);font-size:15px}
   padding:calc(var(--u) * .12) calc(var(--u) * .45);margin-left:calc(var(--u) * .2)}
 
 /* ── 아래 3단 ── */
+/* 공수교대 — 팀 칸이 제자리에서 휘리릭 뒤집히며 공격 ↔ 수비로 바뀐다 (사용자 요청) */
+.gmn{perspective:1600px}
+@keyframes flipIn{0%{transform:rotateY(-180deg);opacity:.15}45%{opacity:.15}55%{opacity:1}100%{transform:rotateY(0);opacity:1}}
+.gmn.swp .sl,.gmn.swp .sr{animation:flipIn .7s cubic-bezier(.3,.7,.2,1);backface-visibility:hidden;transform-origin:50% 50%}
 .gmn{flex:1 1 auto;min-height:0;display:grid;gap:calc(var(--u) * .7);
   grid-template-columns:var(--cols)}
 .gcol{min-height:0;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u) * .6);
@@ -298,7 +302,7 @@ td.sc.tot{color:var(--warn);font-size:15px}
   background:#2a3550;border-radius:99px;padding:calc(var(--u) * .3) calc(var(--u) * 1.2)}
 .goh small{display:block;font-size:calc(var(--u) * .8);color:#6a7fa8;margin-top:calc(var(--u) * .3);font-weight:700}
 .olist{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  display:flex;flex-direction:column;gap:calc(var(--u) * .25);padding:0 calc(var(--u) * .1)}
+  display:flex;flex-direction:column;gap:calc(var(--u) * .25);padding:0 calc(var(--u) * .5) 0 calc(var(--u) * .1)}
 .orow{display:flex;align-items:center;gap:calc(var(--u) * .45);padding:calc(var(--u) * .42) calc(var(--u) * .55);
   border-radius:calc(var(--u) * .5);border:1.5px solid transparent;font-size:calc(var(--u) * 1.15);flex:0 0 auto}
 .orow .o{width:1.6em;text-align:right;font-weight:900;color:#7d92ba;flex:0 0 auto}
@@ -691,7 +695,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02b';
+var APP_VER = '2026-10-02c';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2295,6 +2299,16 @@ function boardImpl(g){
     }).join('');
   }
 
+  function ordPanel(sideCls){
+    return '<div class="gcol gord '+sideCls+'">'+
+      '<div class="goh"><span>타격순서</span><small>'+esc(tname(atk))+' 공격 · '+order.length+'명</small></div>'+
+      '<div class="olist" id="olist">'+orderHTML()+'</div>'+
+    '</div>';
+  }
+  /* 공수교대 직후 한 번만 뒤집히는 효과 */
+  var swapAnim = g._lastHalf && g._lastHalf !== g.st.inning+g.st.half;
+  g._lastHalf = g.st.inning+g.st.half;
+
   /* ── 수비 배치도 — 늘 보인다. 아웃을 만든 선수를 탭 → 「아웃 처리」 ── */
   function fieldPanel(){
     var bench = benchOf(g, dside);
@@ -2328,12 +2342,13 @@ function boardImpl(g){
       '<button id="fsB">⛶ 전체화면</button>'+
       '<button id="fin" class="dn">경기 종료</button>'+
     '</div>'+
-    /* 왼쪽 위 = 수비팀(아래 수비 배치도와 같은 팀), 오른쪽 위 = 공격팀(아래 타격 순서와 같은 팀) — 공수교대 때 자리를 바꾼다 */
-    '<div class="gsc">'+tcard(dside)+
+    /* 팀마다 자리 고정 — 왼쪽 = H(점수표 윗줄), 오른쪽 = A. 카드 바로 아래에 그 팀이 지금 하는 일
+       (수비 중이면 수비 배치도, 공격 중이면 타격 순서)이 온다. 공수교대 때 아래 두 칸이 제자리에서 뒤집힌다. */
+    '<div class="gsc">'+tcard('H')+
       '<div class="gmid">'+scoreTable()+'</div>'+
-      tcard(atk)+'</div>'+
-    '<div class="gmn">'+
-      '<div class="gcol gfld">'+fieldPanel()+'</div>'+
+      tcard('A')+'</div>'+
+    '<div class="gmn'+(swapAnim?' swp':'')+'">'+
+      (atk==='A' ? '<div class="gcol gfld sl">'+fieldPanel()+'</div>' : ordPanel('sl'))+
       '<div class="gcol gplay">'+
         '<div class="cstrip"><span class="ginn">'+g.st.inning+'회 '+g.st.half+'</span>'+
           '<div class="cnt">'+
@@ -2363,10 +2378,7 @@ function boardImpl(g){
           '<button id="pR" class="rz">카운트<br>지우기</button>'+
         '</div>'+
       '</div>'+
-      '<div class="gcol gord">'+
-        '<div class="goh"><span>타격순서</span><small>'+esc(tname(atk))+' 공격 · '+order.length+'명</small></div>'+
-        '<div class="olist" id="olist">'+orderHTML()+'</div>'+
-      '</div>'+
+      (atk==='A' ? ordPanel('sr') : '<div class="gcol gfld sr">'+fieldPanel()+'</div>')+
     '</div>'+
   '</div>'+
   '<div class="card hdrow" style="margin-top:11px"><h3>경기 진행 기록 (최근 순)</h3>'+playLog(g)+'</div>'+
