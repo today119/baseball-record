@@ -292,7 +292,8 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .plog .k5,.plog .k6,.plog .k7{color:#7cb6ff}
 .hits .ptag{display:block;font-size:calc(var(--u) * .8);font-weight:800;opacity:.85;margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cbt{display:grid;grid-template-columns:1fr 1fr auto;gap:calc(var(--u) * .45);flex:0 0 auto}
+.cbt{display:grid;grid-template-columns:repeat(3,1fr);   /* 위 타격 버튼과 같은 3칸 (사용자 요청: 세 버튼 크기 통일) */
+  gap:calc(var(--u) * .45);flex:0 0 auto}
 .cbt button{white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:calc(var(--u) * .5);
   height:calc(var(--u) * 4.6);padding:0 calc(var(--u) * .6);border-radius:calc(var(--u) * .7);font-weight:900;
   font-size:calc(var(--u) * 1.5);background:transparent;border:1.5px solid #4a6290;color:#d3def4}
@@ -301,7 +302,7 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .cbt button.cb{color:#86efac;letter-spacing:.12em} .cbt button.cs{color:#fde68a;letter-spacing:.12em}
 html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt button.cs{color:#a16207}
 .cbt button .lamp{width:calc(var(--u) * 1.6);height:calc(var(--u) * 1.6);border-width:1px}
-.cbt button.rz{font-size:calc(var(--u) * .85);color:#7d92ba;padding:0 calc(var(--u) * .7);line-height:1.15}
+.cbt button.rz{font-size:calc(var(--u) * 1.15);color:#a9b8d6;line-height:1.15;white-space:normal;word-break:keep-all}
 
 /* 타격 순서 */
 
@@ -710,7 +711,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02g';
+var APP_VER = '2026-10-02h';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2392,7 +2393,7 @@ function boardImpl(g){
           /* 아래 버튼은 누르기만(+1) — 불을 피해 누르기 어렵다는 지적으로 불을 빼고 글자만. 고치기는 위 띠의 불을 눌러서 */
           '<button id="pB" class="cb">BALL</button>'+
           '<button id="pS" class="cs">STRIKE</button>'+
-          '<button id="pR" class="rz">카운트<br>지우기</button>'+
+          '<button id="pR" class="rz">카운트 지우기</button>'+
         '</div>'+
       '</div>'+
       (atk==='A' ? ordPanel('sr') : '<div class="gcol gfld sr">'+fieldPanel()+'</div>')+
