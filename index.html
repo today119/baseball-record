@@ -260,7 +260,7 @@ td.sc.tot{color:var(--warn);font-size:15px}
   padding:calc(var(--u) * .3) calc(var(--u) * .55)}
 .dlb{position:absolute;left:0;bottom:0;font-size:calc(var(--u) * .78);color:#5c6f96;font-weight:600}
 .hits{display:grid;grid-template-columns:repeat(6,1fr);gap:calc(var(--u) * .45);flex:0 0 auto}
-.hits button{padding:calc(var(--u) * .95) 0;border-radius:calc(var(--u) * .6);font-weight:900;
+.hits button{padding:calc(var(--u) * .8) 0;border-radius:calc(var(--u) * .6);font-weight:900;
   font-size:calc(var(--u) * 1.4);background:transparent;border:2px solid currentColor;transition:background .12s}
 /* 투명 + 외곽선 (사용자 요청: 꽉 찬 색 버튼이 촌스럽다). 색 뜻은 그대로 — 안타 초록 · 홈런 금 · 포볼/야선 파랑 · 아웃 빨강 */
 .hits button{grid-column:span 2}
@@ -272,13 +272,23 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .hits button:hover{background:rgba(255,255,255,.04)}
 .hits button:active{transform:translateY(1px);background:color-mix(in srgb, currentColor 22%, transparent)}
 .cbt button:active{transform:translateY(1px);filter:brightness(1.35)}
+.plog{margin:0;padding:0;list-style:none;max-height:320px;overflow:auto}
+.plog li{display:flex;gap:10px;align-items:baseline;padding:6px 2px;border-top:1px solid var(--line);font-size:13.5px}
+.plog li:first-child{border-top:0}
+.plog .pi{flex:0 0 64px;color:var(--tx3);font-weight:700}
+.plog .pn2{flex:0 0 120px;color:var(--tx2)} .plog .pn2 b{color:var(--tx)}
+.plog .pw{flex:1;font-weight:800} .plog .pw em{font-style:normal;color:var(--warn)}
+.plog .k0{color:#f19b91} .plog .k1,.plog .k2,.plog .k3{color:#4ade80} .plog .k4{color:#f5c451}
+.plog .k5,.plog .k6,.plog .k7{color:#7cb6ff}
+.hits .ptag{display:block;font-size:calc(var(--u) * .8);font-weight:800;opacity:.85;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cbt{display:grid;grid-template-columns:1fr 1fr auto;gap:calc(var(--u) * .45);flex:0 0 auto}
 .cbt button{white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:calc(var(--u) * .5);
-  height:calc(var(--u) * 3.4);padding:0 calc(var(--u) * .6);border-radius:calc(var(--u) * .6);font-weight:900;
-  font-size:calc(var(--u) * 1.15);background:transparent;border:1.5px solid #4a6290;color:#d3def4}
+  height:calc(var(--u) * 4.6);padding:0 calc(var(--u) * .6);border-radius:calc(var(--u) * .7);font-weight:900;
+  font-size:calc(var(--u) * 1.5);background:transparent;border:1.5px solid #4a6290;color:#d3def4}
 .lamp[data-ct]{position:relative;cursor:pointer}
 .lamp[data-ct]::after{content:'';position:absolute;inset:calc(var(--u) * -.55)}   /* 손가락 닿는 범위를 불보다 넓게 */
-.cbt button .lamp{width:calc(var(--u) * 1.3);height:calc(var(--u) * 1.3);border-width:1px}
+.cbt button .lamp{width:calc(var(--u) * 1.6);height:calc(var(--u) * 1.6);border-width:1px}
 .cbt button.rz{font-size:calc(var(--u) * .85);color:#7d92ba;padding:0 calc(var(--u) * .7);line-height:1.15}
 
 /* 타격 순서 */
@@ -342,9 +352,10 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .po.pick .pp{background:#b8860f} .po.pick .pn{background:var(--gold);color:#241a05}
 .po.swap{outline:calc(var(--u) * .14) dashed var(--info)}
 .bench{font-size:calc(var(--u) * .95);color:#7d92ba;text-align:center;flex:0 0 auto}
-.dbtn{display:grid;grid-template-columns:1fr 2fr;gap:calc(var(--u) * .5);flex:0 0 auto}
+.dbtn{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u) * .5);flex:0 0 auto}
 .dbtn button{height:calc(var(--u) * 3.4);padding:0;border-radius:calc(var(--u) * .55);
   font-size:calc(var(--u) * 1.1);font-weight:900;background:#1f3260;border:1px solid #3a5590;color:#e2e9f8}
+.dbtn button:disabled{opacity:.4}
 .dbtn button.on{background:var(--info);border-color:var(--info);color:#fff}
 .dbtn button.ok{background:var(--hit);border-color:var(--hit);color:#fff}
 .dbtn button.ok2{background:#2d5f86;border-color:#4a8cc0;color:#fff}
@@ -680,6 +691,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
+var APP_VER = '2026-10-02b';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1199,8 +1211,35 @@ document.addEventListener('click', function(e){
 });
 function render(){
   document.body.classList.remove('ingame','sideopen');
-  ({home:vHome, roster:vRoster, grp:vGroups, game:vGame, tt:vTT, rep:vRep, stats:vStats, set:vSet})[V]();
+  try{ ({home:vHome, roster:vRoster, grp:vGroups, game:vGame, tt:vTT, rep:vRep, stats:vStats, set:vSet})[V](); }
+  catch(e){ showErr(e, 'v-'+V); }
 }
+
+/* ───── 오류가 나도 빈 화면에 갇히지 않게 ─────────────────────
+   (2026-10-02 「야구를 누르면 하얀 화면」 — 화면 그리기 중 오류가 나면 메뉴까지 숨은 채 멈췄다)
+   → 오류 내용을 화면에 보여 주고, 메뉴를 다시 열고, Firebase 에 남겨 원인을 찾을 수 있게 한다. */
+function logErr(msg, stack, where){
+  try{
+    console.error(msg, stack);
+    if(DB && S.cfg.school) DB.ref(ROOT()+'/_err').push({msg:String(msg).slice(0,300), stack:String(stack||'').slice(0,1500),
+      where:where||'', ua:navigator.userAgent, dev:DEVICE, ts:Date.now(), cur:S.cur||'', ver:APP_VER});
+  }catch(e){}
+}
+function showErr(e, viewId){
+  document.body.classList.remove('ingame','fs');
+  logErr(e && e.message || e, e && e.stack, viewId);
+  var box = el(viewId) || el('v-home');
+  box.innerHTML = '<div class="card" style="border-color:var(--out);max-width:620px">'+
+    '<h3 style="color:var(--out)">⚠️ 화면을 그리다가 오류가 났어요</h3>'+
+    '<p class="st" style="margin:0 0 10px">기록은 그대로 저장돼 있어요. 아래 내용을 캡처해서 보내 주시면 고칠게요.</p>'+
+    '<pre style="white-space:pre-wrap;font-size:12px;color:var(--tx2);background:var(--panel2);padding:10px;border-radius:8px;max-height:200px;overflow:auto">'+
+      esc((e && e.message) || e)+'\n'+esc(String(e && e.stack || '').split('\n').slice(0,4).join('\n'))+'\n'+esc(navigator.userAgent)+'</pre>'+
+    '<div class="row" style="margin-top:10px"><button class="btn pri" id="errRetry">다시 시도</button>'+
+    '<button class="btn" id="errHome">학급 화면으로</button></div></div>';
+  el('errRetry').onclick = function(){ render(); };
+  el('errHome').onclick = function(){ nav('home'); };
+}
+window.addEventListener('error', function(ev){ logErr(ev.message, ev.error && ev.error.stack, 'window'); });
 
 /* ── 학급 ─────────────────────────────── */
 function vHome(){
@@ -2139,7 +2178,31 @@ function onField(g, side){
   return Object.keys(m).map(function(k){ return m[k]; }).filter(Boolean);
 }
 
+/* 경기 진행 기록 — 복기용. 「1회 말 · 3번 박지윤 — 아웃 (유격수 양연규)」 */
+var KIND_LOG = ['아웃','1루타','2루타','3루타','홈런','포볼','야수선택','실책 출루'];
+function playLog(g){
+  var list = (g.atbats||[]).slice();
+  sortRec(list);
+  if(!list.length) return '<div class="msg">아직 기록이 없습니다</div>';
+  return '<ol class="plog">'+list.reverse().map(function(a){
+    var no = a.stBefore ? (a.stBefore.idx+1)+'번 ' : '';
+    var fld = (a.fld||[]).map(function(f){
+      var P = POS.filter(function(x){ return x.k===f.pos; })[0];
+      return (P ? P.n+' ' : '')+esc(pName(g, f.sid));
+    }).join(' → ');
+    var what = KIND_LOG[a.kind] || '';
+    if(fld) what += a.kind===6 ? ' ('+fld+' 주자 아웃)' : ' ('+fld+')';
+    var sc = a.sc!=null ? a.sc : (a.rbi||0);
+    return '<li><span class="pi">'+(a.inning||'')+'회 '+(a.half||'')+'</span>'+
+      '<span class="pn2">'+no+'<b>'+esc(a.name||nameOf(g,a.sid))+'</b></span>'+
+      '<span class="pw k'+a.kind+'">'+what+(sc ? ' · <em>'+sc+'점</em>' : '')+'</span></li>';
+  }).join('')+'</ol>';
+}
+
 function board(g){
+  try{ return boardImpl(g); }catch(e){ showErr(e, 'v-game'); }
+}
+function boardImpl(g){
   var c = cls();
   watchGame(S.cur, g.no);
   if(g._setup) return setupView(g);      // 경기 세팅 화면 (감시는 붙인 채로 둔다)
@@ -2155,6 +2218,7 @@ function board(g){
   g._pick = g._pick || [];                    // 아웃 기여로 고른 선수
   g._swap = !!g._swap;                        // 교대 모드
   function tname(side){ return side==='H' ? g.home : g.away; }
+  var pickTag = g._pick.length ? ' <small class="ptag">🧤 '+g._pick.map(function(sid){ return esc(pName(g,sid)); }).join('·')+'</small>' : '';
   var outsNow = (g.atbats||[]).filter(function(a){
     return a.inning===g.st.inning && a.half===g.st.half && a.kind===0; }).length;
 
@@ -2235,8 +2299,8 @@ function board(g){
   function fieldPanel(){
     var bench = benchOf(g, dside);
     var hint = g._swap ? '교대할 자리를 누르세요'
-      : g._pick.length ? g._pick.length+'명 선택 — 「아웃 처리」를 누르세요'
-      : '아웃을 만든 선수를 누르세요';
+      : g._pick.length ? g._pick.length+'명 선택 — 「아웃」이나 「야수선택」을 누르면 같이 기록돼요'
+      : '공을 처리한 수비수를 누른 뒤 결과 버튼';
     return '<div class="fph"><span class="pt '+dside+'">'+esc(tname(dside))+'</span><span class="pmode">수비</span>'+
         '<span class="fhint'+(g._pick.length||g._swap?' on':'')+'">'+hint+'</span></div>'+
       '<div class="fwrap"><div class="field">'+fieldSVG()+POS.map(function(P){
@@ -2249,7 +2313,7 @@ function board(g){
         (bench.length ? ' · '+bench.map(function(p){return esc(p.name);}).join(', ') : '')+'</div>'+
       '<div class="dbtn">'+
         '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
-        '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">🧤 아웃 처리'+(g._pick.length?' ('+g._pick.length+'명)':'')+'</button>'+
+        '<button id="pickClr"'+(g._pick.length?'':' disabled')+'>선택 지우기'+(g._pick.length?' ('+g._pick.length+'명)':'')+'</button>'+
       '</div>';
   }
 
@@ -2264,9 +2328,10 @@ function board(g){
       '<button id="fsB">⛶ 전체화면</button>'+
       '<button id="fin" class="dn">경기 종료</button>'+
     '</div>'+
-    '<div class="gsc">'+tcard('A')+
+    /* 왼쪽 위 = 수비팀(아래 수비 배치도와 같은 팀), 오른쪽 위 = 공격팀(아래 타격 순서와 같은 팀) — 공수교대 때 자리를 바꾼다 */
+    '<div class="gsc">'+tcard(dside)+
       '<div class="gmid">'+scoreTable()+'</div>'+
-      tcard('H')+'</div>'+
+      tcard(atk)+'</div>'+
     '<div class="gmn">'+
       '<div class="gcol gfld">'+fieldPanel()+'</div>'+
       '<div class="gcol gplay">'+
@@ -2287,10 +2352,10 @@ function board(g){
                '<button class="h2" data-k="2">2루타</button>'+
                '<button class="h3" data-k="3">3루타</button>'+
                '<button class="h5" data-k="5">포볼</button>'+
-               '<button class="h6" data-k="6">야수선택</button>'+
+               '<button class="h6" data-k="6">야수선택'+pickTag+'</button>'+
                '<button class="h7" data-k="7">실책 출루</button>'+
                '<button class="h4" data-k="4">홈런</button>'+
-               '<button class="h0" data-k="0">아웃</button>'+
+               '<button class="h0" data-k="0">아웃'+pickTag+'</button>'+
              '</div>' : '')+
         '<div class="cbt">'+
           '<button id="pB">볼 '+lamps(g._b||0,3,'b','B')+'</button>'+
@@ -2304,7 +2369,8 @@ function board(g){
       '</div>'+
     '</div>'+
   '</div>'+
-  '<div class="card hdrow" style="margin-top:11px"><h3>이 경기 기록</h3>'+
+  '<div class="card hdrow" style="margin-top:11px"><h3>경기 진행 기록 (최근 순)</h3>'+playLog(g)+'</div>'+
+  '<div class="card hdrow"><h3>이 경기 기록</h3>'+
     (Object.keys(st).length ?
       '<table><tr><th>이름</th><th class="n">타석</th><th class="n">타수</th><th class="n">안타</th>'+
       '<th class="n">타율</th><th class="n">볼넷</th><th class="n">득점</th><th class="n">타점</th><th class="n">수비</th></tr>'+
@@ -2348,18 +2414,7 @@ function board(g){
     };
   });
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
-  el('okDef').onclick = function(){ logDefense(); };
-  /* 아웃 처리 — 아웃을 만든 선수 (수비 참여는 awardDef 가 자동으로 준다) */
-  function logDefense(){
-    if(!g._pick.length) return toast('선수를 먼저 누르세요');
-    var made = g._pick.map(function(sid){
-      var r = {id:newId(), sid:sid, ts:stamp()};
-      g.defense.push(r); return r; });
-    var n = g._pick.length; g._pick = [];
-    made.forEach(function(r){ syncDF(S.cur, g, r); });
-    syncState(S.cur, g); board(g);
-    toast('아웃 처리 '+n+'명 기록');
-  }
+  el('pickClr').onclick = function(){ g._pick = []; board(g); };
   el('menuB').onclick = function(){ document.body.classList.add('sideopen'); };
   el('thB').onclick = function(){ setTheme(document.documentElement.dataset.theme==='light' ? 'dark' : 'light'); board(g); };
   el('setB').onclick = function(){ g._setup = true; document.body.classList.remove('fs'); save(); render(); };
@@ -2405,6 +2460,8 @@ function board(g){
       g.st = sb;
     }
     if(last.basesBefore) g.bases = last.basesBefore;
+    g.defense = g.defense.filter(function(d){       // 그 타석에 묶였던 수비 아웃도 같이
+      if(d.ab===last.id){ drop(gPath(S.cur,g)+'/df/'+d.id); return false; } return true; });
     g._s=0; g._b=0; g._pick=[];
     dropAB(S.cur, g, last.id);            // 배열 전체가 아니라 그 한 칸만 지운다
     syncState(S.cur,g); board(g); toast('한 타석 되돌림');
@@ -2425,7 +2482,8 @@ function board(g){
 
     var rec = {id:newId(), ts:stamp(), side:atk, sid:b.sid, name:b.name, kind:kind,
                result: (kind>=1&&kind<=4)?'H':'O', dup:!!b.dup,
-               run:0, rbi:((kind===5||kind===7)?0:scored),   // 포볼 밀어내기·실책 득점은 타점 없음 inning:g.st.inning, half:g.st.half,
+               run:0, rbi:((kind===5||kind===7)?0:scored),   /* 포볼 밀어내기·실책 득점은 타점 없음 */
+               sc:scored, inning:g.st.inning, half:g.st.half,
                stBefore:Object.assign({},g.st), basesBefore:before};
     g.atbats.push(rec);
     var touched=[];
@@ -2438,6 +2496,15 @@ function board(g){
     });
     if(atk==='H') g.hs+=scored; else g.as+=scored;
     if(kind===0) g._o = Math.min(3,(g._o||0)+1);
+    /* 수비 연동 — 결과는 공격 버튼이 정하고, 미리 탭해 둔 수비수는 「누가 처리했나」로 이 타석에 묶는다.
+       아웃·야수선택일 때만 수비 아웃으로 기록(안타·포볼·실책이면 선택만 지운다). 되돌리기는 ab 로 같이 지운다. */
+    var dfMade = [];
+    if((kind===0 || kind===6) && g._pick.length){
+      rec.fld = g._pick.map(function(sid){ return {sid:sid, pos:posOf(g, dside, sid)}; });
+      dfMade = g._pick.map(function(sid){
+        var r = {id:newId(), sid:sid, ts:stamp(), ab:rec.id};
+        g.defense.push(r); return r; });
+    }
     g._s=0; g._b=0; g._pick=[];
     if(g.st.idx+1 >= order.length) awardDef(g, onField(g, dside), 'end');   // 수비 이닝 끝 → 9명 수비 참여
     g.st = nextState(g.st, order.length);
@@ -2448,6 +2515,7 @@ function board(g){
       unwatch(); syncGameFull(S.cur,g); render(); toast('경기 종료'); return;
     }
     syncAB(S.cur, g, rec);                                  // 새 타석은 자기 칸에
+    dfMade.forEach(function(r){ syncDF(S.cur, g, r); });
     touched.forEach(function(i){ syncABRun(S.cur, g, g.atbats[i]); });  // 앞 타자는 run 만
     syncState(S.cur, g);
     board(g);
