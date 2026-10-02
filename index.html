@@ -142,6 +142,14 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .gbar button:active{filter:brightness(1.3)}
 .gbar button.fb{background:#123a2a;border-color:#2f8f5f;color:#9ef0c0}
 .gbar button.fb.on{background:#2f8f5f;color:#fff}
+.sbar{display:inline-flex;align-items:center;gap:calc(var(--u) * .3);min-width:0;flex:0 1 auto}
+.sbar button{padding:calc(var(--u) * .45) calc(var(--u) * .65)}
+.sbar button.on{background:#123a2a;border-color:#2f8f5f;color:#9ef0c0}
+.sbar .slab{font-size:calc(var(--u) * .95);font-weight:800;color:#c9d6f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:calc(var(--u) * 13)}
+.sbar .slab.pz{color:var(--gold)}
+html[data-theme=light] .sbar .slab{color:#1d2b47}
+html[data-theme=light] .sbar button.on{background:#e7f7ed;border-color:#16a34a;color:#166534}
 .gbar button.dn{background:#4a1a1a;border-color:#a8433a;color:#ffb3aa}
 
 /* ── 점수 줄 ── */
@@ -243,7 +251,7 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .rc.x{background:#1f4a2f;color:#bbf7d0;border-color:#3f9a63}
 .rc.hr{background:linear-gradient(180deg,#ffe08a,#f5b83d);color:#2a1d02;border-color:#f5c451}
 .rc.bb{background:#1a2c4f;color:#9cc1f0;border-color:#3b5d96}
-.rc.o{background:#552126;color:#ffc2bd;border-color:#a8433a}
+.rc.out{background:#552126;color:#ffc2bd;border-color:#a8433a}
 /* 주루 + 타격 */
 
 .brun{position:relative;flex:1 1 auto;min-height:calc(var(--u) * 9);display:flex;
@@ -530,7 +538,7 @@ html[data-theme=light] .nb-st .v{color:#15803d} html[data-theme=light] .nb-st .v
 html[data-theme=light] .rc{background:#e7f7ed;color:#166534;border-color:#9bd8b2}
 html[data-theme=light] .rc.x{background:#d1f0dd;color:#14532d;border-color:#6cc391}
 html[data-theme=light] .rc.bb{background:#e8effa;color:#1e3a8a;border-color:#a9bfe3}
-html[data-theme=light] .rc.o{background:#fde8e5;color:#b42318;border-color:#eba59c}
+html[data-theme=light] .rc.out{background:#fde8e5;color:#b42318;border-color:#eba59c}
 html[data-theme=light] .rkwrap{border-color:#d5deea}
 html[data-theme=light] .rkc{border-color:#d5deea}
 html[data-theme=light] .rkr{background:#f5f7fb;border-color:#e0e6ef}
@@ -565,6 +573,7 @@ html[data-theme=light] .toast{background:#1d2b47;color:#fff}
     <button class="nav" data-v="roster"><i>👥</i><span>명단</span></button>
     <button class="nav" data-v="grp"><i>🧩</i><span>조편성</span></button>
     <button class="nav" data-v="game"><i>⚾</i><span>야구</span></button>
+    <button class="nav" data-v="song"><i>🎵</i><span>응원가</span></button>
     <button class="nav" data-v="tt"><i>🏓</i><span>탁구</span></button>
     <button class="nav" data-v="rep"><i>📝</i><span>보고서</span></button>
     <button class="nav" data-v="stats"><i>📊</i><span>기록실</span></button>
@@ -576,6 +585,7 @@ html[data-theme=light] .toast{background:#1d2b47;color:#fff}
     <div class="vw" id="v-roster"></div>
     <div class="vw" id="v-grp"></div>
     <div class="vw" id="v-game"></div>
+    <div class="vw" id="v-song"></div>
     <div class="vw" id="v-tt"></div>
     <div class="vw" id="v-rep"></div>
     <div class="vw" id="v-stats"></div>
@@ -717,7 +727,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02i';
+var APP_VER = '2026-10-02j';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1095,7 +1105,7 @@ function fbConf(){
   return FB_DEFAULT;
 }
 /* 공유 설정 — 한 기기에서 바꾸면 모든 기기에 */
-var SHARED_KEYS = ['gasUrl','classCount','classNames'];
+var SHARED_KEYS = ['gasUrl','classCount','classNames','ttsKey','ttsVoice'];
 function pushSharedCfg(){
   if(!DB || !S.cfg.school) return;
   var o = {_by:DEVICE, _at:Date.now()};
@@ -1237,7 +1247,7 @@ document.addEventListener('click', function(e){
 });
 function render(){
   document.body.classList.remove('ingame','sideopen');
-  try{ ({home:vHome, roster:vRoster, grp:vGroups, game:vGame, tt:vTT, rep:vRep, stats:vStats, set:vSet})[V](); }
+  try{ ({home:vHome, roster:vRoster, grp:vGroups, game:vGame, song:vSong, tt:vTT, rep:vRep, stats:vStats, set:vSet})[V](); }
   catch(e){ showErr(e, 'v-'+V); }
 }
 
@@ -2181,7 +2191,7 @@ function halfPlayed(g, inning, half){
 /* 타석 결과 칩 — kind: 0아웃 1안타 2·3루타 4홈런 5포볼 6야수선택 7실책 */
 var KIND_TX = ['아웃','안타','2루타','3루타','홈런','포볼','야선','실책'];
 function chipHTML(kind){
-  var c = kind===4 ? 'hr' : (kind===2||kind===3) ? 'x' : kind===1 ? '' : (kind===5||kind===6||kind===7) ? 'bb' : 'o';
+  var c = kind===4 ? 'hr' : (kind===2||kind===3) ? 'x' : kind===1 ? '' : (kind===5||kind===6||kind===7) ? 'bb' : 'out';   /* ★ 'o' 는 타순 번호 칸(.orow .o)과 겹쳐 칩이 좁아졌다 */
   return '<span class="rc '+c+'">'+(kind===4?'🏆 ':'')+KIND_TX[kind]+'</span>';
 }
 /* 반 안에서의 부문 순위 — 홈런·타율·안타·타점 중 가장 높은 것 하나 (10위 안일 때만) */
@@ -2371,6 +2381,7 @@ function boardImpl(g){
   '<div class="gb">'+
     '<div class="gbar">'+
       '<button id="menuB">☰ 메뉴</button>'+
+      songBarHTML()+
       '<span class="gt">'+gLabel(g)+'<small>'+(g.mode==='intra'?'학급내':'학급대항')+' · '+g.innings+'이닝 · 전원타격제</small></span>'+
       '<button id="thB">'+(document.documentElement.dataset.theme==='light'?'🌙 어둡게':'☀ 밝게')+'</button>'+
       '<button id="undo">↶ 되돌리기</button>'+
@@ -2466,6 +2477,10 @@ function boardImpl(g){
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
   el('pickClr').onclick = function(){ g._pick = []; board(g); };
   el('menuB').onclick = function(){ document.body.classList.add('sideopen'); };
+  bindSongBar();
+  watchSongIdx(S.cur);
+  SONG._pf = SONG._pf || {};
+  if(!SONG._pf[S.cur] && SONG.idx[S.cur]){ SONG._pf[S.cur] = 1; prefetchClassSongs(S.cur); }
   el('thB').onclick = function(){ setTheme(document.documentElement.dataset.theme==='light' ? 'dark' : 'light'); board(g); };
   el('setB').onclick = function(){ g._setup = true; document.body.classList.remove('fs'); save(); render(); };
   el('fsB').onclick = function(){
@@ -2515,10 +2530,12 @@ function boardImpl(g){
       if(d.ab===last.id){ drop(gPath(S.cur,g)+'/df/'+d.id); return false; } return true; });
     g._s=0; g._b=0; g._pick=[];
     dropAB(S.cur, g, last.id);            // 배열 전체가 아니라 그 한 칸만 지운다
+    stopAll();
     syncState(S.cur,g); board(g); toast('한 타석 되돌림');
   };
   el('fin').onclick = function(){
     if(!confirm('경기를 종료할까요?')) return;
+    stopAll();
     g.status='done'; document.body.classList.remove('fs');
     ['_s','_b','_o','_pick','_swap'].forEach(function(k){ delete g[k]; });
     unwatch(); syncGameFull(S.cur,g); render(); toast(gLabel(g)+' 종료');
@@ -2562,6 +2579,7 @@ function boardImpl(g){
     /* 공수교대 — 주자·아웃 리셋. 교대 모드도 꺼서 다음 회에 헛눌리지 않게 한다 */
     if(g.st.idx===0){ g._o=0; g.bases=[null,null,null]; g._swap=false; }
     if(isGameOver(g.st, g.innings)){
+      stopAll();
       g.status='done'; document.body.classList.remove('fs');
       unwatch(); syncGameFull(S.cur,g); render(); toast('경기 종료'); return;
     }
@@ -2570,6 +2588,7 @@ function boardImpl(g){
     touched.forEach(function(i){ syncABRun(S.cur, g, g.atbats[i]); });  // 앞 타자는 run 만
     syncState(S.cur, g);
     board(g);
+    cheerBatter(g);                                         // 다음 타자 소개 → 응원가
     if(kind===6) toast('야수선택 — 죽은 주자를 다이아몬드에서 눌러 지우세요');
     else if(kind===7) toast('실책 출루 — 주자가 더 갔으면 베이스를 눌러 고치세요');
     else if(scored) toast(b.name+' · '+scored+'점');
@@ -3288,6 +3307,16 @@ function vSet(){
     '<button class="btn ok" id="initSh">시트 양식 만들기</button></div>'+
     '<p class="st" style="margin:9px 0 0">명단 가져오기와 기록 내보내기에 씁니다. 없어도 앱은 다 돌아갑니다.</p></div>'+
 
+    '<div class="card"><h3>🎙 타자 소개 목소리 (구글 음성 · 선택)</h3>'+
+    '<label style="font-size:11.5px;color:var(--tx3)">구글 클라우드 Text-to-Speech API 키 — 비워 두면 아이패드 내장 음성</label>'+
+    '<input id="ttsKey" type="password" autocomplete="off" placeholder="AIza…" value="'+esc(S.cfg.ttsKey||'')+'">'+
+    '<div class="row" style="margin-top:9px"><div style="flex:1"><select id="ttsVoice">'+
+      [['ko-KR-Neural2-C','남자 · 또렷한 캐스터 (Neural2-C)'],['ko-KR-Wavenet-D','남자 · 낮은 톤 (Wavenet-D)'],
+       ['ko-KR-Neural2-A','여자 · 밝은 톤 (Neural2-A)'],['ko-KR-Wavenet-B','여자 · 차분한 톤 (Wavenet-B)']].map(function(v){
+        return '<option value="'+v[0]+'"'+((S.cfg.ttsVoice||'ko-KR-Neural2-C')===v[0]?' selected':'')+'>'+v[1]+'</option>'; }).join('')+
+    '</select></div><button class="btn pri" id="saveTts">저장</button><button class="btn" id="tryTts">들어 보기</button></div>'+
+    '<p class="st" style="margin:9px 0 0">키는 학교 코드 방에 저장되어 <b>모든 기기에 공유</b>됩니다. 앱 코드에는 들어가지 않아요.</p></div>'+
+
     '<div class="card"><h3>Firebase 동기화 (고급 · 보통은 비워 두세요)</h3>'+
     '<label style="font-size:11.5px;color:var(--tx3)">firebaseConfig JSON</label>'+
     '<textarea id="fb" rows="6" placeholder=\'{"apiKey":"…","databaseURL":"https://…","projectId":"…"}\'>'+esc(S.cfg.fb)+'</textarea>'+
@@ -3329,6 +3358,17 @@ function vSet(){
   });
   el('myAll').onclick  = function(){ S.cfg.mine = S.cfg.classNames.slice(0,S.cfg.classCount); save(); vSet(); };
   el('myNone').onclick = function(){ S.cfg.mine = []; save(); vSet(); };
+  el('saveTts').onclick = function(){
+    S.cfg.ttsKey = el('ttsKey').value.trim(); S.cfg.ttsVoice = el('ttsVoice').value; _gtts = {};
+    save(); pushSharedCfg(); toast(S.cfg.ttsKey ? '구글 음성 키 저장 — 다른 기기에도 공유됩니다' : '아이패드 내장 음성을 씁니다');
+  };
+  el('tryTts').onclick = function(){
+    unlockAudio(); S.cfg.ttsKey = el('ttsKey').value.trim(); S.cfg.ttsVoice = el('ttsVoice').value; _gtts = {};
+    var t = '5번 타자, 박지윤! 시즌 타율 3할 3푼 3리, 9타수 3안타, 홈런 1개.';
+    if(S.cfg.ttsKey) googleTTS(t).then(function(){ speak(t); toast('구글 음성 정상'); })
+      .catch(function(e){ toast('구글 음성 실패: '+(e && e.message || e)); });
+    else speak(t);
+  };
   el('saveG').onclick = function(){ S.cfg.gasUrl = el('gas').value.trim(); save(); pushSharedCfg(); toast('저장했습니다 — 다른 기기에도 공유됩니다'); };
   el('mkLink').onclick = function(){
     var url = setupLink();
@@ -3379,6 +3419,470 @@ function vSet(){
   el('rst').onclick = function(){
     if(!confirm('모든 기록이 지워집니다. 계속할까요?')) return;
     localStorage.removeItem('bb.v1'); S = load(); save(); nav('home'); toast('초기화했습니다');
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   🎵 응원가 + 캐스터 타자 소개 (2026-10-02)
+   · 수집은 구글 드라이브(학생) → 선생님이 아이패드 「파일」 앱에서 골라 올린다
+   · 앱이 약 100초·모노·48kbps mp3 로 줄여서 Firebase(실시간 DB)에 저장 — 모든 기기 공유
+     (Firebase Storage 는 유료 요금제가 필요해 실시간 DB 에 base64 로 둔다. 반 하나 ≈ 20MB)
+       songIdx/<반>/<학생>  = {name, start, v, dur, size}   ← 목록·설정(가벼움)
+       songData/<반>/<학생> = {v, b64}                      ← 음원(무거움, 필요할 때만 받는다)
+   · 기기는 받은 음원을 IndexedDB 에 보관 → 다음부터는 즉시 재생
+   · 재생은 Web Audio — 첫 터치 때 한 번 «잠금 해제» 해 두면 그 뒤로는 버튼 없이도 이어서 틀 수 있다
+     (아이패드 사파리는 사용자가 누른 순간에만 소리를 허락한다. 후배 앱은 이 때문에 가끔 무음)
+   · 타자 소개는 아이패드 내장 음성(speechSynthesis). 설정에 구글 음성 키가 있으면 구글 목소리.
+   ═══════════════════════════════════════════════════════════ */
+var SONG = {
+  ctx:null, gain:null, src:null, cur:null, paused:false, speaking:false,
+  auto: (function(){ try{ return localStorage.getItem('bb.cheer') !== '0'; }catch(e){ return true; } })(),
+  cache:{}, idx:{}, idxRef:null, idxKey:'', seq:0
+};
+var SONG_SEC = 100, SONG_RATE = 22050, SONG_KBPS = 48;
+function songKey(cn, sid){ return ck(cn)+'/'+ck(sid); }
+
+/* ── 오디오 잠금 해제 — 아무 곳이나 처음 누를 때 ── */
+function audioCtx(){
+  if(!SONG.ctx){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    SONG.ctx = new AC();
+    SONG.gain = SONG.ctx.createGain(); SONG.gain.connect(SONG.ctx.destination);
+  }
+  return SONG.ctx;
+}
+function unlockAudio(){
+  var c = audioCtx(); if(!c) return;
+  if(c.state === 'suspended' && !SONG.paused) c.resume();
+  if(!SONG._unlocked){                      // 무음 한 조각을 틀어 두면 iOS 가 이 컨텍스트를 허락한다
+    try{ var b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); }catch(e){}
+    SONG._unlocked = true;
+  }
+}
+document.addEventListener('touchend', unlockAudio, true);
+document.addEventListener('click', unlockAudio, true);
+
+/* ── IndexedDB (기기 보관함) ── */
+var _idb = null;
+function idb(){
+  if(_idb) return _idb;
+  _idb = new Promise(function(res, rej){
+    try{
+      var r = indexedDB.open('bb_cheer_v1', 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore('songs'); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    }catch(e){ rej(e); }
+  });
+  return _idb;
+}
+function idbGet(k){
+  return idb().then(function(db){ return new Promise(function(res){
+    var q = db.transaction('songs','readonly').objectStore('songs').get(k);
+    q.onsuccess = function(){ res(q.result || null); }; q.onerror = function(){ res(null); };
+  }); }).catch(function(){ return null; });
+}
+function idbPut(k, v){
+  return idb().then(function(db){ return new Promise(function(res){
+    var t = db.transaction('songs','readwrite'); t.objectStore('songs').put(v, k);
+    t.oncomplete = function(){ res(true); }; t.onerror = function(){ res(false); };
+  }); }).catch(function(){ return false; });
+}
+function b64ToBytes(b64){
+  var bin = atob(b64), n = bin.length, u = new Uint8Array(n);
+  for(var i=0;i<n;i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function bytesToB64(u8){
+  var s = '', CH = 0x8000;
+  for(var i=0;i<u8.length;i+=CH) s += String.fromCharCode.apply(null, u8.subarray(i, i+CH));
+  return btoa(s);
+}
+function decodeAudio(ab){
+  var c = audioCtx();
+  return new Promise(function(res, rej){
+    try{
+      var p = c.decodeAudioData(ab, res, rej);       // 옛 사파리는 콜백만 받는다
+      if(p && p.then) p.then(res, rej);
+    }catch(e){ rej(e); }
+  });
+}
+
+/* ── 반별 목록 감시 ── */
+function watchSongIdx(cn){
+  if(!DB || !cn) return;
+  if(SONG.idxKey === cn && SONG.idxRef) return;
+  if(SONG.idxRef){ try{ SONG.idxRef.off(); }catch(e){} }
+  SONG.idxKey = cn;
+  SONG.idxRef = DB.ref(ROOT()+'/songIdx/'+ck(cn));
+  SONG.idxRef.on('value', function(s){
+    SONG.idx[cn] = s.val() || {};
+    if(V==='song') vSong();
+    SONG._pf = SONG._pf || {};
+    if(V==='game' && !SONG._pf[cn]){ SONG._pf[cn] = 1; prefetchClassSongs(cn); }
+  });
+}
+function songMeta(cn, sid){ return ((SONG.idx[cn]||{})[ck(sid)]) || null; }
+
+/* 음원 하나 준비 — 메모리 → 기기 보관함 → Firebase 순서로 찾는다 */
+function ensureSong(cn, sid){
+  var m = songMeta(cn, sid); if(!m || !audioCtx()) return Promise.resolve(null);
+  var k = songKey(cn, sid), hit = SONG.cache[k];
+  if(hit && hit.v === m.v) return Promise.resolve(hit.buf);
+  return idbGet(k).then(function(rec){
+    if(rec && rec.v === m.v && rec.blob) return rec.blob.arrayBuffer ? rec.blob.arrayBuffer() : new Response(rec.blob).arrayBuffer();
+    if(!DB) return null;
+    return DB.ref(ROOT()+'/songData/'+ck(cn)+'/'+ck(sid)).once('value').then(function(s){
+      var d = s.val(); if(!d || !d.b64) return null;
+      var u8 = b64ToBytes(d.b64), blob = new Blob([u8], {type:'audio/mpeg'});
+      idbPut(k, {v:d.v, blob:blob});
+      return u8.buffer;
+    });
+  }).then(function(ab){
+    if(!ab) return null;
+    return decodeAudio(ab).then(function(buf){ SONG.cache[k] = {v:m.v, buf:buf}; return buf; });
+  }).catch(function(e){ console.warn('응원가 준비 실패', e); return null; });
+}
+/* 반 전체를 미리 받아 둔다 (경기 화면에 들어올 때 뒤에서 조용히) */
+function prefetchClassSongs(cn){
+  var ix = SONG.idx[cn] || {};
+  Object.keys(ix).reduce(function(p, sk){
+    return p.then(function(){
+      var k = ck(cn)+'/'+sk;
+      return idbGet(k).then(function(rec){
+        if(rec && rec.v === ix[sk].v) return;
+        if(!DB) return;
+        return DB.ref(ROOT()+'/songData/'+ck(cn)+'/'+sk).once('value').then(function(s){
+          var d = s.val(); if(d && d.b64) return idbPut(k, {v:d.v, blob:new Blob([b64ToBytes(d.b64)], {type:'audio/mpeg'})});
+        });
+      });
+    });
+  }, Promise.resolve()).catch(function(){});
+}
+
+/* ── 재생 ── */
+function stopSong(fade){
+  var c = SONG.ctx, s = SONG.src; SONG.src = null; SONG.cur = null;
+  if(!c || !s) return;
+  try{
+    var t = c.currentTime, f = (fade==null ? .35 : fade);
+    SONG.gain.gain.cancelScheduledValues(t);
+    SONG.gain.gain.setValueAtTime(SONG.gain.gain.value, t);
+    SONG.gain.gain.linearRampToValueAtTime(0, t + f);
+    s.stop(t + f + .02);
+  }catch(e){ try{ s.stop(); }catch(_){} }
+}
+function playSong(cn, sid, label){
+  var my = ++SONG.seq;
+  return ensureSong(cn, sid).then(function(buf){
+    if(my !== SONG.seq) return false;                   // 그사이 다른 타자로 넘어갔다
+    if(!buf){ songBar(); return false; }
+    stopSong(.15);
+    var c = SONG.ctx, m = songMeta(cn, sid) || {}, st = Math.max(0, Math.min(+m.start||0, buf.duration - 2));
+    var s = c.createBufferSource(); s.buffer = buf; s.loop = true;
+    s.loopStart = st; s.loopEnd = buf.duration;
+    var g = SONG.gain.gain, t = c.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(0, t); g.linearRampToValueAtTime(1, t + .4);
+    s.connect(SONG.gain); s.start(0, st);
+    SONG.src = s; SONG.cur = {sid:sid, label:label};
+    if(SONG.paused){ SONG.paused = false; c.resume(); }
+    songBar();
+    return true;
+  });
+}
+function togglePause(){
+  var c = SONG.ctx; if(!c) return;
+  if(SONG.paused){ SONG.paused = false; c.resume(); }
+  else { SONG.paused = true; c.suspend(); try{ speechSynthesis.pause(); }catch(e){} }
+  if(!SONG.paused){ try{ speechSynthesis.resume(); }catch(e){} }
+  songBar();
+}
+function stopAll(){
+  SONG.seq++; stopSong(.2);
+  try{ speechSynthesis.cancel(); }catch(e){}
+  if(SONG._gsrc){ try{ SONG._gsrc.stop(); }catch(e){} SONG._gsrc = null; }
+  SONG.speaking = false; songBar();
+}
+
+/* ── 캐스터 멘트 ── */
+function korAvg(v){                      // .333 → 3할 3푼 3리
+  var n = Math.round(v*1000);
+  if(n >= 1000) return '10할';
+  if(n === 0) return '0할';
+  var h = Math.floor(n/100), p = Math.floor(n/10)%10, r = n%10, o = '';
+  if(h) o += h+'할';
+  if(p) o += (o?' ':'')+p+'푼';
+  if(r) o += (o?' ':'')+r+'리';
+  return o;
+}
+var KIND_SAY = ['아웃','안타','2루타','3루타','홈런','볼넷','야수선택','실책 출루'];
+function introText(g, b, idx, cum){
+  var me = cum[b.sid] || {ab:0,h:0,hr:0,rbi:0,avg:0};
+  var t = (idx+1)+'번 타자, '+b.name+'! ';
+  if(!me.ab && !me.bb) t += '오늘 첫 타석입니다. ';
+  else {
+    t += '시즌 타율 '+korAvg(me.avg)+', '+me.ab+'타수 '+me.h+'안타';
+    if(me.hr) t += ', 홈런 '+me.hr+'개';
+    if(me.rbi) t += ', 타점 '+me.rbi;
+    t += '. ';
+  }
+  var today = (g.atbats||[]).filter(function(a){ return a.sid===b.sid; });
+  if(today.length){
+    var last = today[today.length-1];
+    t += '앞 타석에서는 '+(last.kind===0 ? '아웃되었습니다' : KIND_SAY[last.kind]+(last.kind>=1&&last.kind<=4?'를 쳤습니다':'로 나갔습니다'))+'. ';
+  }
+  var rk = bestRank(cum, b.sid);
+  if(rk && rk.r <= 3) t += '현재 반 '+rk.t+' '+rk.r+'위! ';
+  return t;
+}
+function pickVoice(){
+  try{
+    var vs = speechSynthesis.getVoices().filter(function(v){ return /^ko/i.test(v.lang); });
+    var pref = vs.filter(function(v){ return /premium|enhanced|향상|neural/i.test(v.name); });
+    return pref[0] || vs[0] || null;
+  }catch(e){ return null; }
+}
+function speakWeb(text, done){
+  var fired = false, fin = function(){ if(fired) return; fired = true; SONG.speaking = false; songBar(); done && done(); };
+  try{
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ko-KR'; var v = pickVoice(); if(v) u.voice = v;
+    u.rate = 1.08; u.pitch = 1.08; u.volume = 1;
+    u.onend = fin; u.onerror = fin;
+    SONG.speaking = true; songBar();
+    speechSynthesis.speak(u);
+    setTimeout(fin, 1500 + text.length*170);          // iOS 가 onend 를 빠뜨릴 때를 대비
+  }catch(e){ fin(); }
+}
+/* 구글 음성 — 키가 있을 때만. 같은 문장은 한 번 받은 것을 다시 쓴다 */
+var _gtts = {};
+function googleTTS(text){
+  var key = (S.cfg.ttsKey||'').trim(); if(!key || !audioCtx()) return Promise.reject('no key');
+  if(_gtts[text]) return Promise.resolve(_gtts[text]);
+  return fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({input:{text:text}, voice:{languageCode:'ko-KR', name:S.cfg.ttsVoice||'ko-KR-Neural2-C'},
+                          audioConfig:{audioEncoding:'MP3', speakingRate:1.08, pitch:1.0}})
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if(!j.audioContent) throw new Error((j.error&&j.error.message)||'구글 음성 실패');
+    return decodeAudio(b64ToBytes(j.audioContent).buffer);
+  }).then(function(buf){ _gtts[text] = buf; return buf; });
+}
+function speak(text, done){
+  if((S.cfg.ttsKey||'').trim()){
+    SONG.speaking = true; songBar();
+    googleTTS(text).then(function(buf){
+      var c = SONG.ctx, s = c.createBufferSource(); s.buffer = buf; s.connect(c.destination);
+      SONG._gsrc = s;
+      s.onended = function(){ if(SONG._gsrc===s){ SONG._gsrc = null; SONG.speaking = false; songBar(); done && done(); } };
+      s.start(0);
+    }).catch(function(e){ console.warn('구글 음성 → 기기 음성으로', e); speakWeb(text, done); });
+  } else speakWeb(text, done);
+}
+
+/* 타자가 바뀔 때 — 소개 멘트 → 끝나면 응원가 반복 */
+function cheerBatter(g, force){
+  if(!SONG.auto && !force) return;
+  var atk = atkSide(g), order = atk==='H' ? g.orderH : g.orderA, b = order[g.st.idx];
+  if(!b || g.status!=='live'){ stopAll(); return; }
+  var c = cls(), cum = tally(allAtbats(c), allDefense(c), {});
+  var my = ++SONG.seq;
+  stopSong(.3); try{ speechSynthesis.cancel(); }catch(e){}
+  ensureSong(S.cur, b.sid);                            // 멘트 나가는 동안 미리 준비
+  speak(introText(g, b, g.st.idx, cum), function(){
+    if(my !== SONG.seq) return;
+    SONG.seq--;                                        // playSong 이 다시 올린다
+    playSong(S.cur, b.sid, b.name+' 응원가');
+    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(S.cur, nx.sid); }, 1500);
+  });
+}
+
+/* 경기 화면 음향 막대 */
+function songBarHTML(){
+  var lb = SONG.speaking ? '🎙 타자 소개 중' : SONG.cur ? '🎵 '+esc(SONG.cur.label) : '🎵 대기';
+  return '<span class="sbar" id="sbar">'+
+    '<button id="sPlay" title="일시정지/재생">'+(SONG.paused ? '▶' : '⏸')+'</button>'+
+    '<button id="sStop" title="정지">⏹</button>'+
+    '<button id="sRe" title="타자 소개 다시">🔁 소개</button>'+
+    '<button id="sAuto" class="'+(SONG.auto?'on':'')+'">자동 '+(SONG.auto?'ON':'OFF')+'</button>'+
+    '<span class="slab'+(SONG.paused?' pz':'')+'">'+lb+(SONG.paused?' · 일시정지':'')+'</span></span>';
+}
+function songBar(){
+  var e = el('sbar'); if(!e) return;
+  e.outerHTML = songBarHTML(); bindSongBar();
+}
+function bindSongBar(){
+  if(!el('sPlay')) return;
+  el('sPlay').onclick = function(){ unlockAudio(); togglePause(); };
+  el('sStop').onclick = function(){ stopAll(); };
+  el('sRe').onclick = function(){
+    unlockAudio(); var g = (cls().games||[]).filter(function(x){ return x.status==='live'; })[0];
+    if(g) cheerBatter(g, true);
+  };
+  el('sAuto').onclick = function(){
+    SONG.auto = !SONG.auto; try{ localStorage.setItem('bb.cheer', SONG.auto?'1':'0'); }catch(e){}
+    if(!SONG.auto) stopAll(); songBar(); toast('타자 소개·응원가 자동: '+(SONG.auto?'켜짐':'꺼짐'));
+  };
+}
+
+/* ── 음원 줄이기·압축 (아이패드에서 바로) ── */
+var _lameP = null;
+function loadLame(){
+  if(window.lamejs) return Promise.resolve();
+  if(_lameP) return _lameP;
+  _lameP = new Promise(function(res, rej){
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';
+    sc.onload = function(){ res(); }; sc.onerror = function(){ _lameP = null; rej(new Error('압축 도구를 못 불러왔습니다 (인터넷 확인)')); };
+    document.head.appendChild(sc);
+  });
+  return _lameP;
+}
+function compressSong(file, fromSec){
+  fromSec = Math.max(0, +fromSec||0);
+  return loadLame().then(function(){
+    return file.arrayBuffer ? file.arrayBuffer() : new Response(file).arrayBuffer();
+  }).then(decodeAudio).then(function(src){
+    var from = Math.min(fromSec, Math.max(0, src.duration - 5));
+    var len = Math.min(SONG_SEC, src.duration - from);
+    var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    var oc = new OAC(1, Math.ceil(len * SONG_RATE), SONG_RATE);
+    var s = oc.createBufferSource(); s.buffer = src; s.connect(oc.destination); s.start(0, from, len);
+    var r = oc.startRendering();
+    var p = (r && r.then) ? r : new Promise(function(res){ oc.oncomplete = function(e){ res(e.renderedBuffer); }; });
+    return p.then(function(out){ return {pcm: out.getChannelData(0), dur: len}; });
+  }).then(function(o){
+    var f = o.pcm, n = f.length, i16 = new Int16Array(n);
+    for(var i=0;i<n;i++){ var x = Math.max(-1, Math.min(1, f[i])); i16[i] = x < 0 ? x*0x8000 : x*0x7FFF; }
+    var enc = new lamejs.Mp3Encoder(1, SONG_RATE, SONG_KBPS), parts = [], tot = 0;
+    for(var j=0;j<n;j+=1152){ var mp = enc.encodeBuffer(i16.subarray(j, j+1152)); if(mp.length){ parts.push(new Uint8Array(mp)); tot += mp.length; } }
+    var end = enc.flush(); if(end.length){ parts.push(new Uint8Array(end)); tot += end.length; }
+    var u8 = new Uint8Array(tot), off = 0; parts.forEach(function(p){ u8.set(p, off); off += p.length; });
+    return {u8:u8, dur:Math.round(o.dur)};
+  });
+}
+function saveSong(cn, s, file){
+  var v = Date.now();
+  return compressSong(file, 0).then(function(r){
+    if(!DB) throw new Error('Firebase 연결이 필요합니다');
+    var b64 = bytesToB64(r.u8), sk = ck(s.sid);
+    var meta = {name:file.name, start:0, v:v, dur:r.dur, size:r.u8.length, by:DEVICE};
+    return DB.ref(ROOT()+'/songData/'+ck(cn)+'/'+sk).set({v:v, b64:b64}).then(function(){
+      return DB.ref(ROOT()+'/songIdx/'+ck(cn)+'/'+sk).set(meta);
+    }).then(function(){
+      idbPut(songKey(cn, s.sid), {v:v, blob:new Blob([r.u8], {type:'audio/mpeg'})});
+      return r;
+    });
+  });
+}
+/* 파일 이름 → 학생 (앞의 학번 우선, 없으면 이름이 들어 있는지) */
+function matchStudent(roster, fname){
+  var base = fname.replace(/\.[^.]+$/, ''), m = base.match(/^\s*(\d{3,})/);
+  if(m){ var byNum = roster.filter(function(s){ return String(s.num) === m[1]; })[0]; if(byNum) return byNum; }
+  var byName = roster.filter(function(s){ return s.name && base.indexOf(s.name) >= 0; });
+  return byName.length === 1 ? byName[0] : null;
+}
+
+/* ── 🎵 응원가 화면 ── */
+var _songBusy = false;
+function vSong(){
+  if(!S.cur) return needClass('v-song');
+  var c = cls(); watchSongIdx(S.cur);
+  var ix = SONG.idx[S.cur] || {}, have = c.roster.filter(function(s){ return ix[ck(s.sid)]; }).length;
+  var bytes = Object.keys(ix).reduce(function(a,k){ return a + (ix[k].size||0); }, 0);
+  el('v-song').innerHTML =
+    '<h2 class="t">'+esc(S.cur)+' 응원가</h2>'+
+    '<p class="st">응원가 '+have+' / '+c.roster.length+'명 · 약 '+(bytes/1048576*1.34).toFixed(1)+'MB · '+
+      '타석에 들어설 때 「타자 소개 → 응원가」가 자동으로 나옵니다</p>'+
+    (DB ? '' : '<div class="card" style="border-color:var(--warn)">Firebase 에 연결돼야 응원가를 올리고 받을 수 있어요 (학교 코드 확인)</div>')+
+    '<div class="card"><h3>올리기</h3>'+
+      '<div class="row"><button class="btn pri" id="sgMulti">📁 파일 여러 개 올리기 (학번 자동 연결)</button>'+
+      '<span class="st" id="sgProg" style="margin:0"></span></div>'+
+      '<p class="st" style="margin:10px 0 0">파일 이름 앞에 <b>학번</b>을 붙이면 자동으로 연결돼요 — 예) <b>20101_홍길동.mp3</b>. '+
+      '아이패드에서는 「파일」 → <b>Google Drive</b> 폴더를 열어 전체 선택하면 됩니다. '+
+      '올릴 때 앞에서부터 <b>'+SONG_SEC+'초</b>만 남기고 작게 줄여요 (전주가 길면 아래 「시작(초)」로 후렴부터 틀 수 있어요).</p>'+
+      '<input type="file" id="sgFiles" accept="audio/*,.mp3,.m4a,.wav,.aac" multiple style="display:none">'+
+      '<input type="file" id="sgOne" accept="audio/*,.mp3,.m4a,.wav,.aac" style="display:none"></div>'+
+    '<div class="card"><h3>학생별</h3>'+
+    (c.roster.length ? '<table><tr><th>번호</th><th>이름</th><th>응원가</th><th class="n">시작(초)</th><th></th></tr>'+
+      c.roster.map(function(s){
+        var m = ix[ck(s.sid)];
+        return '<tr><td>'+esc(s.num)+'</td><td>'+esc(s.name)+'</td>'+
+          '<td>'+(m ? '🎵 <span title="'+esc(m.name)+'">'+esc(String(m.name).slice(0,22))+'</span> <span class="tag">'+m.dur+'초</span>'
+                    : '<span class="tag">없음</span>')+'</td>'+
+          '<td class="n">'+(m ? '<input type="number" min="0" max="'+Math.max(0,(m.dur||0)-3)+'" value="'+(m.start||0)+
+              '" data-sgst="'+esc(s.sid)+'" style="width:72px;padding:5px 7px">' : '')+'</td>'+
+          '<td class="n" style="white-space:nowrap">'+
+            (m ? '<button class="btn sm" data-sgpl="'+esc(s.sid)+'">▶</button> ' : '')+
+            '<button class="btn sm" data-sgup="'+esc(s.sid)+'">'+(m?'변경':'올리기')+'</button>'+
+            (m ? ' <button class="btn sm dn" data-sgdel="'+esc(s.sid)+'">삭제</button>' : '')+'</td></tr>';
+      }).join('')+'</table>' : '<div class="msg">먼저 명단을 등록하세요</div>')+
+    '<div class="row" style="margin-top:10px"><button class="btn sm" id="sgStop">⏹ 미리 듣기 정지</button></div></div>'+
+    '<div class="card"><h3>타자 소개 멘트 들어 보기</h3>'+
+      '<p class="st" style="margin:0 0 9px">아이패드 내장 음성으로 읽어요. 설정에 <b>구글 음성 키</b>를 넣으면 구글 목소리로 바뀝니다. '+
+      '아이패드 「설정 → 손쉬운 사용 → 읽기 및 말하기 → 음성 → 한국어」에서 <b>향상된 음성</b>을 받으면 더 자연스러워요.</p>'+
+      '<button class="btn" id="sgTry">🎙 예시 멘트 듣기</button></div>';
+
+  function pickFiles(input, cb){ input.value = ''; input.onchange = function(){ cb(Array.prototype.slice.call(input.files||[])); }; input.click(); }
+  function runQueue(jobs){
+    if(_songBusy) return toast('지금 올리는 중이에요');
+    if(!DB) return toast('Firebase 연결이 필요합니다');
+    unlockAudio(); _songBusy = true;
+    var ok = 0, fail = [], i = 0;
+    (function next(){
+      if(i >= jobs.length){
+        _songBusy = false; vSong();
+        toast('응원가 '+ok+'개 저장'+(fail.length ? ' · 실패 '+fail.length+'개' : ''));
+        if(fail.length) setTimeout(function(){ alert('올리지 못한 파일\n\n'+fail.join('\n')); }, 300);
+        return;
+      }
+      var j = jobs[i++]; if(el('sgProg')) el('sgProg').textContent = '처리 중 '+i+' / '+jobs.length+' · '+j.s.name;
+      saveSong(S.cur, j.s, j.f).then(function(){ ok++; next(); })
+        .catch(function(e){ fail.push(j.f.name+' — '+(e && e.message || e)); next(); });
+    })();
+  }
+  el('sgMulti').onclick = function(){
+    pickFiles(el('sgFiles'), function(files){
+      var jobs = [], miss = [];
+      files.forEach(function(f){ var s = matchStudent(c.roster, f.name); if(s) jobs.push({s:s, f:f}); else miss.push(f.name); });
+      if(miss.length) alert('학생을 찾지 못한 파일 '+miss.length+'개 (건너뜀)\n\n'+miss.join('\n')+'\n\n파일 이름 앞에 학번을 붙여 주세요.');
+      if(jobs.length) runQueue(jobs);
+    });
+  };
+  el('v-song').querySelectorAll('[data-sgup]').forEach(function(b){
+    b.onclick = function(){
+      var s = c.roster.filter(function(x){ return x.sid===b.dataset.sgup; })[0];
+      pickFiles(el('sgOne'), function(files){ if(files[0]) runQueue([{s:s, f:files[0]}]); });
+    };
+  });
+  el('v-song').querySelectorAll('[data-sgpl]').forEach(function(b){
+    b.onclick = function(){ unlockAudio(); var s = c.roster.filter(function(x){ return x.sid===b.dataset.sgpl; })[0];
+      toast('▶ '+s.name+' 응원가 불러오는 중'); playSong(S.cur, s.sid, s.name+' 응원가 (미리 듣기)'); };
+  });
+  el('v-song').querySelectorAll('[data-sgst]').forEach(function(inp){
+    inp.onchange = function(){
+      var v = Math.max(0, Math.round(+inp.value||0));
+      if(DB) DB.ref(ROOT()+'/songIdx/'+ck(S.cur)+'/'+ck(inp.dataset.sgst)).update({start:v});
+      toast('시작 위치 '+v+'초 — ▶ 로 들어 보세요');
+    };
+  });
+  el('v-song').querySelectorAll('[data-sgdel]').forEach(function(b){
+    b.onclick = function(){
+      var s = c.roster.filter(function(x){ return x.sid===b.dataset.sgdel; })[0];
+      if(!confirm(s.name+' 학생의 응원가를 지울까요?')) return;
+      DB.ref(ROOT()+'/songIdx/'+ck(S.cur)+'/'+ck(s.sid)).remove();
+      DB.ref(ROOT()+'/songData/'+ck(S.cur)+'/'+ck(s.sid)).remove();
+      stopAll();
+    };
+  });
+  el('sgStop').onclick = function(){ stopAll(); };
+  el('sgTry').onclick = function(){
+    unlockAudio();
+    var s = c.roster[0] || {name:'홍길동', sid:'x'};
+    var fake = {atbats:[]}, cum = {}; cum[s.sid] = {ab:9, h:3, hr:1, rbi:2, avg:3/9, bb:0};
+    speak(introText(fake, s, 4, cum), function(){});
   };
 }
 
