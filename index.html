@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>야구 수행평가 기록</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚾</text></svg>">
 <script>try{if(localStorage.getItem("bb.theme")==="light")document.documentElement.dataset.theme="light";}catch(e){}</script>
@@ -16,7 +16,11 @@
   /* 경기 화면·랭킹용 남색 계열 (수비 배치도 서랍은 .gb 밖에 붙으므로 루트에 둔다) */
   --nv0:#141f3a; --nv1:#1c2b4f; --nvl:#3a5590; --nvl2:#4a6ab0; --gold:#f5c451; --grn:#4ade80;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* ★ 아이패드에서 버튼을 빠르게 여러 번 누르면 화면이 확대되던 문제(더블탭 확대) — manipulation 으로 막는다.
+   입력칸은 글자가 16px 보다 작으면 누를 때 사파리가 확대하므로 16px 로 둔다. */
+html{-webkit-text-size-adjust:100%}
+@media (pointer:coarse){ input,select,textarea{font-size:16px} }
 html,body{margin:0;height:100%}
 body{
   background:var(--bg);color:var(--tx);
@@ -695,7 +699,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02c';
+var APP_VER = '2026-10-02d';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -3344,6 +3348,10 @@ function vSet(){
 }
 
 /* ───── 시작 ──────────────────────────── */
+/* 두 손가락 확대 막기 (iPadOS 사파리는 viewport 의 user-scalable=no 를 무시하므로 직접 막는다) */
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
+/* ※ 빠른 두 번째 탭을 touchend 에서 막는 방법은 쓰지 않는다 — 볼·스트라이크를 연달아 누를 때 두 번째가 씹힌다.
+     더블탭 확대는 CSS touch-action:manipulation 으로 충분하다. */
 var _fromLink = applySetupLink();
 initFB();
 render();
