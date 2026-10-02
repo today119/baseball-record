@@ -143,12 +143,16 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .gbar button.fb{background:#123a2a;border-color:#2f8f5f;color:#9ef0c0}
 .gbar button.fb.on{background:#2f8f5f;color:#fff}
 .sbar{display:inline-flex;align-items:center;gap:calc(var(--u) * .3);min-width:0;flex:0 1 auto}
-.sbar button{padding:calc(var(--u) * .45) calc(var(--u) * .65)}
+.gbar button{height:calc(var(--u) * 3.6)}                  /* 손가락 크기(약 44px)로 — 도구줄 버튼 높이 통일 */
+.sbar{gap:calc(var(--u) * .4)}
+.sbar button{min-width:calc(var(--u) * 4);padding:0 calc(var(--u) * .8);font-size:calc(var(--u) * 1.25)}
+.sbar #sPlay,.sbar #sStop{min-width:calc(var(--u) * 6)}
+.sbar #sPlay{background:#173a5e;border-color:#3d7fc0;color:#fff}
 .sbar button.on{background:#123a2a;border-color:#2f8f5f;color:#9ef0c0}
-.sbar .slab{font-size:calc(var(--u) * .95);font-weight:800;color:#c9d6f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+.sbar .slab{background:#0f1b38;border:1px solid #2a4580;border-radius:calc(var(--u) * .55);padding:calc(var(--u) * .55) calc(var(--u) * .8);margin-right:calc(var(--u) * .6);font-size:calc(var(--u) * 1.05);font-weight:800;color:#c9d6f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:calc(var(--u) * 13)}
 .sbar .slab.pz{color:var(--gold)}
-html[data-theme=light] .sbar .slab{color:#1d2b47}
+html[data-theme=light] .sbar .slab{color:#1d2b47;background:#f3f6fa;border-color:#c9d3e1}
 html[data-theme=light] .sbar button.on{background:#e7f7ed;border-color:#16a34a;color:#166534}
 .gbar button.dn{background:#4a1a1a;border-color:#a8433a;color:#ffb3aa}
 
@@ -727,7 +731,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02k';
+var APP_VER = '2026-10-02l';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -3703,8 +3707,8 @@ function cheerBatter(g, force){
 function songBarHTML(){
   var lb = SONG.speaking ? '🎙 타자 소개 중' : SONG.cur ? '🎵 '+esc(SONG.cur.label) : '🎵 대기';
   return '<span class="sbar" id="sbar">'+
-    '<button id="sPlay" title="일시정지/재생">'+(SONG.paused ? '▶' : '⏸')+'</button>'+
-    '<button id="sStop" title="정지">⏹</button>'+
+    '<button id="sPlay" title="일시정지/재생">'+(SONG.paused ? '▶ 재생' : '⏸ 멈춤')+'</button>'+
+    '<button id="sStop" title="정지">⏹ 정지</button>'+
     '<button id="sRe" title="타자 소개 다시">🔁 소개</button>'+
     '<button id="sAuto" class="'+(SONG.auto?'on':'')+'">자동 '+(SONG.auto?'ON':'OFF')+'</button>'+
     '<span class="slab'+(SONG.paused?' pz':'')+'">'+lb+(SONG.paused?' · 일시정지':'')+'</span></span>';
