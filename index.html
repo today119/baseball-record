@@ -191,10 +191,10 @@ td.sc.tot{color:var(--warn);font-size:15px}
   background:#24375e;border:1px solid #3a4f7c;font-size:calc(var(--u) * .65);font-weight:900;color:#8aa2b0;line-height:1}
 
 /* 주루 칸 맨 위 — 이닝 + 볼카운트 띠 (심판이 보면서 누르는 볼·스트라이크 버튼과 같은 칸) */
-.cstrip{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u) * .6);flex:0 0 auto;
+.cstrip{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u) * .6);flex:0 0 auto;flex-wrap:nowrap;white-space:nowrap;
   background:#15223f;border:1px solid #34497a;border-radius:calc(var(--u) * .7);
   padding:calc(var(--u) * .45) calc(var(--u) * .8)}
-.ginn{font-size:calc(var(--u) * 1.7);font-weight:900;color:var(--gold);letter-spacing:-.3px;line-height:1;white-space:nowrap}
+.ginn{font-size:calc(var(--u) * 2);font-weight:900;color:var(--gold);letter-spacing:-.3px;line-height:1;white-space:nowrap}
 .cnt{display:flex;gap:calc(var(--u) * .9);align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .cnt .g{display:flex;align-items:center;gap:calc(var(--u) * .3)}
 .cnt .k{font-size:calc(var(--u) * 1.35);font-weight:900;color:#7d92ba;width:1.1em;text-align:center}
@@ -204,7 +204,7 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .lamp.s{background:var(--gold);border-color:#fde68a;box-shadow:0 0 calc(var(--u)*.6) rgba(245,196,81,.6)}
 .lamp.o{background:#ef4444;border-color:#fca5a5}
 .prog{display:flex;align-items:baseline;gap:calc(var(--u) * .35);white-space:nowrap}
-.prog b{font-size:calc(var(--u) * 1.8);font-weight:900;color:#fff;line-height:1}
+.prog b{font-size:calc(var(--u) * 2);font-weight:900;color:#fff;line-height:1}
 .prog b small{font-size:calc(var(--u) * 1.1);color:#8ea3cc;font-weight:800}
 .prog span{font-size:calc(var(--u) * .9);font-weight:800;color:#8ea3cc}
 .prog em{font-style:normal;font-size:calc(var(--u) * .95);font-weight:900;color:#fca5a5;
@@ -699,7 +699,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02d';
+var APP_VER = '2026-10-02e';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2354,11 +2354,9 @@ function boardImpl(g){
     '<div class="gmn'+(swapAnim?' swp':'')+'">'+
       (atk==='A' ? '<div class="gcol gfld sl">'+fieldPanel()+'</div>' : ordPanel('sl'))+
       '<div class="gcol gplay">'+
+        /* 띠는 한 줄: 「1회 초 · 14/14 타자 · 아웃 0명」. 볼·스트라이크 불은 아래 큰 버튼에만 둔다
+           (띠에도 두니 좁은 화면에서 두 줄로 깨져 어색했다 — 사용자 지적) */
         '<div class="cstrip"><span class="ginn">'+g.st.inning+'회 '+g.st.half+'</span>'+
-          '<div class="cnt">'+
-            '<div class="g"><span class="k">B</span>'+lamps(g._b||0,3,'b','B')+'</div>'+
-            '<div class="g"><span class="k">S</span>'+lamps(g._s||0,2,'s','S')+'</div>'+
-          '</div>'+
           /* 전원타격제라 아웃 3개로 교대하지 않는다 → 불 대신 「이번 회 몇 번째 타자 / 아웃 몇 명」 */
           '<div class="prog"><b>'+Math.min(g.st.idx+1, order.length)+'<small>/'+order.length+'</small></b><span>타자</span>'+
             '<em>아웃 '+outsNow+'명</em></div>'+
