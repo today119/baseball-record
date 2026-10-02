@@ -624,6 +624,12 @@ function nextState(st, orderLen){
   return s;
 }
 function isGameOver(st,maxInning){ return st.inning>maxInning; }
+/* 선공(초에 공격하는 쪽) — g.first: 'A'(원정) 또는 'H'(홈). 예전 경기는 'A'.
+   선공 팀이 점수표 윗줄·화면 왼쪽, 후공 팀이 아랫줄·오른쪽 (사용자 요청). */
+function firstSide(g){ return g.first==='H' ? 'H' : 'A'; }
+function otherSide(s){ return s==='H' ? 'A' : 'H'; }
+function atkSide(g){ return g.st.half==='초' ? firstSide(g) : otherSide(firstSide(g)); }
+function halfOfSide(g, side){ return side===firstSide(g) ? '초' : '말'; }
 function tally(atbats, defense, innings){
   var m={};
   function slot(sid){ if(!m[sid]) m[sid]={sid:sid,pa:0,ab:0,bb:0,h:0,h2:0,h3:0,hr:0,tb:0,
@@ -711,7 +717,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02h';
+var APP_VER = '2026-10-02i';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -815,7 +821,7 @@ function syncState(cn, g, extra){
   save();
   if(!DB) return;
   var o = {st:g.st, bases:g.bases||[null,null,null], hs:g.hs, as:g.as,
-           status:g.status, def:g.def||null, _by:DEVICE, _at:Date.now()};
+           status:g.status, def:g.def||null, first:firstSide(g), _by:DEVICE, _at:Date.now()};
   if(extra) Object.keys(extra).forEach(function(k){ o[k]=extra[k]; });
   patch(gPath(cn,g)+'/cur', o);
 }
@@ -902,7 +908,7 @@ function watchClass(cn){
       var g = v[k]; if(!g || have[g.no]) return;
       /* 새 구조(cur/ab/df)를 예전 모양으로 펴서 넣는다 */
       var o = Object.assign({}, g);
-      if(g.cur) ['st','bases','hs','as','status','def'].forEach(function(f){
+      if(g.cur) ['st','bases','hs','as','status','def','first'].forEach(function(f){
         if(g.cur[f]!==undefined && g.cur[f]!==null) o[f] = g.cur[f]; });
       delete o.cur;
       o.atbats  = g.ab ? Object.keys(g.ab).map(function(id){
@@ -968,7 +974,7 @@ function watchGame(cn, gno){
   on(base.child('cur'), 'value', function(s){
     var v = s.val(); if(!v || v._by===DEVICE) return;     // 내가 쓴 건 무시 (되울림 방지)
     var g = G(); if(!g) return;
-    ['st','bases','hs','as','status','def'].forEach(function(k){
+    ['st','bases','hs','as','status','def','first'].forEach(function(k){
       if(v[k]!==undefined && v[k]!==null) g[k] = v[k]; });
     done(); say('다른 기기 진행 상황 반영');
   });
@@ -1702,18 +1708,24 @@ function vGame(){
       }).join('')+'</table>' : '<div class="msg">아직 경기가 없습니다</div>') + '</div>';
 
   var mode = 'intra';
+  function firstSel(hName, aName){
+    return '<div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">선공 (먼저 공격)</label>'+
+      '<select id="first"><option value="H" selected>'+esc(hName)+' 선공</option>'+
+      '<option value="A">'+esc(aName)+' 선공</option></select></div>';
+  }
   function drawMode(){
     el('modeBox').innerHTML = mode==='intra'
       ? '<div class="row"><div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">이닝</label>'+
         '<select id="inn"><option value="2" selected>2이닝</option><option value="1">1이닝</option>'+
-        '<option value="3">3이닝</option></select></div></div>'+
+        '<option value="3">3이닝</option></select></div>'+firstSel('A조','B조')+'</div>'+
         '<p class="st" style="margin:9px 0 0">A조 '+c.roster.filter(function(s){return s.group==='A';}).length+
         '명 · B조 '+c.roster.filter(function(s){return s.group==='B';}).length+'명</p>'
       : '<div class="row"><div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">상대 학급</label>'+
         '<select id="opp">'+S.cfg.classNames.slice(0,S.cfg.classCount).filter(function(n){return n!==S.cur;})
           .map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select></div>'+
         '<div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">이닝</label>'+
-        '<select id="inn"><option value="1" selected>1이닝</option><option value="2">2이닝</option></select></div></div>'+
+        '<select id="inn"><option value="1" selected>1이닝</option><option value="2">2이닝</option></select></div>'+
+        firstSel(S.cur,'상대')+'</div>'+
         '<p class="st" style="margin:9px 0 0">우리 학급 전체 '+c.roster.length+'명이 한 팀입니다. '+
         '상대 학급 명단이 있으면 그 명단으로, 없으면 인원수만 입력해 진행합니다.</p>'+
         '<div class="row" style="margin-top:7px"><div style="flex:1">'+
@@ -1768,6 +1780,7 @@ function startGame(mode){
     no: (c.games.reduce(function(m,x){return Math.max(m,x.no);},0))+1,
     mode:mode, innings:innings, home:hname, away:aname, oppClass:oppClass, oppCount:oppCount,
     hs:0, as:0, status:'lineup', st:{inning:1, half:'초', idx:0},
+    first: ((el('first')||{}).value==='A') ? 'A' : 'H',
     seqH: hp.map(function(p){return p.sid;}), seqA: ap.map(function(p){return p.sid;}),
     outH: [], outA: [],
     orderH:[], orderA:[], atbats:[], defense:[], bases:[null,null,null],
@@ -1945,7 +1958,7 @@ function confirmLineup(g){
      다시 만들면 지금 타자(st.idx)가 엉뚱한 사람을 가리키게 되기 때문이다.
      지금 타자는 자리를 위아래로 옮겨도 계속 「지금 타자」로 따라간다. */
 function setupView(g){
-  var atk = g.st.half==='초' ? 'A' : 'H';
+  var atk = atkSide(g);
 
   function col(side, name){
     var order = side==='H' ? g.orderH : g.orderA;
@@ -1980,9 +1993,11 @@ function setupView(g){
       '<div class="row" style="align-items:flex-end">'+
         '<div><label style="font-size:11.5px;color:var(--tx3)">경기 날짜</label>'+
         '<input type="date" id="gDt" value="'+esc(g.date||'')+'" style="width:154px"></div>'+
+      ((g.atbats||[]).length ? '' : '<button class="btn" id="swFirst">선공 바꾸기 (지금: '+esc(firstSide(g)==='H'?g.home:g.away)+')</button>')+
       '<button class="btn pri" id="setDone">경기로 돌아가기</button></div></div>'+
     '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(288px,1fr))">'+
-      col('H', g.home)+col('A', g.away)+'</div>'+
+      col(firstSide(g), firstSide(g)==='H'?g.home+' (선공)':g.away+' (선공)')+
+      col(otherSide(firstSide(g)), firstSide(g)==='H'?g.away+' (후공)':g.home+' (후공)')+'</div>'+
     '<div class="card"><p class="st" style="margin:0">'+
       '타순을 바꿔도 <b>지금 타자는 그대로 따라갑니다</b> — 순서만 바뀌고 차례를 건너뛰지 않습니다.<br>'+
       '이미 기록한 타석은 그대로 남습니다.</p></div>';
@@ -2029,6 +2044,11 @@ function setupView(g){
     setupView(g); toast('경기 날짜를 '+(gDate(g)||g.date)+'로 바꿨습니다');
   };
   el('setDone').onclick = function(){ delete g._setup; save(); render(); };
+  /* 첫 타석 전에만 — 기록이 생긴 뒤 바꾸면 이닝 칸이 뒤섞인다 */
+  if(el('swFirst')) el('swFirst').onclick = function(){
+    g.first = otherSide(firstSide(g)); g.st = {inning:1, half:'초', idx:0};
+    syncState(S.cur, g); setupView(g); toast('선공을 바꿨습니다');
+  };
 }
 
 /* ── 전광판 ─────────────────────────────── */
@@ -2227,7 +2247,7 @@ function boardImpl(g){
   watchGame(S.cur, g.no);
   if(g._setup) return setupView(g);      // 경기 세팅 화면 (감시는 붙인 채로 둔다)
   document.body.classList.add('ingame');
-  var atk = g.st.half==='초' ? 'A' : 'H';
+  var atk = atkSide(g), fs = firstSide(g), ls = otherSide(fs);
   var dside = atk==='H' ? 'A' : 'H';          // 수비팀
   var order = atk==='H' ? g.orderH : g.orderA;
   var b = order[g.st.idx];
@@ -2265,7 +2285,7 @@ function boardImpl(g){
     for(var i=1;i<=n;i++) head += '<th'+(i===g.st.inning?' class="cur"':'')+'>'+i+'</th>';
     head += '<th class="hh">안타</th><th class="adjh"></th></tr>';
     function row(side){
-      var half = side==='A' ? '초' : '말';
+      var half = halfOfSide(g, side);
       var o = '<tr class="'+(side==='H'?'h':'a')+'"><td class="tm">'+esc(tname(side))+'</td>';
       for(var i=1;i<=n;i++){
         var played = halfPlayed(g,i,half), v = runsIn(g,i,half);
@@ -2275,7 +2295,7 @@ function boardImpl(g){
       return o + '<td class="hh">'+hitsOf(g,side)+'</td>'+
         '<td class="adjc"><div class="adj"><button data-sc="'+side+'+">▲</button><button data-sc="'+side+'-">▼</button></div></td></tr>';
     }
-    return '<table class="isc">'+head+row('H')+row('A')+'</table>';
+    return '<table class="isc">'+head+row(fs)+row(ls)+'</table>';   // 선공이 윗줄
   }
 
   /* ── 타격 순서 — 지금 타자 칸만 크게 펼쳐 타자 정보를 보여 준다 ── */
@@ -2358,13 +2378,13 @@ function boardImpl(g){
       '<button id="fsB">⛶ 전체화면</button>'+
       '<button id="fin" class="dn">경기 종료</button>'+
     '</div>'+
-    /* 팀마다 자리 고정 — 왼쪽 = H(점수표 윗줄), 오른쪽 = A. 카드 바로 아래에 그 팀이 지금 하는 일
+    /* 팀마다 자리 고정 — 왼쪽 = 선공(점수표 윗줄), 오른쪽 = 후공. 카드 바로 아래에 그 팀이 지금 하는 일
        (수비 중이면 수비 배치도, 공격 중이면 타격 순서)이 온다. 공수교대 때 아래 두 칸이 제자리에서 뒤집힌다. */
-    '<div class="gsc">'+tcard('H')+
+    '<div class="gsc">'+tcard(fs)+
       '<div class="gmid">'+scoreTable()+'</div>'+
-      tcard('A')+'</div>'+
+      tcard(ls)+'</div>'+
     '<div class="gmn'+(swapAnim?' swp':'')+'">'+
-      (atk==='A' ? '<div class="gcol gfld sl">'+fieldPanel()+'</div>' : ordPanel('sl'))+
+      (atk===fs ? ordPanel('sl') : '<div class="gcol gfld sl">'+fieldPanel()+'</div>')+
       '<div class="gcol gplay">'+
         /* 띠는 «한 줄»: 「1회 초 · B●●○ S●○ · 14/14 · 아웃 0」 — 좁은 화면에서 두 줄로 깨지지 않게 불을 작게 */
         '<div class="cstrip"><span class="ginn">'+g.st.inning+'회 '+g.st.half+'</span>'+
@@ -2396,7 +2416,7 @@ function boardImpl(g){
           '<button id="pR" class="rz">카운트 지우기</button>'+
         '</div>'+
       '</div>'+
-      (atk==='A' ? ordPanel('sr') : '<div class="gcol gfld sr">'+fieldPanel()+'</div>')+
+      (atk===fs ? '<div class="gcol gfld sr">'+fieldPanel()+'</div>' : ordPanel('sr'))+
     '</div>'+
   '</div>'+
   '<div class="card hdrow" style="margin-top:11px"><h3>경기 진행 기록 (최근 순)</h3>'+playLog(g)+'</div>'+
@@ -2578,7 +2598,7 @@ function runnerPop(g, idx, sid){
       g.bases[idx] = null;
       var hit = null;
       if(to==='H'){
-        var side = g.st.half==='초' ? 'A' : 'H';
+        var side = atkSide(g);
         if(side==='H') g.hs++; else g.as++;
         for(var i=g.atbats.length-1;i>=0;i--)
           if(g.atbats[i].sid===sid){ g.atbats[i].run=(g.atbats[i].run||0)+1; hit=g.atbats[i]; break; }
