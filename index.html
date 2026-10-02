@@ -727,7 +727,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02j';
+var APP_VER = '2026-10-02k';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -3779,8 +3779,18 @@ function saveSong(cn, s, file){
 }
 /* 파일 이름 → 학생 (앞의 학번 우선, 없으면 이름이 들어 있는지) */
 function matchStudent(roster, fname){
-  var base = fname.replace(/\.[^.]+$/, ''), m = base.match(/^\s*(\d{3,})/);
-  if(m){ var byNum = roster.filter(function(s){ return String(s.num) === m[1]; })[0]; if(byNum) return byNum; }
+  var base = fname.replace(/\.[^.]+$/, ''), m = base.match(/^\s*(\d+)/);
+  if(m){
+    var d = m[1];
+    var byNum = roster.filter(function(s){ return String(s.num) === d; })[0];          // 명단 번호 칸이 학번이면
+    if(!byNum && d.length === 5)                                                         // 20104 → 4번 (명단 번호 칸이 번호만 있을 때)
+      byNum = roster.filter(function(s){ return +s.num === +d.slice(3); })[0];
+    if(!byNum && d.length <= 2) byNum = roster.filter(function(s){ return +s.num === +d; })[0];
+    if(byNum){
+      var nm = base.replace(/^\s*\d+[\s_\-.]*/, '').trim();                              // 이름도 적혀 있으면 맞는지 확인
+      if(!nm || base.indexOf(byNum.name) >= 0 || !roster.some(function(s){ return nm.indexOf(s.name) >= 0; })) return byNum;
+    }
+  }
   var byName = roster.filter(function(s){ return s.name && base.indexOf(s.name) >= 0; });
   return byName.length === 1 ? byName[0] : null;
 }
