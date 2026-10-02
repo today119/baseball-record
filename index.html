@@ -196,8 +196,8 @@ td.sc.tot{color:var(--warn);font-size:15px}
   padding:calc(var(--u) * .45) calc(var(--u) * .8)}
 .ginn{font-size:calc(var(--u) * 1.7);font-weight:900;color:var(--gold);letter-spacing:-.3px;line-height:1;white-space:nowrap}
 .cnt{display:flex;gap:calc(var(--u) * .7);align-items:center;justify-content:center;flex-wrap:nowrap}
-.cstrip .lamp{width:calc(var(--u) * 1.3);height:calc(var(--u) * 1.3)}
-.cstrip .cnt .k{font-size:calc(var(--u) * 1.15)}
+.cstrip .lamp{width:calc(var(--u) * 1.75);height:calc(var(--u) * 1.75)}
+.cstrip .cnt .k{font-size:calc(var(--u) * 1.3)}
 .cnt .g{display:flex;align-items:center;gap:calc(var(--u) * .3)}
 .cnt .k{font-size:calc(var(--u) * 1.35);font-weight:900;color:#7d92ba;width:1.1em;text-align:center}
 .lamp{width:calc(var(--u) * 1.6);height:calc(var(--u) * 1.6);border-radius:99px;
@@ -298,6 +298,8 @@ td.sc.tot{color:var(--warn);font-size:15px}
   font-size:calc(var(--u) * 1.5);background:transparent;border:1.5px solid #4a6290;color:#d3def4}
 .lamp[data-ct]{position:relative;cursor:pointer}
 .lamp[data-ct]::after{content:'';position:absolute;inset:calc(var(--u) * -.55)}   /* 손가락 닿는 범위를 불보다 넓게 */
+.cbt button.cb{color:#86efac;letter-spacing:.12em} .cbt button.cs{color:#fde68a;letter-spacing:.12em}
+html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt button.cs{color:#a16207}
 .cbt button .lamp{width:calc(var(--u) * 1.6);height:calc(var(--u) * 1.6);border-width:1px}
 .cbt button.rz{font-size:calc(var(--u) * .85);color:#7d92ba;padding:0 calc(var(--u) * .7);line-height:1.15}
 
@@ -401,7 +403,7 @@ body.fs .hdrow{display:none}
   /* 세로 화면은 주루 칸이 반쪽이라 띠를 더 촘촘하게 (한 줄 유지) */
   .cstrip{padding:calc(var(--u) * .35) calc(var(--u) * .5);gap:calc(var(--u) * .35)}
   .cstrip .ginn,.cstrip .prog b{font-size:calc(var(--u) * 1.25)}
-  .cstrip .lamp{width:calc(var(--u) * .95);height:calc(var(--u) * .95)}
+  .cstrip .lamp{width:calc(var(--u) * 1.25);height:calc(var(--u) * 1.25)}
   .cstrip .cnt{gap:calc(var(--u) * .4)} .cstrip .cnt .k{font-size:calc(var(--u) * .85)}
   .cstrip .cnt .g{gap:calc(var(--u) * .18)}
   .prog em{font-size:calc(var(--u) * .75)}
@@ -708,7 +710,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02f';
+var APP_VER = '2026-10-02g';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2387,8 +2389,9 @@ function boardImpl(g){
                '<button class="h0" data-k="0">아웃'+pickTag+'</button>'+
              '</div>' : '')+
         '<div class="cbt">'+
-          '<button id="pB">볼 '+lamps(g._b||0,3,'b','B')+'</button>'+
-          '<button id="pS">스트라이크 '+lamps(g._s||0,2,'s','S')+'</button>'+
+          /* 아래 버튼은 누르기만(+1) — 불을 피해 누르기 어렵다는 지적으로 불을 빼고 글자만. 고치기는 위 띠의 불을 눌러서 */
+          '<button id="pB" class="cb">BALL</button>'+
+          '<button id="pS" class="cs">STRIKE</button>'+
           '<button id="pR" class="rz">카운트<br>지우기</button>'+
         '</div>'+
       '</div>'+
@@ -2459,13 +2462,14 @@ function boardImpl(g){
     if((g._b||0) >= 3){ toast('볼 4개 — 「포볼」을 눌러 주세요'); return; }
     g._b = (g._b||0)+1; save(); board(g);
   };
-  /* 불을 직접 눌러 고치기 — 켜진 불을 누르면 거기서부터 꺼지고, 꺼진 불을 누르면 거기까지 켜진다.
+  /* 위 띠의 불을 눌러 지우기 — 켜진 불을 누르면 그 불부터 꺼진다 (잘못 눌렀을 때 하나만 되돌리기).
      (볼을 한 번 더 눌렀을 때 전부 지우지 않고 하나만 되돌리려고 — 사용자 선택) */
   el('v-game').querySelectorAll('.lamp[data-ct]').forEach(function(x){
     x.onclick = function(e){
       e.stopPropagation();                         // 볼·스트라이크 버튼(+1)까지 눌리지 않게
       var k = x.dataset.ct==='B' ? '_b' : '_s', i = +x.dataset.i;
-      g[k] = (i < (g[k]||0)) ? i : i+1;
+      if(i >= (g[k]||0)) return;                   // 꺼진 불은 눌러도 그대로 — 지우기 전용
+      g[k] = i;
       save(); board(g);
     };
   });
