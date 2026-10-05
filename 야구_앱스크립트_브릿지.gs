@@ -205,15 +205,16 @@ function folderId_(s) {
   if (/^[\w-]{10,}$/.test(s)) return s;
   throw new Error('드라이브 폴더 링크를 알아볼 수 없습니다');
 }
-function listSongs_(folder) {
+function listSongs_(folder, maxDepth) {
+  maxDepth = maxDepth || 1;
   var root = DriveApp.getFolderById(folderId_(folder)), out = [];
   var isAudio = function (f) {
     return /^audio\//.test(f.getMimeType()) || /\.(mp3|m4a|wav|aac|ogg|mp4)$/i.test(f.getName());
   };
-  var walk = function (fd, depth) {                          // 학생별 하위 폴더가 있어도 한 단계까지 본다
+  var walk = function (fd, depth) {                          // 하위 폴더도 maxDepth 단계까지 (여러 반 상위 폴더면 4)
     var it = fd.getFiles();
     while (it.hasNext()) { var f = it.next(); if (isAudio(f)) out.push({ id: f.getId(), name: f.getName(), size: f.getSize(), mime: f.getMimeType() }); }
-    if (depth < 1) { var sub = fd.getFolders(); while (sub.hasNext()) walk(sub.next(), depth + 1); }
+    if (depth < maxDepth) { var sub = fd.getFolders(); while (sub.hasNext()) walk(sub.next(), depth + 1); }
   };
   walk(root, 0);
   return out;
@@ -262,7 +263,7 @@ function doGet(e) {
 
     } else if (p.action === 'listSongs') {
       // 응원가: 드라이브 폴더(클래스룸 과제 폴더) 안의 음원 목록. folder = 폴더 링크 또는 ID
-      out = { ok: true, files: listSongs_(p.folder) };
+      out = { ok: true, files: listSongs_(p.folder, Math.min(4, +p.depth || 1)) };
 
     } else if (p.action === 'getSong') {
       // 응원가: 파일 하나를 base64 로 (앱이 줄여서 Firebase 에 저장)

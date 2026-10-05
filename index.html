@@ -1109,12 +1109,12 @@ function fbConf(){
   return FB_DEFAULT;
 }
 /* 공유 설정 — 한 기기에서 바꾸면 모든 기기에 */
-var SHARED_KEYS = ['gasUrl','classCount','classNames','ttsKey','ttsVoice'];
+var SHARED_KEYS = ['gasUrl','classCount','classNames','ttsKey','ttsVoice','songFolders'];
 function pushSharedCfg(){
   if(!DB || !S.cfg.school) return;
   var o = {_by:DEVICE, _at:Date.now()};
-  SHARED_KEYS.forEach(function(k){ o[k] = S.cfg[k]; });
-  DB.ref(ROOT()+'/cfg').update(o).catch(function(){});
+  SHARED_KEYS.forEach(function(k){ if(S.cfg[k] != null) o[k] = S.cfg[k]; });   // 이 기기에 없는 값(undefined)은 보내지 않는다 — Firebase update 가 통째로 실패하고, null 이면 공유값이 지워진다
+  try{ DB.ref(ROOT()+'/cfg').update(o).catch(function(){}); }catch(e){ console.warn('공유 설정 올리기 실패', e); }
 }
 var _cfgRef = null;
 function watchSharedCfg(){
@@ -3805,6 +3805,24 @@ function matchStudent(roster, fname){
   return byName.length === 1 ? byName[0] : null;
 }
 
+/* 여러 반 폴더를 한 번에: 학번(20104 = 2학년 1반 4번)의 반 번호로 반을 고르고, 그 반 명단에서 학생을 찾는다.
+   학번이 없으면 이름이 한 반에서만 맞을 때만 연결 */
+function matchAnyClass(fname){
+  var base = fname.replace(/\.[^.]+$/, ''), m = base.match(/^\s*(\d{5})/), cand = [];
+  Object.keys(S.classes||{}).forEach(function(cn){
+    var c = S.classes[cn]; if(!c || !c.roster || !c.roster.length) return;
+    var st = matchStudent(c.roster, fname); if(!st) return;
+    var nm = base.replace(/^\s*\d+[\s_\-.]*/, '').trim();
+    if(nm && base.indexOf(st.name) < 0) return;                       // 이름이 적혀 있으면 이름까지 맞아야
+    cand.push({cn:cn, s:st});
+  });
+  if(cand.length > 1 && m){                                          // 반 번호로 좁히기: 이름 속 숫자 = 학번 2·3번째 자리
+    var classNo = +m[1].slice(1,3);
+    cand = cand.filter(function(x){ var d = String(x.cn).match(/(\d+)\s*반/) || String(x.cn).match(/(\d+)/); return d && +d[1] === classNo; });
+  }
+  return cand.length === 1 ? cand[0] : null;
+}
+
 /* ── 🎵 응원가 화면 ── */
 var _songBusy = false;
 function vSong(){
@@ -3821,7 +3839,9 @@ function vSong(){
       '<div class="row"><button class="btn pri" id="sgMulti">📁 파일 여러 개 올리기 (학번 자동 연결)</button>'+
       '<span class="st" id="sgProg" style="margin:0"></span></div>'+
       '<div class="row" style="margin-top:10px"><input id="sgDrive" placeholder="클래스룸 과제의 드라이브 폴더 링크 붙여 넣기" style="flex:1;min-width:220px">'+
-        '<button class="btn pri" id="sgDriveGo">📂 드라이브 폴더에서 가져오기</button></div>'+
+        '<button class="btn pri" id="sgDriveGo">📂 이 반 폴더에서 가져오기</button></div>'+
+      '<div class="row" style="margin-top:8px"><input id="sgDriveAll" placeholder="여러 반을 한 번에: 반 폴더들이 들어 있는 상위 폴더 링크" style="flex:1;min-width:220px">'+
+        '<button class="btn" id="sgDriveAllGo">🏫 전체 반 한 번에</button></div>'+
       '<p class="st" style="margin:10px 0 0">파일 이름 앞에 <b>학번</b>을 붙이면 자동으로 연결돼요 — 예) <b>20101_홍길동.mp3</b>. '+
       '아이패드에서는 「파일」 → <b>Google Drive</b> 폴더를 열어 전체 선택하면 됩니다. '+
       '올릴 때 앞에서부터 <b>'+SONG_SEC+'초</b>만 남기고 작게 줄여요 (전주가 길면 아래 「시작(초)」로 후렴부터 틀 수 있어요).</p>'+
@@ -3873,46 +3893,64 @@ function vSong(){
       if(jobs.length) runQueue(jobs);
     });
   };
-  /* 📂 드라이브 폴더 → 앱스 스크립트가 파일을 읽어 준다 (앱에 구글 로그인 없이). 학번 매칭 후 한 곡씩 받아서 줄이고 저장 */
-  if(el('sgDrive')) el('sgDrive').value = (S.cfg.songFolder||{})[S.cur] || '';
-  el('sgDriveGo').onclick = function(){
-    var link = el('sgDrive').value.trim();
+  /* 📂 드라이브 폴더 → 앱스 스크립트가 파일을 읽어 준다 (앱에 구글 로그인 없이). 학번 매칭 후 한 곡씩 받아서 줄이고 저장.
+     폴더 링크는 공유 설정(songFolders)에 기억 → 두 선생님 기기에 같이 */
+  var SF = S.cfg.songFolders || {};
+  el('sgDrive').value = SF[S.cur] || ''; el('sgDriveAll').value = SF._all || '';
+  function rememberFolder(k, link){ S.cfg.songFolders = Object.assign({}, S.cfg.songFolders||{}); S.cfg.songFolders[k] = link; save(); pushSharedCfg(); }
+  function driveImport(link, depth, matchFn){
     if(!link) return toast('드라이브 폴더 링크를 붙여 넣어 주세요');
     if(!S.cfg.gasUrl) return toast('설정에서 앱스 스크립트 주소를 먼저 넣어 주세요');
     if(_songBusy) return toast('지금 올리는 중이에요');
-    S.cfg.songFolder = S.cfg.songFolder || {}; S.cfg.songFolder[S.cur] = link; save();
+    if(!DB) return toast('Firebase 연결이 필요합니다');
     el('sgProg').textContent = '드라이브 폴더 읽는 중…';
-    jsonp({action:'listSongs', folder:link}, 60000).then(function(r){
+    jsonp({action:'listSongs', folder:link, depth:depth}, 90000).then(function(r){
       if(!r || !r.ok) throw new Error(r && r.error || '폴더를 못 읽었습니다');
       var jobs = [], miss = [], big = [];
       r.files.forEach(function(f){
         if(f.size > 15*1048576){ big.push(f.name); return; }
-        var st = matchStudent(c.roster, f.name);
-        if(st) jobs.push({s:st, d:f}); else miss.push(f.name);
+        var m = matchFn(f.name); if(m) jobs.push({cn:m.cn, s:m.s, d:f}); else miss.push(f.name);
       });
-      // 이미 같은 파일(이름·크기)로 올라가 있으면 건너뛴다 → 마감 후 늦게 낸 학생만 다시 가져올 수 있다
-      var ix0 = SONG.idx[S.cur] || {}, skip = 0;
-      jobs = jobs.filter(function(j){ var m = ix0[ck(j.s.sid)]; if(m && m.src === j.d.id){ skip++; return false; } return true; });
-      if(miss.length || big.length) alert((miss.length ? '학생을 찾지 못한 파일 '+miss.length+'개 (건너뜀)\n'+miss.join('\n')+'\n\n' : '')+
-        (big.length ? '15MB가 넘어 건너뛴 파일\n'+big.join('\n') : ''));
-      if(!jobs.length){ el('sgProg').textContent = ''; return toast(skip ? '새로 가져올 파일이 없어요 (이미 '+skip+'개 있음)' : '가져올 음원이 없어요'); }
-      unlockAudio(); _songBusy = true;
-      var ok = 0, fail = [], i = 0;
-      (function next(){
-        if(i >= jobs.length){ _songBusy = false; vSong(); toast('드라이브에서 응원가 '+ok+'개 저장'+(skip ? ' · 이미 있음 '+skip : '')+(fail.length ? ' · 실패 '+fail.length : ''));
-          if(fail.length) setTimeout(function(){ alert('가져오지 못한 파일\n\n'+fail.join('\n')); }, 300); return; }
-        var j = jobs[i++]; if(el('sgProg')) el('sgProg').textContent = '드라이브에서 가져오는 중 '+i+' / '+jobs.length+' · '+j.s.name;
-        jsonp({action:'getSong', id:j.d.id}, 120000).then(function(g){
-          if(!g || !g.ok) throw new Error(g && g.error || '파일을 못 받았습니다');
-          var file = new File([b64ToBytes(g.b64)], j.d.name, {type:g.mime || 'audio/mpeg'});
-          return saveSong(S.cur, j.s, file);
-        }).then(function(){
-          if(DB) DB.ref(ROOT()+'/songIdx/'+ck(S.cur)+'/'+ck(j.s.sid)).update({src:j.d.id});
-          ok++; next();
-        }).catch(function(e){ fail.push(j.d.name+' — '+(e && e.message || e)); next(); });
-      })();
+      var cns = jobs.map(function(j){ return j.cn; }).filter(function(x,i,a){ return a.indexOf(x)===i; });
+      // 이미 같은 드라이브 파일을 가져온 학생은 건너뛴다 (늦게 낸 학생만 다시 가져오기)
+      return Promise.all(cns.map(function(cn){ return DB.ref(ROOT()+'/songIdx/'+ck(cn)).once('value').then(function(x){ return [cn, x.val()||{}]; }); }))
+        .then(function(pairs){
+          var have = {}; pairs.forEach(function(p){ have[p[0]] = p[1]; });
+          var skip = 0;
+          jobs = jobs.filter(function(j){ var m = have[j.cn][ck(j.s.sid)]; if(m && m.src === j.d.id){ skip++; return false; } return true; });
+          if(miss.length || big.length) alert((miss.length ? '학생을 찾지 못한 파일 '+miss.length+'개 (건너뜀)\n'+miss.slice(0,40).join('\n')+(miss.length>40?'\n…':'')+'\n\n' : '')+
+            (big.length ? '15MB가 넘어 건너뛴 파일\n'+big.join('\n') : ''));
+          if(!jobs.length){ el('sgProg').textContent = ''; return toast(skip ? '새로 가져올 파일이 없어요 (이미 '+skip+'개 있음)' : '가져올 음원이 없어요'); }
+          unlockAudio(); _songBusy = true;
+          var ok = 0, fail = [], i = 0, per = {};
+          (function next(){
+            if(i >= jobs.length){
+              _songBusy = false; vSong();
+              var sum = Object.keys(per).map(function(cn){ return cn+' '+per[cn]; }).join(' · ');
+              toast('드라이브에서 응원가 '+ok+'개 저장'+(sum && cns.length>1 ? ' ('+sum+')' : '')+(skip ? ' · 이미 있음 '+skip : '')+(fail.length ? ' · 실패 '+fail.length : ''));
+              if(fail.length) setTimeout(function(){ alert('가져오지 못한 파일\n\n'+fail.join('\n')); }, 300);
+              return;
+            }
+            var j = jobs[i++]; if(el('sgProg')) el('sgProg').textContent = '드라이브에서 가져오는 중 '+i+' / '+jobs.length+' · '+j.cn+' '+j.s.name;
+            jsonp({action:'getSong', id:j.d.id}, 120000).then(function(g){
+              if(!g || !g.ok) throw new Error(g && g.error || '파일을 못 받았습니다');
+              return saveSong(j.cn, j.s, new File([b64ToBytes(g.b64)], j.d.name, {type:g.mime || 'audio/mpeg'}));
+            }).then(function(){
+              DB.ref(ROOT()+'/songIdx/'+ck(j.cn)+'/'+ck(j.s.sid)).update({src:j.d.id});
+              ok++; per[j.cn] = (per[j.cn]||0) + 1; next();
+            }).catch(function(e){ fail.push(j.cn+' '+j.d.name+' — '+(e && e.message || e)); next(); });
+          })();
+        });
     }).catch(function(e){ el('sgProg').textContent = ''; alert('드라이브 폴더를 읽지 못했어요\n\n'+(e && e.message || e)+
       '\n\n· 앱스 스크립트를 새 버전(응원가 가져오기 포함)으로 업데이트했는지\n· 앱스 스크립트를 배포한 계정이 그 폴더를 볼 수 있는지 확인해 주세요'); });
+  }
+  el('sgDriveGo').onclick = function(){
+    var link = el('sgDrive').value.trim(); if(link) rememberFolder(S.cur, link);
+    driveImport(link, 1, function(name){ var st = matchStudent(c.roster, name); return st ? {cn:S.cur, s:st} : null; });
+  };
+  el('sgDriveAllGo').onclick = function(){
+    var link = el('sgDriveAll').value.trim(); if(link) rememberFolder('_all', link);
+    driveImport(link, 4, matchAnyClass);
   };
   el('v-song').querySelectorAll('[data-sgup]').forEach(function(b){
     b.onclick = function(){
