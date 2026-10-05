@@ -3315,10 +3315,9 @@ function vSet(){
     '<label style="font-size:11.5px;color:var(--tx3)">구글 클라우드 Text-to-Speech API 키 — 비워 두면 아이패드 내장 음성</label>'+
     '<input id="ttsKey" type="password" autocomplete="off" placeholder="AIza…" value="'+esc(S.cfg.ttsKey||'')+'">'+
     '<div class="row" style="margin-top:9px"><div style="flex:1"><select id="ttsVoice">'+
-      [['ko-KR-Neural2-C','남자 · 또렷한 캐스터 (Neural2-C)'],['ko-KR-Wavenet-D','남자 · 낮은 톤 (Wavenet-D)'],
-       ['ko-KR-Neural2-A','여자 · 밝은 톤 (Neural2-A)'],['ko-KR-Wavenet-B','여자 · 차분한 톤 (Wavenet-B)']].map(function(v){
-        return '<option value="'+v[0]+'"'+((S.cfg.ttsVoice||'ko-KR-Neural2-C')===v[0]?' selected':'')+'>'+v[1]+'</option>'; }).join('')+
-    '</select></div><button class="btn pri" id="saveTts">저장</button><button class="btn" id="tryTts">들어 보기</button></div>'+
+      TTS_VOICES.map(function(g){ return '<optgroup label="'+g[0]+'">'+g[1].map(function(v){
+        return '<option value="'+v[0]+'"'+((S.cfg.ttsVoice||'ko-KR-Chirp3-HD-Puck')===v[0]?' selected':'')+'>'+v[1]+'</option>'; }).join('')+'</optgroup>'; }).join('')+
+'</select></div><button class="btn pri" id="saveTts">저장</button><button class="btn" id="tryTts">들어 보기</button></div>'+
     '<p class="st" style="margin:9px 0 0">키는 학교 코드 방에 저장되어 <b>모든 기기에 공유</b>됩니다. 앱 코드에는 들어가지 않아요.</p></div>'+
 
     '<div class="card"><h3>Firebase 동기화 (고급 · 보통은 비워 두세요)</h3>'+
@@ -3660,19 +3659,26 @@ function speakWeb(text, done){
     setTimeout(fin, 1500 + text.length*170);          // iOS 가 onend 를 빠뜨릴 때를 대비
   }catch(e){ fin(); }
 }
+/* 구글 한국어 목소리 (10/6, voices API 41개). Chirp3 HD 가 가장 자연스럽다 — Chirp3 는 pitch 를 보내면 오류 */
+var TTS_VOICES = [
+  ['⭐ 추천', [['ko-KR-Chirp3-HD-Puck','⭐ 남자 캐스터 · Puck'],['ko-KR-Chirp3-HD-Leda','⭐ 여자 · Leda'],['ko-KR-Chirp3-HD-Kore','⭐ 여자 · Kore']]],
+  ['✨ Chirp3 HD (가장 자연스러움)', [['ko-KR-Chirp3-HD-Achird','남자 · Achird'],['ko-KR-Chirp3-HD-Algenib','남자 · Algenib'],['ko-KR-Chirp3-HD-Algieba','남자 · Algieba'],['ko-KR-Chirp3-HD-Alnilam','남자 · Alnilam'],['ko-KR-Chirp3-HD-Charon','남자 · Charon'],['ko-KR-Chirp3-HD-Enceladus','남자 · Enceladus'],['ko-KR-Chirp3-HD-Fenrir','남자 · Fenrir'],['ko-KR-Chirp3-HD-Iapetus','남자 · Iapetus'],['ko-KR-Chirp3-HD-Orus','남자 · Orus'],['ko-KR-Chirp3-HD-Puck','남자 · Puck'],['ko-KR-Chirp3-HD-Rasalgethi','남자 · Rasalgethi'],['ko-KR-Chirp3-HD-Sadachbia','남자 · Sadachbia'],['ko-KR-Chirp3-HD-Sadaltager','남자 · Sadaltager'],['ko-KR-Chirp3-HD-Schedar','남자 · Schedar'],['ko-KR-Chirp3-HD-Umbriel','남자 · Umbriel'],['ko-KR-Chirp3-HD-Zubenelgenubi','남자 · Zubenelgenubi'],['ko-KR-Chirp3-HD-Achernar','여자 · Achernar'],['ko-KR-Chirp3-HD-Aoede','여자 · Aoede'],['ko-KR-Chirp3-HD-Autonoe','여자 · Autonoe'],['ko-KR-Chirp3-HD-Callirrhoe','여자 · Callirrhoe'],['ko-KR-Chirp3-HD-Despina','여자 · Despina'],['ko-KR-Chirp3-HD-Erinome','여자 · Erinome'],['ko-KR-Chirp3-HD-Gacrux','여자 · Gacrux'],['ko-KR-Chirp3-HD-Kore','여자 · Kore'],['ko-KR-Chirp3-HD-Laomedeia','여자 · Laomedeia'],['ko-KR-Chirp3-HD-Leda','여자 · Leda'],['ko-KR-Chirp3-HD-Pulcherrima','여자 · Pulcherrima'],['ko-KR-Chirp3-HD-Sulafat','여자 · Sulafat'],['ko-KR-Chirp3-HD-Vindemiatrix','여자 · Vindemiatrix'],['ko-KR-Chirp3-HD-Zephyr','여자 · Zephyr']]],
+  ['Neural2 · WaveNet (예전 목소리)', [['ko-KR-Neural2-C','남자 · Neural2-C'],['ko-KR-Wavenet-D','남자 · WaveNet-D'],['ko-KR-Wavenet-C','남자 · WaveNet-C'],['ko-KR-Neural2-A','여자 · Neural2-A'],['ko-KR-Neural2-B','여자 · Neural2-B'],['ko-KR-Wavenet-B','여자 · WaveNet-B']]]
+];
 /* 구글 음성 — 키가 있을 때만. 같은 문장은 한 번 받은 것을 다시 쓴다 */
 var _gtts = {};
+function ttsVoiceName(){ return S.cfg.ttsVoice || 'ko-KR-Chirp3-HD-Puck'; }
 function googleTTS(text){
   var key = (S.cfg.ttsKey||'').trim(); if(!key || !audioCtx()) return Promise.reject('no key');
-  if(_gtts[text]) return Promise.resolve(_gtts[text]);
+  var ck = ttsVoiceName()+'|'+text; if(_gtts[ck]) return Promise.resolve(_gtts[ck]);
   return fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key), {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({input:{text:text}, voice:{languageCode:'ko-KR', name:S.cfg.ttsVoice||'ko-KR-Neural2-C'},
-                          audioConfig:{audioEncoding:'MP3', speakingRate:1.08, pitch:1.0}})
+    body: JSON.stringify({input:{text:text}, voice:{languageCode:'ko-KR', name:ttsVoiceName()},
+                          audioConfig:/Chirp/.test(ttsVoiceName()) ? {audioEncoding:'MP3', speakingRate:1.08} : {audioEncoding:'MP3', speakingRate:1.08, pitch:1.0}})
   }).then(function(r){ return r.json(); }).then(function(j){
     if(!j.audioContent) throw new Error((j.error&&j.error.message)||'구글 음성 실패');
     return decodeAudio(b64ToBytes(j.audioContent).buffer);
-  }).then(function(buf){ _gtts[text] = buf; return buf; });
+  }).then(function(buf){ _gtts[ck] = buf; return buf; });
 }
 function speak(text, done){
   if((S.cfg.ttsKey||'').trim()){
