@@ -199,6 +199,18 @@
   .slide.mk .q{border-left-color:#16a34a}
   .note{font-size:15px;color:var(--ink3);font-weight:600}
   .card p{font-size:19.5px} .card h3{font-size:26px} .flow .st p{font-size:18px} .flow .st h3{font-size:25px} .rule .tx{font-size:19px} .rule .tx em{font-size:16px} .q{font-size:24px}
+
+  #nav{bottom:12px;align-items:center}
+  #nav button{background:#1e293b;color:#fff;border:1px solid #475569;box-shadow:0 4px 14px rgba(0,0,0,.35);padding:9px 18px;font-size:15px}
+  #nav button:hover{background:#334155}
+  #nav button.end{background:#b91c1c;border-color:#ef4444}
+  #nav .ind{display:flex;gap:4px;align-items:center;color:#e2e8f0;background:#1e293b;border:1px solid #475569;border-radius:999px;padding:8px 14px}
+  #stage{bottom:64px;display:block}
+  .slide{position:absolute;left:50%;top:50%}   /* 화면이 슬라이드보다 좁아도 가운데 (grid 가운데 정렬은 넘치면 오른쪽으로 밀림) */
+  @media(max-width:760px){#nav{gap:5px} #nav button{padding:7px 10px;font-size:13px;white-space:nowrap} #nav .ind{padding:6px 10px;font-size:13px}}
+  #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#0f172a;color:#fff;border-radius:12px;padding:10px 18px;font-weight:800;font-size:15px;opacity:0;transition:opacity .2s;z-index:60;pointer-events:none}
+  #toast.on{opacity:1}
+  @media print{#stage{bottom:auto} .slide{position:relative!important;left:auto!important;top:auto!important}}
   @media print{.yt iframe{display:none}}
 </style></head><body><div id="stage"><section class="slide cover on">
   <div class="kicker">스포츠 생활 2 · 필드형 스포츠의 문화 · 2학년</div>
@@ -214,7 +226,7 @@
   <div class="pgnum" style="color:#94a3b8">1</div>
 </section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>오늘의 흐름</div><h2>4단계로 떠나는 야구 여행</h2><div class="body"><div class="flow">
  <div class="st"><div class="k">STEP 1</div><h3>⚾ 필드형 스포츠</h3><p>공격과 수비를 번갈아 하는 스포츠, 야구는 어떤 경기일까?</p></div><div class="ar">›</div>
- <div class="st"><div class="k">STEP 2</div><h3>🌏 야구하는 나라들</h3><p>미국·일본·한국·대만·중남미… 나라마다 리그가 어떻게 다를까?</p></div><div class="ar">›</div>
+ <div class="st"><div class="k">STEP 2</div><h3>🌏 야구하는 나라들</h3><p>한국·일본·대만·미국·중남미… 나라마다 리그가 어떻게 다를까?</p></div><div class="ar">›</div>
  <div class="st"><div class="k">STEP 3</div><h3>📣 응원 문화</h3><p>같은 야구, 다른 응원. 우리나라 응원은 왜 특별할까?</p></div><div class="ar">›</div>
  <div class="st"><div class="k">STEP 4</div><h3>🎵 나만의 응원가</h3><p>AI로 내 응원가를 만들어 우리 경기에서 틀어 보자!</p></div></div>
  <p class="sub" style="margin-top:18px">마지막에는 내가 만든 응원가가 <b class="hl">내가 타석에 들어설 때</b> 캐스터 소개와 함께 울려 퍼집니다.</p></div><div class="pgnum">2</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>성취기준</div><h2>오늘 수업이 닿는 곳</h2><div class="body"><div class="std"><div class="code">[12스생2-02-01] 스포츠 문화</div>
@@ -244,7 +256,7 @@
       <a href="https://www.youtube.com/watch?v=i5fvsBGUz6Q" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">8</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 2 · 야구하는 나라들</div><h2>야구는 어디에서 사랑받을까?</h2><div class="body"><div class="cards c4">
  <div class="card"><div class="em">🇺🇸</div><h3>북아메리카</h3><p>미국·캐나다<br>세계 최고 리그 <b>MLB</b>. 야구가 시작되고 자란 곳.</p></div>
  <div class="card"><div class="em">🇩🇴</div><h3>중남미</h3><p>도미니카·쿠바·베네수엘라·푸에르토리코·멕시코<br>야구가 <b>국민 스포츠</b>, MLB 스타를 많이 길러 낸다.</p></div>
- <div class="card"><div class="em">🇯🇵</div><h3>동아시아</h3><p>일본·한국·대만<br>프로야구와 <b>학생 야구</b>(일본 고시엔 등) 문화가 뜨겁다.</p></div>
+ <div class="card"><div class="em">🇰🇷</div><h3>동아시아</h3><p>한국·일본·대만<br>프로야구와 <b>학생 야구</b>(일본 고시엔 등) 문화가 뜨겁다.</p></div>
  <div class="card"><div class="em">🇳🇱</div><h3>유럽·오세아니아</h3><p>네덜란드·이탈리아·호주<br>규모는 작지만 국제 대회에 꾸준히 나온다.</p></div></div>
  <div class="card" style="margin-top:16px"><h3>🏆 WBC (월드 베이스볼 클래식)</h3><p>2006년에 시작한 <b>야구 국가대항전</b>. 각 나라 프로 선수들이 국가대표로 나온다. 우리나라는 <b>2006년 4강, 2009년 준우승</b>을 거뒀다.</p></div></div><div class="pgnum">9</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 2 · 나라별 리그</div><h2>나라마다 프로야구 리그가 있어요</h2><div class="body"><table class="lg">
  <tr><th>리그</th><th>나라</th><th>시작</th><th>팀 수</th><th>정규 시즌 경기</th><th>한 줄 특징</th></tr>
@@ -304,7 +316,7 @@
  <div class="q">① 필드형 스포츠의 특징을 <b>공격·수비·공수 교대</b>라는 말을 넣어 설명해 보자.</div>
  <div class="q">② 나라마다 응원 문화가 다른 까닭은 무엇일까? <b>내가 가장 해 보고 싶은 응원</b>은?</div>
  <div class="q">③ 내 응원가에 담은 <b>‘나’</b>는 어떤 모습인가? 친구의 응원가를 들을 때 나는 어떻게 응원할까?</div></div></div><div class="pgnum">23</div></section></div>
-<div id="nav"><button onclick="go(-1)">◀ 이전</button><div class="ind"><span id="cur">1</span> / <span id="tot">1</span></div><button onclick="go(1)">다음 ▶</button><button onclick="window.print()">🖨 인쇄 · PDF</button></div>
+<div id="nav"><button onclick="go(-1)">◀ 이전</button><div class="ind"><span id="cur">1</span><span>/</span><span id="tot">1</span></div><button onclick="go(1)">다음 ▶</button><button onclick="fullscreen()">⛶ 전체 화면</button><button onclick="window.print()">🖨 인쇄</button><button class="end" onclick="endShow()">✕ 종료</button></div><div id="toast"></div>
 <script>
   const slides=[...document.querySelectorAll('.slide')];
   let i=0;
@@ -320,15 +332,24 @@
   }
   function go(d){show(i+d)}
   function fit(){
-    const k=Math.min((innerWidth-44)/1280,(innerHeight-44-40)/720);
-    slides.forEach(x=>x.style.transform='scale('+k+')');
+    const k=Math.min((innerWidth-40)/1280,(innerHeight-64-24)/720);   // 아래 64px 는 버튼 자리
+    slides.forEach(x=>x.style.transform='translate(-50%,-50%) scale('+k+')');
   }
   addEventListener('resize',fit);
+  function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200); }
+  function fullscreen(){ if(document.fullscreenElement) document.exitFullscreen(); else (document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen||function(){}).call(document.documentElement); }
+  /* 종료: 영상 멈춤 → 전체 화면 해제 → 창 닫기(링크로 연 창이면 닫힌다). 안 닫히면 첫 장으로 */
+  function endShow(){
+    stopVideos();
+    if(document.fullscreenElement) document.exitFullscreen();
+    try{ window.close(); }catch(e){}
+    setTimeout(()=>{ if(!window.closed){ show(0); toast('수업을 마쳤어요 · 이 탭을 닫으면 종료됩니다'); } }, 300);
+  }
   addEventListener('keydown',e=>{
     if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();go(1)}
     if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(-1)}
     if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
-    if(e.key==='f'){document.documentElement.requestFullscreen?.()}
+    if(e.key==='f'){fullscreen()} if(e.key==='Escape'&&!document.fullscreenElement){endShow()}
   });
   /* 유튜브: 누르면 그 자리에서 재생 (슬라이드를 넘기면 멈춤) */
   document.querySelectorAll('.yt').forEach(y=>{
