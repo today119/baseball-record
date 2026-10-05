@@ -210,7 +210,7 @@
   @media(max-width:760px){#nav{gap:5px} #nav button{padding:7px 10px;font-size:13px;white-space:nowrap} #nav .ind{padding:6px 10px;font-size:13px}}
   #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#0f172a;color:#fff;border-radius:12px;padding:10px 18px;font-weight:800;font-size:15px;opacity:0;transition:opacity .2s;z-index:60;pointer-events:none}
   #toast.on{opacity:1}
-  @media print{#stage{bottom:auto} .slide{position:relative!important;left:auto!important;top:auto!important}}
+  @media print{#toast{display:none} .slide:last-child{page-break-after:auto!important} #stage{bottom:auto} .slide{position:relative!important;left:auto!important;top:auto!important}}
   @media print{.yt iframe{display:none}}
 </style></head><body><div id="stage"><section class="slide cover on">
   <div class="kicker">스포츠 생활 2 · 필드형 스포츠의 문화 · 2학년</div>
