@@ -1,0 +1,345 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>응원가로 하나 되는 야구</title><style>
+  :root{
+    --ink:#0f172a; --ink2:#334155; --ink3:#64748b;
+    --line:#e2e8f0; --bg:#f6f8fb; --card:#ffffff;
+    --tt:#0284c7;   /* 탁구 */
+    --tt2:#0ea5e9;
+    --bb:#ea580c;   /* 야구 */
+    --bb2:#f59e0b;
+    --gr:#16a34a;
+    --navy:#0b1f3a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#0b1220; color:var(--ink);
+    font-family:"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  #stage{position:fixed;inset:0;display:grid;place-items:center}
+  .slide{
+    width:1280px;height:720px;position:relative;
+    background:var(--bg); overflow:hidden;
+    display:none; flex-direction:column;
+    padding:54px 64px 60px;
+    transform-origin:center center;
+  }
+  .slide.on{display:flex}
+  /* ---------- 공통 타이포 ---------- */
+  .eyebrow{font-size:19px;font-weight:800;letter-spacing:.04em;color:var(--tt);display:flex;align-items:center;gap:10px}
+  .eyebrow i{display:inline-block;width:26px;height:4px;border-radius:2px;background:var(--tt)}
+  h1{font-size:52px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:10px 0 6px}
+  h2{font-size:44px;font-weight:900;letter-spacing:-.02em;line-height:1.2;margin:8px 0 4px}
+  .sub{font-size:21px;color:var(--ink3);font-weight:600;line-height:1.5}
+  .body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;padding-top:14px}
+  .pgnum{position:absolute;right:34px;bottom:22px;font-size:15px;font-weight:800;color:#94a3b8}
+  .tag{position:absolute;left:0;top:0;width:10px;height:100%;background:linear-gradient(180deg,var(--tt),var(--tt2))}
+  .slide.bb .tag{background:linear-gradient(180deg,var(--bb),var(--bb2))}
+  .slide.bb .eyebrow{color:var(--bb)} .slide.bb .eyebrow i{background:var(--bb)}
+  .slide.nt .tag{background:linear-gradient(180deg,#475569,#94a3b8)}
+  .slide.nt .eyebrow{color:#475569} .slide.nt .eyebrow i{background:#475569}
+  b.hl{background:linear-gradient(transparent 58%, #fde68a 58%);padding:0 2px}
+  .mono{font-variant-numeric:tabular-nums}
+
+  /* ---------- 카드 ---------- */
+  .cards{display:grid;gap:16px}
+  .c2{grid-template-columns:1fr 1fr} .c3{grid-template-columns:repeat(3,1fr)} .c4{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+        box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -14px rgba(15,23,42,.18)}
+  .card h3{font-size:24px;font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
+  .card p{font-size:18px;line-height:1.55;color:var(--ink2)}
+  .card .big{font-size:44px;font-weight:900;letter-spacing:-.03em;line-height:1}
+  .num{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;
+       font-weight:900;font-size:19px;color:#fff;background:var(--tt);margin-bottom:10px}
+  .slide.bb .num{background:var(--bb)}
+
+  /* ---------- 표 ---------- */
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;
+        box-shadow:0 8px 24px -16px rgba(15,23,42,.3)}
+  th,td{padding:13px 16px;font-size:19px;text-align:center;border-bottom:1px solid var(--line)}
+  th{background:var(--navy);color:#fff;font-weight:800;font-size:18px;letter-spacing:.01em}
+  .slide.bb th{background:#7c2d12}
+  tr:last-child td{border-bottom:none}
+  tbody tr:nth-child(even){background:#f8fafc}
+  td.l{text-align:left}
+  td.pt{font-weight:900;color:var(--tt);font-size:22px}
+  .slide.bb td.pt{color:var(--bb)}
+
+  .note{background:#fff7ed;border:1px solid #fed7aa;border-left:5px solid var(--bb2);
+        border-radius:12px;padding:14px 18px;font-size:18px;color:#7c2d12;line-height:1.5;font-weight:600}
+  .note.blue{background:#eff6ff;border-color:#bfdbfe;border-left-color:var(--tt2);color:#0c4a6e}
+  .note.green{background:#f0fdf4;border-color:#bbf7d0;border-left-color:var(--gr);color:#14532d}
+
+  /* ---------- 표지 ---------- */
+  .cover{background:radial-gradient(1200px 700px at 80% -10%, #1d4ed8 0%, transparent 60%),
+                    linear-gradient(135deg,#0b1f3a 0%,#0f2f4f 55%,#134e4a 100%);
+         color:#fff;justify-content:center;padding:0 90px}
+  .cover .kicker{font-size:24px;font-weight:800;color:#7dd3fc;letter-spacing:.06em}
+  .cover h1{font-size:96px;line-height:1.02;margin:18px 0 12px;text-shadow:0 6px 30px rgba(0,0,0,.35)}
+  .cover .ori{font-size:40px;font-weight:800;color:#fbbf24;letter-spacing:.02em}
+  .cover .who{margin-top:34px;font-size:23px;color:#cbd5e1;font-weight:600;line-height:1.6}
+  .cover .pill{display:inline-flex;gap:8px;align-items:center;margin-top:26px}
+  .cover .pill span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    padding:9px 18px;border-radius:999px;font-size:19px;font-weight:700;color:#fff}
+  .balls{position:absolute;right:-60px;bottom:-80px;opacity:.16}
+
+  /* ---------- 막대 ---------- */
+  .bars{display:flex;flex-direction:column;gap:14px}
+  .bar{display:grid;grid-template-columns:250px 1fr 74px;align-items:center;gap:16px}
+  .bar .nm{font-size:21px;font-weight:800;text-align:right;color:var(--ink)}
+  .bar .track{height:44px;background:#e9eef5;border-radius:10px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:10px;display:flex;align-items:center;padding-left:16px;
+             color:#fff;font-weight:900;font-size:19px}
+  .bar .vv{font-size:24px;font-weight:900;text-align:right}
+
+  /* ---------- 로드맵 ---------- */
+  .road{position:relative;margin:16px 0 6px;padding-top:8px}
+  .road .line{position:absolute;left:0;right:0;top:58px;height:8px;border-radius:4px;
+    background:linear-gradient(90deg,var(--tt) 0%,var(--tt2) 42%,var(--bb2) 52%,var(--bb) 100%)}
+  .road .items{display:grid;grid-template-columns:repeat(6,1fr);position:relative}
+  .road .it{text-align:center;padding-top:0}
+  .road .it .m{font-size:17px;font-weight:900;color:var(--ink3);height:44px}
+  .road .it .dot{width:22px;height:22px;border-radius:50%;background:#fff;border:6px solid var(--tt);
+    margin:0 auto;position:relative;z-index:2}
+  .road .it.b .dot{border-color:var(--bb)}
+  .road .it .t{margin-top:14px;font-size:19px;font-weight:800;line-height:1.35}
+  .road .it .d{margin-top:5px;font-size:15px;color:var(--ink3);font-weight:600;line-height:1.4}
+
+  /* ---------- 성취기준 ---------- */
+  .std{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .std .g{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+  .std .code{font-size:15px;font-weight:900;color:var(--tt);letter-spacing:.02em}
+  .std .g.b .code{color:var(--bb)}
+  .std .txt{font-size:17px;line-height:1.5;color:var(--ink2);margin-top:5px;font-weight:600}
+  .hdr2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:2px}
+  .hdr2 .h{font-size:22px;font-weight:900;padding:10px 16px;border-radius:12px;color:#fff}
+  .hdr2 .h.t{background:var(--tt)} .hdr2 .h.b{background:var(--bb)}
+
+  /* ---------- 규칙 ---------- */
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
+  .rule{display:flex;gap:13px;align-items:flex-start;background:#fff;border:1px solid var(--line);
+        border-radius:14px;padding:13px 16px}
+  .rule .k{flex:0 0 auto;width:30px;height:30px;border-radius:9px;background:var(--navy);color:#fff;
+           display:grid;place-items:center;font-weight:900;font-size:16px}
+  .rule .tx{font-size:17.5px;line-height:1.45;font-weight:700;color:var(--ink)}
+  .rule .tx em{display:block;font-style:normal;font-size:15px;font-weight:600;color:var(--ink3);margin-top:3px}
+
+  /* ---------- 포지션 ---------- */
+  .fieldwrap{display:grid;grid-template-columns:800px 1fr;gap:24px;align-items:center}
+  .sidecol{display:flex;flex-direction:column;gap:11px}
+  .poslist{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .pos{display:flex;gap:11px;align-items:center;background:#fff;border:1px solid var(--line);
+       border-radius:12px;padding:9px 12px}
+  .pos .n{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--bb);color:#fff;
+          display:grid;place-items:center;font-weight:900;font-size:16px}
+  .pos .nm{font-size:18px;font-weight:900}
+  .pos .ab{font-size:13px;color:var(--ink3);font-weight:800;margin-left:auto}
+
+  .end{background:linear-gradient(135deg,#0b1f3a,#134e4a);color:#fff;justify-content:center;align-items:center;text-align:center}
+  .end h1{font-size:74px} .end .sub{color:#a5f3fc;font-size:28px;font-weight:700;margin-top:14px}
+
+  /* ---------- 네비 ---------- */
+  #nav{position:fixed;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:10px;z-index:50;
+       font-family:inherit}
+  #nav button{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);
+    border-radius:999px;padding:8px 18px;font-size:15px;font-weight:800;cursor:pointer}
+  #nav button:hover{background:rgba(255,255,255,.26)}
+  #nav .ind{color:#cbd5e1;font-size:15px;font-weight:800;display:grid;place-items:center;padding:0 8px}
+  @media print{
+    body{overflow:visible;background:#fff}
+    #nav{display:none}
+    #stage{position:static;display:block}
+    .slide{display:flex!important;transform:none!important;page-break-after:always;box-shadow:none}
+    @page{size:1280px 720px;margin:0}
+  }
+
+  .eyebrow{color:var(--bb)} .eyebrow i{background:var(--bb)}
+  .tag{background:linear-gradient(180deg,var(--bb),var(--bb2))}
+  .slide.cul .tag{background:linear-gradient(180deg,#7c3aed,#ec4899)} .slide.cul .eyebrow{color:#7c3aed} .slide.cul .eyebrow i{background:#7c3aed}
+  .slide.mk .tag{background:linear-gradient(180deg,#16a34a,#22d3ee)} .slide.mk .eyebrow{color:#16a34a} .slide.mk .eyebrow i{background:#16a34a}
+  .num{background:var(--bb)} .slide.cul .num{background:#7c3aed} .slide.mk .num{background:#16a34a}
+  .cover{background:radial-gradient(1100px 700px at 85% -10%, #ea580c 0%, transparent 58%),radial-gradient(900px 600px at -10% 110%, #7c3aed 0%, transparent 55%),#0b1220;color:#fff;justify-content:center}
+  .cover .kicker{color:#fdba74}
+  .cover .ori{color:#fde68a}
+  /* 영상 */
+  .vwrap{display:grid;grid-template-columns:760px 1fr;gap:26px;align-items:center;flex:1}
+  .yt{position:relative;width:760px;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#000;cursor:pointer;
+      box-shadow:0 18px 40px -20px rgba(0,0,0,.6)}
+  .yt img{width:100%;height:100%;object-fit:cover;display:block;opacity:.92}
+  .yt .play{position:absolute;inset:0;display:grid;place-items:center}
+  .yt .play b{width:96px;height:68px;border-radius:18px;background:#ef4444;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .yt .play b:after{content:'';border-left:30px solid #fff;border-top:18px solid transparent;border-bottom:18px solid transparent;margin-left:6px}
+  .yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .yt.sm{width:100%}
+  .vside h3{font-size:26px;font-weight:900;line-height:1.3;margin-bottom:6px}
+  .vside .ch{font-size:16px;color:var(--ink3);font-weight:700;margin-bottom:16px}
+  .vside .pt{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:18px;line-height:1.55;color:var(--ink2)}
+  .vside .pt b{color:var(--ink)}
+  .vside .pt .lab{display:block;font-size:14px;font-weight:900;color:var(--bb);letter-spacing:.04em;margin-bottom:4px}
+  .slide.cul .vside .pt .lab{color:#7c3aed}
+  .vside a{display:inline-block;margin-top:12px;font-size:15px;font-weight:800;color:#2563eb;text-decoration:none}
+  .v2{display:grid;grid-template-columns:1fr 1fr;gap:22px;flex:1;align-items:start;padding-top:10px}
+  .v2 .cap{font-size:19px;font-weight:900;margin-top:10px} .v2 .cap small{display:block;font-size:15px;color:var(--ink3);font-weight:700;margin-top:3px}
+  /* 유형 카드 강조 */
+  .card.on{border:3px solid var(--bb);box-shadow:0 18px 40px -18px rgba(234,88,12,.55)}
+  .card .em{font-size:44px;line-height:1;margin-bottom:8px}
+  .chip{display:inline-block;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:4px 12px;font-size:16px;font-weight:800;margin:3px 4px 0 0}
+  .slide.cul .chip{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}
+  .std{display:block!important;text-align:left;background:linear-gradient(135deg,#0b1f3a,#1e3a8a);color:#fff;border-radius:20px;padding:26px 30px}
+  .std .code{font-size:20px;font-weight:900;color:#fdba74}
+  .std .tx{display:block;text-align:left;font-size:34px;font-weight:900;line-height:1.35;margin-top:8px}
+  .std .tx u{text-decoration:none;background:linear-gradient(transparent 60%,rgba(253,186,116,.55) 60%)}
+  .flow{display:flex;gap:14px;align-items:stretch}
+  .flow .st{flex:1;background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px 20px;position:relative}
+  .flow .st .k{font-size:15px;font-weight:900;color:var(--ink3)} .flow .st h3{font-size:24px;font-weight:900;margin:6px 0} .flow .st p{font-size:17px;color:var(--ink2);line-height:1.5}
+  .flow .ar{display:grid;place-items:center;font-size:30px;color:#cbd5e1;font-weight:900}
+  table.lg td{font-size:17.5px;padding:11px 12px} table.lg th{font-size:16.5px;padding:11px 12px}
+  table.lg td.l{text-align:left}
+  .q{background:#fff;border-left:8px solid var(--bb);border-radius:14px;padding:16px 20px;font-size:23px;font-weight:800;line-height:1.45}
+  .slide.mk .q{border-left-color:#16a34a}
+  .note{font-size:15px;color:var(--ink3);font-weight:600}
+  .card p{font-size:19.5px} .card h3{font-size:26px} .flow .st p{font-size:18px} .flow .st h3{font-size:25px} .rule .tx{font-size:19px} .rule .tx em{font-size:16px} .q{font-size:24px}
+  @media print{.yt iframe{display:none}}
+</style></head><body><div id="stage"><section class="slide cover on">
+  <div class="kicker">스포츠 생활 2 · 필드형 스포츠의 문화 · 2학년</div>
+  <h1>응원가로<br>하나 되는 야구</h1>
+  <div class="ori">필드형 스포츠 → 야구하는 나라들 → 응원 문화 → 나만의 응원가</div>
+  <div class="who">[12스생2-02-01] 필드형 스포츠의 문화를 이해하고 존중하며, 스포츠퍼슨십을 실천한다.</div>
+  <div class="pill"><span>⚾ 필드형 스포츠</span><span>🌏 나라별 리그</span><span>📣 응원 문화</span><span>🎵 응원가 만들기</span></div>
+  <svg class="balls" width="420" height="420" viewBox="0 0 100 100" aria-hidden="true">
+    <circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="3"/>
+    <path d="M22 14 C40 34 40 66 22 86" fill="none" stroke="#fff" stroke-width="3"/>
+    <path d="M78 14 C60 34 60 66 78 86" fill="none" stroke="#fff" stroke-width="3"/>
+  </svg>
+  <div class="pgnum" style="color:#94a3b8">1</div>
+</section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>오늘의 흐름</div><h2>4단계로 떠나는 야구 여행</h2><div class="body"><div class="flow">
+ <div class="st"><div class="k">STEP 1</div><h3>⚾ 필드형 스포츠</h3><p>공격과 수비를 번갈아 하는 스포츠, 야구는 어떤 경기일까?</p></div><div class="ar">›</div>
+ <div class="st"><div class="k">STEP 2</div><h3>🌏 야구하는 나라들</h3><p>미국·일본·한국·대만·중남미… 나라마다 리그가 어떻게 다를까?</p></div><div class="ar">›</div>
+ <div class="st"><div class="k">STEP 3</div><h3>📣 응원 문화</h3><p>같은 야구, 다른 응원. 우리나라 응원은 왜 특별할까?</p></div><div class="ar">›</div>
+ <div class="st"><div class="k">STEP 4</div><h3>🎵 나만의 응원가</h3><p>AI로 내 응원가를 만들어 우리 경기에서 틀어 보자!</p></div></div>
+ <p class="sub" style="margin-top:18px">마지막에는 내가 만든 응원가가 <b class="hl">내가 타석에 들어설 때</b> 캐스터 소개와 함께 울려 퍼집니다.</p></div><div class="pgnum">2</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>성취기준</div><h2>오늘 수업이 닿는 곳</h2><div class="body"><div class="std"><div class="code">[12스생2-02-01] 스포츠 문화</div>
+ <div class="tx">필드형 스포츠의 문화를 <u>이해</u>하고 <u>존중</u>하며,<br>스포츠퍼슨십을 <u>실천</u>한다.</div></div>
+ <div class="cards c3" style="margin-top:18px">
+ <div class="card"><div class="num">1</div><h3>이해</h3><p>필드형 스포츠의 특징, 나라별 리그와 응원 문화의 차이를 안다.</p></div>
+ <div class="card"><div class="num">2</div><h3>존중</h3><p>다른 나라·다른 팀의 응원 문화를 존중하고 상대 팀을 배려한다.</p></div>
+ <div class="card"><div class="num">3</div><h3>실천</h3><p>응원 예절을 지키고, 나와 친구를 북돋는 응원가를 만들어 쓴다.</p></div></div></div><div class="pgnum">3</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 1 · 스포츠의 유형</div><h2>경쟁 스포츠는 4가지로 나눌 수 있어요</h2><div class="body"><div class="cards c4">
+ <div class="card"><div class="em">⚽</div><h3>영역형</h3><p>상대 영역에 들어가 골을 넣는다</p><div><span class="chip">축구</span><span class="chip">농구</span><span class="chip">핸드볼</span></div></div>
+ <div class="card"><div class="em">🏓</div><h3>네트형</h3><p>네트 너머로 공을 보내 받아넘기지 못하게 한다</p><div><span class="chip">배구</span><span class="chip">탁구</span><span class="chip">배드민턴</span></div></div>
+ <div class="card on"><div class="em">⚾</div><h3>필드형</h3><p>공을 치고 달려 점수를 내고, 수비는 잡고 던져 아웃시킨다</p><div><span class="chip">야구</span><span class="chip">소프트볼</span><span class="chip">크리켓</span></div></div>
+ <div class="card"><div class="em">🎯</div><h3>표적형</h3><p>정해진 표적에 더 가깝게, 더 정확하게 보낸다</p><div><span class="chip">골프</span><span class="chip">볼링</span><span class="chip">양궁</span></div></div></div>
+ <p class="sub" style="margin-top:16px">1학기(지난 단원)의 <b>탁구 = 네트형</b>, 이번 단원의 <b>플레이트 야구 = 필드형</b>이에요.</p></div><div class="pgnum">4</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 1 · 필드형 스포츠</div><h2>필드형 스포츠란?</h2><div class="body"><div class="cards c2">
+ <div class="card"><h3>⚔️ 공격 — 치고, 달리고, 들어온다</h3><p>공을 쳐서 정해진 길(베이스)을 돌아 <b>홈으로 돌아오면 득점</b>.<br>한 사람씩 차례로 나와 <b>혼자 타석에 선다</b>.</p></div>
+ <div class="card"><h3>🧤 수비 — 잡고, 던지고, 막는다</h3><p>정해진 <b>수비 위치</b>에 서서 공을 잡고 던져 <b>아웃</b>을 만든다.<br>여러 명이 <b>함께 호흡</b>해야 막을 수 있다.</p></div>
+ <div class="card"><h3>🔄 공수 교대</h3><p>아웃이 정해진 수(야구는 3개)만큼 나오면 공격과 수비가 바뀐다.</p></div>
+ <div class="card"><h3>🌍 같은 가족들</h3><p><span class="chip">야구</span><span class="chip">소프트볼</span><span class="chip">티볼</span><span class="chip">크리켓</span><span class="chip">발야구</span><span class="chip">킥볼</span><span class="chip">플레이트 야구</span></p></div></div></div><div class="pgnum">5</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 1 · 영상</div><h2>필드형 경쟁, 한눈에 보기</h2><div class="body"><div class="vwrap"><div class="yt " data-id="EyYvOZC_-TU"><img src="https://i.ytimg.com/vi/EyYvOZC_-TU/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="vside"><h3>필드형 경쟁 알아보기</h3><div class="ch">이신형 · 5분 33초</div>
+      <div class="pt"><span class="lab">👀 보면서 찾아보기</span>필드형 스포츠에서 <b>공격팀이 점수를 내는 방법</b>과 <b>수비팀이 아웃을 만드는 방법</b>은?</div>
+      <div class="pt" style="margin-top:10px"><span class="lab">💬 이야기 나누기</span>우리가 했던 플레이트 야구에서 가장 어려웠던 순간은 공격일까, 수비일까?</div>
+      <a href="https://www.youtube.com/watch?v=EyYvOZC_-TU" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">6</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 1 · 야구의 특성</div><h2>야구는 이런 스포츠예요</h2><div class="body"><div class="cards c2">
+ <div class="card"><div class="num">1</div><h3>시계가 없는 스포츠</h3><p>정해진 시간이 아니라 <b>아웃 27개</b>(9이닝 × 3아웃)를 잡아야 끝난다. 9회 말 2아웃에도 뒤집을 수 있다.</p></div>
+ <div class="card"><div class="num">2</div><h3>타석은 혼자, 수비는 함께</h3><p>타석에서는 <b>오롯이 나 혼자</b> 투수와 맞서고, 수비에서는 <b>9명이 한 몸</b>처럼 움직인다.</p></div>
+ <div class="card"><div class="num">3</div><h3>기록의 스포츠</h3><p>타율·출루율·평균자책점… 모든 플레이가 숫자로 남는다. 우리 수업의 <b>타율 기록</b>도 여기서 왔다.</p></div>
+ <div class="card on"><div class="num">4</div><h3>‘멈춤’이 많은 스포츠</h3><p>공 하나하나 사이에 <b>짧은 멈춤</b>이 있다. 바로 이 틈에 <b>응원</b>이 들어간다! → 응원 문화가 자란 이유</p></div></div></div><div class="pgnum">7</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 1 · 영상</div><h2>야구 규칙, 6분 정리</h2><div class="body"><div class="vwrap"><div class="yt " data-id="i5fvsBGUz6Q"><img src="https://i.ytimg.com/vi/i5fvsBGUz6Q/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="vside"><h3>야구 규칙 깔끔하게 정리해드립니다</h3><div class="ch">체인지 · 5분 59초</div>
+      <div class="pt"><span class="lab">👀 보면서 찾아보기</span><b>스트라이크·볼·아웃</b>이 어떻게 정해지는지, <b>득점</b>은 언제 나는지 정리해 보자.</div>
+      
+      <a href="https://www.youtube.com/watch?v=i5fvsBGUz6Q" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">8</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 2 · 야구하는 나라들</div><h2>야구는 어디에서 사랑받을까?</h2><div class="body"><div class="cards c4">
+ <div class="card"><div class="em">🇺🇸</div><h3>북아메리카</h3><p>미국·캐나다<br>세계 최고 리그 <b>MLB</b>. 야구가 시작되고 자란 곳.</p></div>
+ <div class="card"><div class="em">🇩🇴</div><h3>중남미</h3><p>도미니카·쿠바·베네수엘라·푸에르토리코·멕시코<br>야구가 <b>국민 스포츠</b>, MLB 스타를 많이 길러 낸다.</p></div>
+ <div class="card"><div class="em">🇯🇵</div><h3>동아시아</h3><p>일본·한국·대만<br>프로야구와 <b>학생 야구</b>(일본 고시엔 등) 문화가 뜨겁다.</p></div>
+ <div class="card"><div class="em">🇳🇱</div><h3>유럽·오세아니아</h3><p>네덜란드·이탈리아·호주<br>규모는 작지만 국제 대회에 꾸준히 나온다.</p></div></div>
+ <div class="card" style="margin-top:16px"><h3>🏆 WBC (월드 베이스볼 클래식)</h3><p>2006년에 시작한 <b>야구 국가대항전</b>. 각 나라 프로 선수들이 국가대표로 나온다. 우리나라는 <b>2006년 4강, 2009년 준우승</b>을 거뒀다.</p></div></div><div class="pgnum">9</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 2 · 나라별 리그</div><h2>나라마다 프로야구 리그가 있어요</h2><div class="body"><table class="lg">
+ <tr><th>리그</th><th>나라</th><th>시작</th><th>팀 수</th><th>정규 시즌 경기</th><th>한 줄 특징</th></tr>
+ <tr><td><b>MLB</b></td><td>미국·캐나다</td><td>1876년<br><small style="color:var(--ink3);font-size:14px">(내셔널리그)</small></td><td>30</td><td>162</td><td class="l">세계 최고 수준, 여러 나라 출신 선수들이 뛴다</td></tr>
+ <tr><td><b>NPB</b></td><td>일본</td><td>1936년</td><td>12</td><td>143</td><td class="l">센트럴·퍼시픽 <b>양대 리그</b>, 외야 응원단의 트럼펫 응원</td></tr>
+ <tr><td><b>KBO</b></td><td>한국</td><td>1982년</td><td>10</td><td>144</td><td class="l">응원단장·치어리더, 2024년 <b>첫 1,000만 관중</b></td></tr>
+ <tr><td><b>CPBL</b></td><td>대만</td><td>1990년</td><td>6</td><td>120</td><td class="l">치어리더 응원이 인기, <b>한국 치어리더</b>도 활약</td></tr>
+ <tr><td><b>LIDOM</b></td><td>도미니카</td><td>—</td><td>6</td><td>—</td><td class="l"><b>겨울 리그</b>(10~1월), MLB 선수들도 고향에서 뛴다</td></tr></table>
+ <p class="note" style="margin-top:10px">경기 수·팀 수는 2026년 기준이며 해마다 조금씩 바뀔 수 있어요.</p></div><div class="pgnum">10</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>STEP 2 · 영상</div><h2>한국 야구 vs 미국 야구</h2><div class="body"><div class="vwrap"><div class="yt " data-id="rDt6IpKRQxQ"><img src="https://i.ytimg.com/vi/rDt6IpKRQxQ/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="vside"><h3>이대호가 알려주는 MLB vs KBO 차이</h3><div class="ch">MLB Korea · 10분 7초</div>
+      <div class="pt"><span class="lab">👀 보면서 찾아보기</span>두 리그 모두 뛰어 본 선수가 느낀 <b>경기 방식·문화의 차이</b> 두 가지를 적어 보자.</div>
+      <div class="pt" style="margin-top:10px"><span class="lab">💬 이야기 나누기</span>같은 야구인데 왜 나라마다 다르게 발전했을까?</div>
+      <a href="https://www.youtube.com/watch?v=rDt6IpKRQxQ" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">11</div></section><section class="slide cul"><div class="tag"></div><div class="eyebrow"><i></i>STEP 3 · 응원 문화 비교</div><h2>같은 야구, 다른 응원</h2><div class="body"><div class="cards c3">
+ <div class="card"><div class="em">🇺🇸</div><h3>미국 MLB</h3><p>· 각자 자유롭게 즐기는 관람<br>· 구장 <b>오르간</b> 연주<br>· 7회 <b>스트레치</b>: 다 함께 일어나 「Take Me Out to the Ball Game」<br>· 타자가 직접 고른 <b>등장곡</b>(walk-up song)</p></div>
+ <div class="card"><div class="em">🇯🇵</div><h3>일본 NPB</h3><p>· <b>외야 응원단</b>이 이끄는 응원<br>· <b>트럼펫과 북</b> 연주<br>· 선수마다 정해진 응원가<br>· 7회 <b>풍선 날리기</b><br>· 우리 팀 <b>공격 때</b> 응원, 수비 때는 조용히</p></div>
+ <div class="card on" style="border-color:#7c3aed"><div class="em">🇰🇷</div><h3>한국 KBO</h3><p>· 내야 단상의 <b>응원단장·치어리더</b><br>· 앰프 음악에 맞춘 <b>떼창</b><br>· 선수마다 응원가와 구호<br>· 막대풍선·응원 도구<br>· 경기 내내 <b>모두가 함께</b> 부른다</p></div></div></div><div class="pgnum">12</div></section><section class="slide cul"><div class="tag"></div><div class="eyebrow"><i></i>STEP 3 · 영상</div><h2>미국 야구장의 응원</h2><div class="body"><div class="v2">
+ <div><div class="yt sm" data-id="HnHV5FaqvEs"><img src="https://i.ytimg.com/vi/HnHV5FaqvEs/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="cap">7회 스트레치 · 「Take Me Out to the Ball Game」<small>MLB · 1분 8초 · 1908년에 만들어진 노래를 관중 모두가 함께 부른다 · <a href="https://www.youtube.com/watch?v=HnHV5FaqvEs" target="_blank" rel="noopener">▶ 유튜브</a></small></div></div>
+ <div><div class="yt sm" data-id="nTx5YqS6Qf4"><img src="https://i.ytimg.com/vi/nTx5YqS6Qf4/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="cap">선수 등장곡 (walk-up song)<small>Vedd · 5분 44초 · 타석에 들어설 때 선수가 고른 노래가 나온다 → <b>우리 수업의 응원가와 같은 원리!</b> · <a href="https://www.youtube.com/watch?v=nTx5YqS6Qf4" target="_blank" rel="noopener">▶ 유튜브</a></small></div></div></div></div><div class="pgnum">13</div></section><section class="slide cul"><div class="tag"></div><div class="eyebrow"><i></i>STEP 3 · 영상</div><h2>일본 야구장의 트럼펫 응원</h2><div class="body"><div class="vwrap"><div class="yt " data-id="fdFyr4wcpSY"><img src="https://i.ytimg.com/vi/fdFyr4wcpSY/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="vside"><h3>도쿄돔 뒤흔든 트럼펫 응원가 주인공 인터뷰</h3><div class="ch">스포츠머그 · 9분 13초</div>
+      <div class="pt"><span class="lab">👀 보면서 찾아보기</span>일본 응원은 <b>누가, 무엇으로</b> 응원을 이끌까? 우리나라와 다른 점은?</div>
+      
+      <a href="https://www.youtube.com/watch?v=fdFyr4wcpSY" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">14</div></section><section class="slide cul"><div class="tag"></div><div class="eyebrow"><i></i>STEP 3 · 우리나라 응원 문화</div><h2>한국 야구장의 응원은 왜 특별할까?</h2><div class="body"><div class="cards c2">
+ <div class="card"><div class="num">1</div><h3>응원단장이 이끄는 ‘하나 된’ 응원</h3><p>응원단장과 치어리더가 동작과 구호를 이끌고, 관중 전체가 <b>한 목소리</b>로 따라 한다.</p></div>
+ <div class="card"><div class="num">2</div><h3>선수마다 응원가</h3><p>모든 선수에게 응원가가 있다. <b>이름 + 구호를 반복</b>해서 누구나 금방 따라 부른다.</p></div>
+ <div class="card"><div class="num">3</div><h3>떼창과 지역의 색깔</h3><p>롯데의 「부산 갈매기」, KIA의 「남행열차」처럼 <b>지역과 팀을 대표하는 노래</b>를 수만 명이 함께 부른다.</p></div>
+ <div class="card"><div class="num">4</div><h3>세계가 놀라는 문화</h3><p>외국 선수·관중이 “축제 같다”며 놀란다. 대만 야구장에는 <b>한국 치어리더</b>가 진출했다.</p></div></div></div><div class="pgnum">15</div></section><section class="slide cul"><div class="tag"></div><div class="eyebrow"><i></i>STEP 3 · 영상</div><h2>세계가 부러워하는 우리 응원</h2><div class="body"><div class="v2">
+ <div><div class="yt sm" data-id="wuKQaFYrhNU"><img src="https://i.ytimg.com/vi/wuKQaFYrhNU/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="cap">미국도 부러워하는 프로야구 응원 문화<small>스포츠머그 · 2분 54초 · <a href="https://www.youtube.com/watch?v=wuKQaFYrhNU" target="_blank" rel="noopener">▶ 유튜브</a></small></div></div>
+ <div><div class="yt sm" data-id="eVZ6MNaGjUw"><img src="https://i.ytimg.com/vi/eVZ6MNaGjUw/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="cap">프로야구 6개 팀의 소름 돋는 떼창 응원<small>널노래 · 6분 33초 · 🎧 소리를 키워서! · <a href="https://www.youtube.com/watch?v=eVZ6MNaGjUw" target="_blank" rel="noopener">▶ 유튜브</a></small></div></div></div>
+ <p class="q" style="margin-top:16px;border-left-color:#7c3aed">💬 외국 사람들은 우리 응원의 <b>무엇</b>에 가장 놀랐을까?</p></div><div class="pgnum">16</div></section><section class="slide cul"><div class="tag"></div><div class="eyebrow"><i></i>STEP 3 · 응원가와 저작권</div><h2>응원가가 사라질 뻔한 사건</h2><div class="body"><div class="vwrap"><div class="yt " data-id="9rrTG6EZ_hw"><img src="https://i.ytimg.com/vi/9rrTG6EZ_hw/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="vside"><h3>응원가 저작권 사태 그 후… 응원가 전면 교체한 kt 위즈</h3><div class="ch">비디오머그 · 3분 18초</div>
+      <div class="pt"><span class="lab">👀 보면서 찾아보기</span>예전 응원가는 대부분 <b>대중가요 가사를 바꿔 부른 것</b>이었다. 원작자의 허락 문제로 응원가를 바꿔야 했던 구단들은 <b>직접 만든(창작) 응원가</b>로 해결했다.</div>
+      <div class="pt" style="margin-top:10px"><span class="lab">💬 이야기 나누기</span>→ 그래서 <b>우리도 남의 노래를 베끼지 않고</b> 나만의 응원가를 <b>새로 만든다</b>!</div>
+      <a href="https://www.youtube.com/watch?v=9rrTG6EZ_hw" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">17</div></section><section class="slide mk"><div class="tag"></div><div class="eyebrow"><i></i>STEP 4 · 좋은 응원가의 조건</div><h2>어떤 응원가가 귀에 쏙 들어올까?</h2><div class="body"><div class="cards c3">
+ <div class="card"><div class="num">1</div><h3>짧다</h3><p>앞부분 15~30초가 승부. 타석에 들어서는 순간 바로 신나야 한다.</p></div>
+ <div class="card"><div class="num">2</div><h3>이름이 크게 들린다</h3><p>「날려라 ○○○」「안타 안타 ○○○」 — <b>이름</b>이 주인공!</p></div>
+ <div class="card"><div class="num">3</div><h3>반복되는 구호</h3><p>4박자 구호를 되풀이하면 처음 듣는 사람도 따라 한다.</p></div>
+ <div class="card"><div class="num">4</div><h3>따라 부르기 쉽다</h3><p>음이 너무 높거나 가사가 길면 떼창이 안 된다.</p></div>
+ <div class="card"><div class="num">5</div><h3>나를 담는다</h3><p>나의 장점·별명·좌우명을 넣어 <b>나만의</b> 노래로.</p></div>
+ <div class="card"><div class="num">6</div><h3>모두가 기분 좋다</h3><p>상대를 놀리거나 깎아내리는 말은 <b>절대 NO</b>.</p></div></div></div><div class="pgnum">18</div></section><section class="slide mk"><div class="tag"></div><div class="eyebrow"><i></i>STEP 4 · 분석 활동</div><h2>응원가 속 비밀 찾기</h2><div class="body"><div class="vwrap"><div class="yt " data-id="7ApuiRTIbGk"><img src="https://i.ytimg.com/vi/7ApuiRTIbGk/hqdefault.jpg" alt=""><div class="play"><b></b></div></div><div class="vside"><h3>KBO 10개 구단 근본 응원가 이야기</h3><div class="ch">예술잡썰 · 9분</div>
+      <div class="pt"><span class="lab">👀 보면서 찾아보기</span>응원가를 들으며 <b>①구호 ②이름이 나오는 횟수 ③반복되는 부분</b>을 찾아 메모하자.</div>
+      <div class="pt" style="margin-top:10px"><span class="lab">💬 이야기 나누기</span>가장 따라 부르기 쉬웠던 응원가는? 그 이유는?</div>
+      <a href="https://www.youtube.com/watch?v=7ApuiRTIbGk" target="_blank" rel="noopener">▶ 유튜브에서 열기</a></div></div></div><div class="pgnum">19</div></section><section class="slide mk"><div class="tag"></div><div class="eyebrow"><i></i>STEP 4 · 응원 예절</div><h2>응원도 스포츠퍼슨십이다</h2><div class="body"><div class="rules">
+ <div class="rule"><div class="k">1</div><div class="tx">우리 팀을 열심히, 상대 팀도 존중<em>상대 선수의 이름을 부르며 야유하지 않는다</em></div></div>
+ <div class="rule"><div class="k">2</div><div class="tx">실수한 친구에게는 격려를<em>「괜찮아! 다음에!」가 최고의 응원</em></div></div>
+ <div class="rule"><div class="k">3</div><div class="tx">좋은 플레이에는 양 팀 모두 박수<em>멋진 수비는 상대 팀이 해도 멋지다</em></div></div>
+ <div class="rule"><div class="k">4</div><div class="tx">다른 응원 문화를 존중<em>조용히 보는 응원도, 신나게 부르는 응원도 모두 문화</em></div></div>
+ <div class="rule"><div class="k">5</div><div class="tx">응원가는 나를 북돋는 노래<em>남을 깎아내리는 가사는 넣지 않는다</em></div></div>
+ <div class="rule"><div class="k">6</div><div class="tx">경기가 끝나면 서로 인사<em>이겨도 져도 「수고했어!」</em></div></div></div></div><div class="pgnum">20</div></section><section class="slide mk"><div class="tag"></div><div class="eyebrow"><i></i>STEP 4 · 나만의 응원가 만들기</div><h2>3단계로 내 응원가 완성!</h2><div class="body"><div class="flow">
+ <div class="st"><div class="k">1단계 · 생성형 AI</div><h3>✍️ 가사 + 프롬프트</h3><p>제미나이·챗GPT 등에 <b>이름·나를 나타내는 말·분위기·구호</b>를 알려 주고<br>① 한국어 가사 ② Suno용 영어 스타일 프롬프트를 받는다.</p></div><div class="ar">›</div>
+ <div class="st"><div class="k">2단계 · Suno AI</div><h3>🎵 노래 만들기</h3><p>suno.com → Create → <b>Custom</b><br>가사·스타일 붙여 넣기 → 2곡 중 고르기 → <b>MP3 다운로드</b></p></div><div class="ar">›</div>
+ <div class="st"><div class="k">3단계 · 클래스룸</div><h3>📤 제출</h3><p>파일 이름 <b class="hl">학번_이름.mp3</b><br>비공개 댓글에 <b>가장 신나는 부분 시작 시간(초)</b></p></div></div>
+ <div class="cards c2" style="margin-top:16px">
+ <div class="card"><h3>💡 스타일 프롬프트 예시</h3><p style="font-family:ui-monospace,Menlo,monospace;font-size:16px">stadium crowd chant, korean baseball cheer, drums and brass, energetic, short intro</p></div>
+ <div class="card"><h3>⚠️ 지켜요</h3><p>욕설·놀림 금지 · 다른 노래 가사 베끼기 금지 · 개인정보 금지 · 수업에서만 사용</p></div></div></div><div class="pgnum">21</div></section><section class="slide mk"><div class="tag"></div><div class="eyebrow"><i></i>STEP 4 · 우리 수업에서는</div><h2>내가 타석에 들어서면…</h2><div class="body"><div class="flow">
+ <div class="st" style="text-align:center"><div class="em" style="font-size:54px">🧢</div><h3>타석에 선다</h3><p>기록 앱에서 내 차례가 된다</p></div><div class="ar">›</div>
+ <div class="st" style="text-align:center"><div class="em" style="font-size:54px">🎙️</div><h3>캐스터 소개</h3><p>“3번 타자, ○○○! 타율 3할 3푼 3리!”</p></div><div class="ar">›</div>
+ <div class="st" style="text-align:center"><div class="em" style="font-size:54px">🎵</div><h3>내 응원가</h3><p>내가 만든 응원가가 운동장에 울려 퍼진다</p></div><div class="ar">›</div>
+ <div class="st" style="text-align:center"><div class="em" style="font-size:54px">📣</div><h3>모두 함께</h3><p>친구들이 구호를 따라 외친다</p></div></div>
+ <p class="q" style="margin-top:22px">MLB 선수의 <b>등장곡</b> + KBO의 <b>선수 응원가</b>를 합친, <b>우리 반만의 응원 문화</b>를 만들어 봅시다!</p></div><div class="pgnum">22</div></section><section class="slide "><div class="tag"></div><div class="eyebrow"><i></i>정리 · 성찰</div><h2>오늘 배운 것을 내 말로</h2><div class="body"><div style="display:flex;flex-direction:column;gap:14px">
+ <div class="q">① 필드형 스포츠의 특징을 <b>공격·수비·공수 교대</b>라는 말을 넣어 설명해 보자.</div>
+ <div class="q">② 나라마다 응원 문화가 다른 까닭은 무엇일까? <b>내가 가장 해 보고 싶은 응원</b>은?</div>
+ <div class="q">③ 내 응원가에 담은 <b>‘나’</b>는 어떤 모습인가? 친구의 응원가를 들을 때 나는 어떻게 응원할까?</div></div></div><div class="pgnum">23</div></section></div>
+<div id="nav"><button onclick="go(-1)">◀ 이전</button><div class="ind"><span id="cur">1</span> / <span id="tot">1</span></div><button onclick="go(1)">다음 ▶</button><button onclick="window.print()">🖨 인쇄 · PDF</button></div>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  document.getElementById('tot').textContent=slides.length;
+  function stopVideos(){ document.querySelectorAll('.yt iframe').forEach(f=>{ const y=f.parentNode; f.remove(); y.querySelector('img').style.display=''; y.querySelector('.play').style.display=''; }); }
+  function show(n){
+    stopVideos();
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    document.getElementById('cur').textContent=i+1;
+    if(location.hash!=='#'+(i+1)) history.replaceState(null,'','#'+(i+1));
+    fit();
+  }
+  function go(d){show(i+d)}
+  function fit(){
+    const k=Math.min((innerWidth-44)/1280,(innerHeight-44-40)/720);
+    slides.forEach(x=>x.style.transform='scale('+k+')');
+  }
+  addEventListener('resize',fit);
+  addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();go(1)}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(-1)}
+    if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
+    if(e.key==='f'){document.documentElement.requestFullscreen?.()}
+  });
+  /* 유튜브: 누르면 그 자리에서 재생 (슬라이드를 넘기면 멈춤) */
+  document.querySelectorAll('.yt').forEach(y=>{
+    y.addEventListener('click',e=>{ e.stopPropagation(); if(y.querySelector('iframe')) return;
+      const f=document.createElement('iframe');
+      f.src='https://www.youtube-nocookie.com/embed/'+y.dataset.id+'?autoplay=1&rel=0&playsinline=1';
+      f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen=true;
+      y.querySelector('img').style.display='none'; y.querySelector('.play').style.display='none'; y.appendChild(f); });
+  });
+  addEventListener('click',e=>{ if(e.target.closest('#nav,.yt,a')) return; go(e.clientX<innerWidth*0.25?-1:1) });
+  function fromHash(){ const n=parseInt(location.hash.replace('#',''),10); show(Number.isFinite(n)&&n>0?n-1:0); }
+  addEventListener('hashchange',fromHash);
+  fromHash();
+</script></body></html>
