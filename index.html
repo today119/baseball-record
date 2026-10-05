@@ -3840,7 +3840,7 @@ function vSong(){
       '<span class="st" id="sgProg" style="margin:0"></span></div>'+
       '<div class="row" style="margin-top:10px"><input id="sgDrive" placeholder="클래스룸 과제의 드라이브 폴더 링크 붙여 넣기" style="flex:1;min-width:220px">'+
         '<button class="btn pri" id="sgDriveGo">📂 이 반 폴더에서 가져오기</button></div>'+
-      '<div class="row" style="margin-top:8px"><input id="sgDriveAll" placeholder="여러 반을 한 번에: 반 폴더들이 들어 있는 상위 폴더 링크" style="flex:1;min-width:220px">'+
+      '<div class="row" style="margin-top:8px"><textarea id="sgDriveAll" rows="2" placeholder="여러 반을 한 번에: 반 폴더들이 들어 있는 상위 폴더 링크 (선생님마다 하나씩, 줄을 바꿔 여러 개)" style="flex:1;min-width:220px"></textarea>'+
         '<button class="btn" id="sgDriveAllGo">🏫 전체 반 한 번에</button></div>'+
       '<p class="st" style="margin:10px 0 0">파일 이름 앞에 <b>학번</b>을 붙이면 자동으로 연결돼요 — 예) <b>20101_홍길동.mp3</b>. '+
       '아이패드에서는 「파일」 → <b>Google Drive</b> 폴더를 열어 전체 선택하면 됩니다. '+
@@ -3904,8 +3904,16 @@ function vSong(){
     if(_songBusy) return toast('지금 올리는 중이에요');
     if(!DB) return toast('Firebase 연결이 필요합니다');
     el('sgProg').textContent = '드라이브 폴더 읽는 중…';
-    jsonp({action:'listSongs', folder:link, depth:depth}, 90000).then(function(r){
-      if(!r || !r.ok) throw new Error(r && r.error || '폴더를 못 읽었습니다');
+    // 링크 여러 개(줄바꿈·쉼표·공백) — 교사마다 클래스룸 폴더가 따로 생기므로 한꺼번에 읽는다. 같은 파일은 한 번만
+    var links = link.split(/[\s,]+/).filter(Boolean);
+    Promise.all(links.map(function(l){ return jsonp({action:'listSongs', folder:l, depth:depth}, 90000); })).then(function(rs){
+      var seen = {}, files = [];
+      rs.forEach(function(x, k){
+        if(!x || !x.ok) throw new Error((links.length>1 ? (k+1)+'번째 링크: ' : '')+(x && x.error || '폴더를 못 읽었습니다'));
+        x.files.forEach(function(f){ if(!seen[f.id]){ seen[f.id] = 1; files.push(f); } });
+      });
+      return {ok:true, files:files};
+    }).then(function(r){
       var jobs = [], miss = [], big = [];
       r.files.forEach(function(f){
         if(f.size > 15*1048576){ big.push(f.name); return; }
