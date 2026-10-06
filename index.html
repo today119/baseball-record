@@ -740,7 +740,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-06s';
+var APP_VER = '2026-10-06t';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -3547,7 +3547,7 @@ function sunoId(text){
   return m ? m[1].toLowerCase() : '';
 }
 function sunoUrl(text){                                   // 붙여 넣은 글에서 수노 주소만 (짧은 공유 주소 suno.com/s/… 포함)
-  var m = String(text||'').match(/https?:\/\/(?:www\.)?suno\.(?:com|ai)\/[^\s"'<>]+/i);
+  var m = String(text||'').match(/https?:\/\/(?:www\.)?(?:suno\.(?:com|ai)|mureka\.ai)\/[^\s"'<>]+/i);
   return m ? m[0].replace(/[).,]+$/, '') : '';
 }
 function sunoEmbed(m){ return 'https://suno.com/embed/'+(m.suno || '')+'/'; }
@@ -3557,7 +3557,7 @@ function showSuno(m, label){
   var d = document.createElement('div'); d.id = 'sunoBox';
   d.innerHTML = '<div class="sh"><span>🎵 '+esc(label||'응원가')+' <small>▶ 를 눌러 재생</small></span><button id="sunoX">✕ 닫기</button></div>'+
     (m.suno ? '<iframe src="'+esc(sunoEmbed(m))+'" allow="autoplay; encrypted-media" title="수노 플레이어"></iframe>'
-            : '<div style="padding:18px 12px;text-align:center"><a class="btn pri" style="font-size:18px;padding:14px 22px;display:inline-block" href="'+esc(m.link)+'" target="_blank" rel="noopener">▶ 수노에서 열어 재생</a></div>')+
+            : '<div style="padding:18px 12px;text-align:center"><a class="btn pri" style="font-size:18px;padding:14px 22px;display:inline-block" href="'+esc(m.link)+'" target="_blank" rel="noopener">▶ '+(/mureka/i.test(m.link)?'무레카':'수노')+'에서 열어 재생</a></div>')+
     '<div class="sf">수노 링크 응원가는 자동 재생이 안 돼요 · 안 보이면 <a href="'+esc(m.link || sunoEmbed(m))+'" target="_blank" rel="noopener">수노에서 열기</a></div>';
   document.body.appendChild(d);
   el('sunoX').onclick = closeSuno;
@@ -3566,9 +3566,9 @@ function showSuno(m, label){
 function closeSuno(){ var b = el('sunoBox'); if(b) b.parentNode.removeChild(b); }
 function saveSunoLink(cn, s, text){
   var url = sunoUrl(text) || text.trim(), id = sunoId(text);
-  if(!id && !/suno\./i.test(url)) return Promise.reject(new Error('수노 링크가 아니에요'));
+  if(!id && !/suno\.|mureka\.ai\/.*song/i.test(url)) return Promise.reject(new Error('수노·무레카 곡 링크가 아니에요'));
   if(!DB) return Promise.reject(new Error('Firebase 연결이 필요합니다'));
-  var meta = {name:'수노 링크', link:url, suno:id || '', start:0, v:Date.now(), dur:0, size:0, by:DEVICE};
+  var meta = {name:/mureka/i.test(url) ? '무레카 링크' : '수노 링크', link:url, suno:id || '', start:0, v:Date.now(), dur:0, size:0, by:DEVICE};
   var sk = ck(s.sid);
   return DB.ref(ROOT()+'/songData/'+ck(cn)+'/'+sk).remove().then(function(){
     return DB.ref(ROOT()+'/songIdx/'+ck(cn)+'/'+sk).set(meta);
@@ -3904,7 +3904,7 @@ function vSong(){
       c.roster.map(function(s){
         var m = ix[ck(s.sid)];
         return '<tr><td>'+esc(s.num)+'</td><td>'+esc(s.name)+'</td>'+
-          '<td>'+(m && m.link ? '🔗 <a href="'+esc(m.link)+'" target="_blank" rel="noopener">수노 링크</a>' : m ? '🎵 <span title="'+esc(m.name)+'">'+esc(String(m.name).slice(0,22))+'</span> <span class="tag">'+m.dur+'초</span>'
+          '<td>'+(m && m.link ? '🔗 <a href="'+esc(m.link)+'" target="_blank" rel="noopener">'+esc(m.name||'수노 링크')+'</a>' : m ? '🎵 <span title="'+esc(m.name)+'">'+esc(String(m.name).slice(0,22))+'</span> <span class="tag">'+m.dur+'초</span>'
                     : '<span class="tag">없음</span>')+'</td>'+
           '<td class="n">'+(m && !m.link ? '<input type="number" min="0" max="'+Math.max(0,(m.dur||0)-3)+'" value="'+(m.start||0)+
               '" data-sgst="'+esc(s.sid)+'" style="width:72px;padding:5px 7px">' : '')+'</td>'+
