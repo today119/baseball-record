@@ -152,6 +152,15 @@ td.sc.tot{color:var(--warn);font-size:15px}
 .sbar .slab{background:#0f1b38;border:1px solid #2a4580;border-radius:calc(var(--u) * .55);padding:calc(var(--u) * .55) calc(var(--u) * .8);margin-right:calc(var(--u) * .6);font-size:calc(var(--u) * 1.05);font-weight:800;color:#c9d6f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:calc(var(--u) * 13)}
 .sbar .slab.pz{color:var(--gold)}
+/* 수노 링크 응원가 — 공식 플레이어 창 (2026-10-06: 수노 다운로드 제한으로 링크 제출) */
+#sunoBox{position:fixed;right:12px;bottom:12px;z-index:60;width:min(420px,calc(100vw - 24px));background:#0f1b38;border:2px solid #3d7fc0;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.45);overflow:hidden}
+#sunoBox .sh{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#fff;font-weight:800;font-size:15px}
+#sunoBox .sh span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunoBox .sh small{color:#ffd166;font-weight:700}
+#sunoBox .sh button{background:#24345e;border:1px solid #3d7fc0;color:#fff;border-radius:8px;padding:6px 10px;font-size:14px}
+#sunoBox iframe{display:block;width:100%;height:240px;border:0;background:#000}
+#sunoBox .sf{padding:6px 10px 9px;font-size:12px;color:#c9d6f0}
+#sunoBox .sf a{color:#9ecbff}
 html[data-theme=light] .sbar .slab{color:#1d2b47;background:#f3f6fa;border-color:#c9d3e1}
 html[data-theme=light] .sbar button.on{background:#e7f7ed;border-color:#16a34a;color:#166534}
 .gbar button.dn{background:#4a1a1a;border-color:#a8433a;color:#ffb3aa}
@@ -731,7 +740,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-02l';
+var APP_VER = '2026-10-06s';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -3528,9 +3537,47 @@ function watchSongIdx(cn){
 }
 function songMeta(cn, sid){ return ((SONG.idx[cn]||{})[ck(sid)]) || null; }
 
+/* ── 🔗 수노 링크 응원가 (2026-10-06) ──
+   수노가 9/3 부터 무료 다운로드를 막아(평생 7곡) 학생들이 파일 대신 «공유 링크»를 냈다.
+   링크에서 음원만 빼내는 건 수노가 막아 두었으므로 하지 않는다 → 수노 공식 플레이어(embed)를 창으로 띄우고 ▶ 는 사람이 누른다.
+   그래서 자동 재생·시작(초)·반복은 안 된다. 파일로 올린 학생은 예전처럼 자동 재생. */
+function sunoId(text){
+  var m = String(text||'').match(/suno\.(?:com|ai)\/(?:song|embed)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+       || String(text||'').match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+  return m ? m[1].toLowerCase() : '';
+}
+function sunoUrl(text){                                   // 붙여 넣은 글에서 수노 주소만 (짧은 공유 주소 suno.com/s/… 포함)
+  var m = String(text||'').match(/https?:\/\/(?:www\.)?suno\.(?:com|ai)\/[^\s"'<>]+/i);
+  return m ? m[0].replace(/[).,]+$/, '') : '';
+}
+function sunoEmbed(m){ return 'https://suno.com/embed/'+(m.suno || '')+'/'; }
+function showSuno(m, label){
+  closeSuno();
+  if(!m || !m.link) return;
+  var d = document.createElement('div'); d.id = 'sunoBox';
+  d.innerHTML = '<div class="sh"><span>🎵 '+esc(label||'응원가')+' <small>▶ 를 눌러 재생</small></span><button id="sunoX">✕ 닫기</button></div>'+
+    (m.suno ? '<iframe src="'+esc(sunoEmbed(m))+'" allow="autoplay; encrypted-media" title="수노 플레이어"></iframe>'
+            : '<div style="padding:18px 12px;text-align:center"><a class="btn pri" style="font-size:18px;padding:14px 22px;display:inline-block" href="'+esc(m.link)+'" target="_blank" rel="noopener">▶ 수노에서 열어 재생</a></div>')+
+    '<div class="sf">수노 링크 응원가는 자동 재생이 안 돼요 · 안 보이면 <a href="'+esc(m.link || sunoEmbed(m))+'" target="_blank" rel="noopener">수노에서 열기</a></div>';
+  document.body.appendChild(d);
+  el('sunoX').onclick = closeSuno;
+  SONG.cur = {sid:'', label:(label||'응원가')+' (수노)'}; songBar();
+}
+function closeSuno(){ var b = el('sunoBox'); if(b) b.parentNode.removeChild(b); }
+function saveSunoLink(cn, s, text){
+  var url = sunoUrl(text) || text.trim(), id = sunoId(text);
+  if(!id && !/suno\./i.test(url)) return Promise.reject(new Error('수노 링크가 아니에요'));
+  if(!DB) return Promise.reject(new Error('Firebase 연결이 필요합니다'));
+  var meta = {name:'수노 링크', link:url, suno:id || '', start:0, v:Date.now(), dur:0, size:0, by:DEVICE};
+  var sk = ck(s.sid);
+  return DB.ref(ROOT()+'/songData/'+ck(cn)+'/'+sk).remove().then(function(){
+    return DB.ref(ROOT()+'/songIdx/'+ck(cn)+'/'+sk).set(meta);
+  });
+}
+
 /* 음원 하나 준비 — 메모리 → 기기 보관함 → Firebase 순서로 찾는다 */
 function ensureSong(cn, sid){
-  var m = songMeta(cn, sid); if(!m || !audioCtx()) return Promise.resolve(null);
+  var m = songMeta(cn, sid); if(!m || m.link || !audioCtx()) return Promise.resolve(null);
   var k = songKey(cn, sid), hit = SONG.cache[k];
   if(hit && hit.v === m.v) return Promise.resolve(hit.buf);
   return idbGet(k).then(function(rec){
@@ -3554,7 +3601,7 @@ function prefetchClassSongs(cn){
     return p.then(function(){
       var k = ck(cn)+'/'+sk;
       return idbGet(k).then(function(rec){
-        if(rec && rec.v === ix[sk].v) return;
+        if(ix[sk].link || (rec && rec.v === ix[sk].v)) return;
         if(!DB) return;
         return DB.ref(ROOT()+'/songData/'+ck(cn)+'/'+sk).once('value').then(function(s){
           var d = s.val(); if(d && d.b64) return idbPut(k, {v:d.v, blob:new Blob([b64ToBytes(d.b64)], {type:'audio/mpeg'})});
@@ -3602,7 +3649,7 @@ function togglePause(){
   songBar();
 }
 function stopAll(){
-  SONG.seq++; stopSong(.2);
+  SONG.seq++; stopSong(.2); closeSuno();
   try{ speechSynthesis.cancel(); }catch(e){}
   if(SONG._gsrc){ try{ SONG._gsrc.stop(); }catch(e){} SONG._gsrc = null; }
   SONG.speaking = false; songBar();
@@ -3699,12 +3746,14 @@ function cheerBatter(g, force){
   if(!b || g.status!=='live'){ stopAll(); return; }
   var c = cls(), cum = tally(allAtbats(c), allDefense(c), {});
   var my = ++SONG.seq;
-  stopSong(.3); try{ speechSynthesis.cancel(); }catch(e){}
+  stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
   ensureSong(S.cur, b.sid);                            // 멘트 나가는 동안 미리 준비
   speak(introText(g, b, g.st.idx, cum), function(){
     if(my !== SONG.seq) return;
     SONG.seq--;                                        // playSong 이 다시 올린다
-    playSong(S.cur, b.sid, b.name+' 응원가');
+    var sm = songMeta(S.cur, b.sid);
+    if(sm && sm.link) showSuno(sm, b.name+' 응원가');      // 수노 링크 → 플레이어 창 (▶ 는 사람이)
+    else playSong(S.cur, b.sid, b.name+' 응원가');
     var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(S.cur, nx.sid); }, 1500);
   });
 }
@@ -3842,6 +3891,9 @@ function vSong(){
         '<button class="btn pri" id="sgDriveGo">📂 이 반 폴더에서 가져오기</button></div>'+
       '<div class="row" style="margin-top:8px"><textarea id="sgDriveAll" rows="2" placeholder="여러 반을 한 번에: 반 폴더들이 들어 있는 상위 폴더 링크 (선생님마다 하나씩, 줄을 바꿔 여러 개)" style="flex:1;min-width:220px"></textarea>'+
         '<button class="btn" id="sgDriveAllGo">🏫 전체 반 한 번에</button></div>'+
+      '<div class="row" style="margin-top:10px"><textarea id="sgSuno" rows="3" placeholder="🔗 수노 링크 붙여 넣기 — 한 줄에 한 명: 20410 홍길동 https://suno.com/s/… (클래스룸 댓글을 그대로 복사해도 돼요)" style="flex:1;min-width:220px"></textarea>'+
+        '<button class="btn pri" id="sgSunoGo">🔗 수노 링크 등록</button></div>'+
+      '<p class="st" style="margin:6px 0 0">수노 무료 계정은 다운로드가 막혀(9/3부터) 링크로 받아도 돼요. 링크 응원가는 타석 때 <b>수노 플레이어 창</b>이 뜨고 <b>▶ 를 눌러야</b> 나와요 (시작 초·반복 안 됨, 인터넷 필요).</p>'+
       '<p class="st" style="margin:10px 0 0">파일 이름 앞에 <b>학번</b>을 붙이면 자동으로 연결돼요 — 예) <b>20101_홍길동.mp3</b>. '+
       '아이패드에서는 「파일」 → <b>Google Drive</b> 폴더를 열어 전체 선택하면 됩니다. '+
       '올릴 때 앞에서부터 <b>'+SONG_SEC+'초</b>만 남기고 작게 줄여요 (전주가 길면 아래 「시작(초)」로 후렴부터 틀 수 있어요).</p>'+
@@ -3852,13 +3904,14 @@ function vSong(){
       c.roster.map(function(s){
         var m = ix[ck(s.sid)];
         return '<tr><td>'+esc(s.num)+'</td><td>'+esc(s.name)+'</td>'+
-          '<td>'+(m ? '🎵 <span title="'+esc(m.name)+'">'+esc(String(m.name).slice(0,22))+'</span> <span class="tag">'+m.dur+'초</span>'
+          '<td>'+(m && m.link ? '🔗 <a href="'+esc(m.link)+'" target="_blank" rel="noopener">수노 링크</a>' : m ? '🎵 <span title="'+esc(m.name)+'">'+esc(String(m.name).slice(0,22))+'</span> <span class="tag">'+m.dur+'초</span>'
                     : '<span class="tag">없음</span>')+'</td>'+
-          '<td class="n">'+(m ? '<input type="number" min="0" max="'+Math.max(0,(m.dur||0)-3)+'" value="'+(m.start||0)+
+          '<td class="n">'+(m && !m.link ? '<input type="number" min="0" max="'+Math.max(0,(m.dur||0)-3)+'" value="'+(m.start||0)+
               '" data-sgst="'+esc(s.sid)+'" style="width:72px;padding:5px 7px">' : '')+'</td>'+
           '<td class="n" style="white-space:nowrap">'+
             (m ? '<button class="btn sm" data-sgpl="'+esc(s.sid)+'">▶</button> ' : '')+
-            '<button class="btn sm" data-sgup="'+esc(s.sid)+'">'+(m?'변경':'올리기')+'</button>'+
+            '<button class="btn sm" data-sgup="'+esc(s.sid)+'">'+(m?'변경':'올리기')+'</button> '+
+            '<button class="btn sm" data-sglk="'+esc(s.sid)+'">🔗</button>'+
             (m ? ' <button class="btn sm dn" data-sgdel="'+esc(s.sid)+'">삭제</button>' : '')+'</td></tr>';
       }).join('')+'</table>' : '<div class="msg">먼저 명단을 등록하세요</div>')+
     '<div class="row" style="margin-top:10px"><button class="btn sm" id="sgStop">⏹ 미리 듣기 정지</button></div></div>'+
@@ -3968,6 +4021,7 @@ function vSong(){
   });
   el('v-song').querySelectorAll('[data-sgpl]').forEach(function(b){
     b.onclick = function(){ unlockAudio(); var s = c.roster.filter(function(x){ return x.sid===b.dataset.sgpl; })[0];
+      var m = songMeta(S.cur, s.sid); if(m && m.link) return showSuno(m, s.name+' 응원가 (미리 듣기)');
       toast('▶ '+s.name+' 응원가 불러오는 중'); playSong(S.cur, s.sid, s.name+' 응원가 (미리 듣기)'); };
   });
   el('v-song').querySelectorAll('[data-sgst]').forEach(function(inp){
@@ -3987,6 +4041,34 @@ function vSong(){
     };
   });
   el('sgStop').onclick = function(){ stopAll(); };
+  /* 🔗 수노 링크 — 줄마다 «학번·이름 + 링크». 링크 앞 글자로 학생을 찾는다 */
+  el('sgSunoGo').onclick = function(){
+    var lines = el('sgSuno').value.split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    if(!lines.length) return toast('수노 링크를 붙여 넣어 주세요');
+    var jobs = [], miss = [], last = '';
+    lines.forEach(function(ln){
+      var u = sunoUrl(ln) || (sunoId(ln) ? ln : '');
+      var who = (u ? ln.replace(u, ' ') : ln).replace(/https?:\S+/g, ' ').trim();
+      if(!u){ last = who || last; return; }                       // 이름 줄과 링크 줄이 따로 오는 경우
+      if(!who) who = last; last = '';
+      var st = who ? matchStudent(c.roster, who.replace(/^[^\d가-힣]+/, '')) : null;
+      if(st) jobs.push({s:st, u:u}); else miss.push(ln);
+    });
+    if(!jobs.length) return alert('학생을 찾지 못했어요\n\n한 줄에 「학번 이름 링크」로 적어 주세요\n예) 20410 홍길동 https://suno.com/s/abcd');
+    Promise.all(jobs.map(function(j){ return saveSunoLink(S.cur, j.s, j.u).then(function(){ return 1; }, function(e){ miss.push(j.s.name+' — '+e.message); return 0; }); }))
+      .then(function(r){
+        var ok = r.reduce(function(a,b){ return a+b; }, 0);
+        toast('수노 링크 '+ok+'명 등록'); el('sgSuno').value = '';
+        if(miss.length) alert('등록하지 못한 줄\n\n'+miss.join('\n'));
+      });
+  };
+  el('v-song').querySelectorAll('[data-sglk]').forEach(function(b){
+    b.onclick = function(){
+      var s = c.roster.filter(function(x){ return x.sid===b.dataset.sglk; })[0];
+      var t = prompt(s.name+' 학생의 수노 링크를 붙여 넣으세요'); if(!t) return;
+      saveSunoLink(S.cur, s, t).then(function(){ toast(s.name+' 수노 링크 등록'); }, function(e){ alert(e.message); });
+    };
+  });
   el('sgTry').onclick = function(){
     unlockAudio();
     var s = c.roster[0] || {name:'홍길동', sid:'x'};
