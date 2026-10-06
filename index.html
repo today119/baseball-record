@@ -745,7 +745,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-06u';
+var APP_VER = '2026-10-06v';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1829,6 +1829,60 @@ function activeCount(g, side){
   return seq.filter(function(sid){ return out.indexOf(sid)<0; }).length;
 }
 
+/* ── 📋 카톡 라인업 붙여넣기 (10/6) ──
+   주장이 단톡에 「1 강지원 중견수」처럼 보낸 글을 그대로 붙인다. A조·B조 글을 한꺼번에 붙여도
+   그 조 명단에 있는 이름만 골라 쓰므로 알아서 나뉜다. 순서 = 글에 나온 순서, 포지션 = 이름 뒤 글자. */
+var POS_WORDS = [
+  ['CF',/중견|센터|\bCF\b/i], ['LF',/좌익|레프트|\bLF\b/i], ['RF',/우익|라이트|\bRF\b/i],
+  ['SS',/유격|숏|\bSS\b/i], ['2B',/2\s*루|이루수|세컨|\b2B\b/i], ['3B',/3\s*루|삼루|서드|\b3B\b/i],
+  ['1B',/1\s*루|일루|퍼스트|\b1B\b/i], ['P',/투수|피처|\bP\b/i], ['C',/포수|캐처|\bC\b/i]
+];
+function parseLineupText(text, people){
+  // 긴 이름부터 찾아 자리를 지워 가며 — 「이해」가 「이해진」 속에서 잡히지 않게
+  var t = String(text||''), hits = [];
+  people.slice().sort(function(a,b){ return b.name.length - a.name.length; }).forEach(function(p){
+    if(!p.name) return;
+    var i = t.indexOf(p.name);
+    if(i < 0) return;
+    hits.push({sid:p.sid, name:p.name, at:i, end:i+p.name.length});
+    t = t.slice(0,i) + Array(p.name.length+1).join('\u0000') + t.slice(i+p.name.length);
+  });
+  hits.sort(function(a,b){ return a.at - b.at; });
+  var src = String(text||'');
+  hits.forEach(function(h, k){
+    var seg = src.slice(h.end, k+1<hits.length ? hits[k+1].at : src.length);
+    seg = seg.split(/\n/)[0];                               // 같은 줄의 뒤 글자만
+    if(/대기|벤치|후보|교체/.test(seg)){ h.pos = ''; return; }
+    for(var q=0;q<POS_WORDS.length;q++) if(POS_WORDS[q][1].test(seg)){ h.pos = POS_WORDS[q][0]; break; }
+  });
+  return hits;
+}
+function applyLineupText(g, text){
+  var report = [], any = 0;
+  ['H','A'].forEach(function(side){
+    var seq = side==='H'?g.seqH:g.seqA; if(!seq || !seq.length) return;
+    var people = seq.map(function(sid){ return findP(g,sid); }).filter(Boolean);
+    var hits = parseLineupText(text, people); if(!hits.length) return;
+    any++;
+    var got = hits.map(function(h){ return h.sid; });
+    var rest = seq.filter(function(sid){ return got.indexOf(sid)<0; });
+    if(side==='H'){ g.seqH = got.concat(rest); g.outH = rest.slice(); }
+    else          { g.seqA = got.concat(rest); g.outA = rest.slice(); }
+    g.def = g.def || {}; g.def[side] = {};
+    var dupPos = [];
+    hits.forEach(function(h){
+      if(!h.pos) return;
+      if(g.def[side][h.pos]){ dupPos.push(h.name); return; }
+      g.def[side][h.pos] = h.sid;
+    });
+    var nm = side==='H'?g.home:g.away;
+    report.push(nm+': '+hits.length+'명 · 수비 '+Object.keys(g.def[side]).length+'/9'+
+      (rest.length ? '\n  글에 없어 결석 처리: '+rest.map(function(sid){ var p=findP(g,sid); return p?p.name:sid; }).join(', ') : '')+
+      (dupPos.length ? '\n  포지션 겹쳐서 대기: '+dupPos.join(', ') : ''));
+  });
+  return any ? report.join('\n\n') : '';
+}
+
 /* ── 당일 라인업·타순 짜기 ─────────────────── */
 function lineupView(g){
   var nH = activeCount(g,'H'), nA = activeCount(g,'A');
@@ -1877,6 +1931,10 @@ function lineupView(g){
   el('v-game').innerHTML =
     '<h2 class="t">'+gLabel(g)+' 라인업</h2>'+
     '<p class="st">오늘 안 나온 학생은 <b>체크를 끄세요.</b> ▲▼ 로 타순을 바꿉니다.</p>'+
+    '<details class="card" id="luPaste"'+(g._luOpen?' open':'')+'><summary style="cursor:pointer;font-weight:800">📋 카톡 라인업 붙여넣기 <span class="st" style="font-weight:500">— 주장이 단톡에 보낸 글을 그대로</span></summary>'+
+      '<textarea id="luText" rows="6" style="margin-top:10px" placeholder="A조\n1 강지원 중견수\n2 고현주 좌익수\n3 김예림 유격수\n…\n\nB조\n1 김하늘 투수\n…"></textarea>'+
+      '<div class="row" style="margin-top:8px"><button class="btn pri" id="luApply">적용</button>'+
+      '<span class="st" style="margin:0">A조·B조를 한꺼번에 붙여도 돼요. <b>글에 나온 순서 = 타순</b>, 이름 뒤 포지션(중견수·유격·1루·CF…)은 수비로, 글에 없는 학생은 결석(체크 끔)으로 들어갑니다.</span></div></details>'+
     '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(288px,1fr))">'+
       col('H', g.home)+col('A', g.away)+'</div>'+
     (dupH||dupA ?
@@ -1943,6 +2001,14 @@ function lineupView(g){
       save(); lineupView(g); toast('남녀 교차로 타순을 짰습니다');
     };
   });
+  el('luPaste').ontoggle = function(){ g._luOpen = el('luPaste').open; };
+  el('luApply').onclick = function(){
+    var t = el('luText').value.trim(); if(!t) return toast('카톡 글을 붙여 넣어 주세요');
+    var r = applyLineupText(g, t);
+    if(!r) return alert('명단에 있는 이름을 하나도 못 찾았어요.\n이름을 명단과 똑같이 적었는지 확인해 주세요.');
+    g._luOpen = false; save(); lineupView(g);
+    alert('라인업을 넣었어요\n\n'+r+'\n\n틀린 곳은 아래에서 바로 고치면 됩니다.');
+  };
   if(el('oppCnt')) el('oppCnt').onchange = function(){
     g.oppCount = Math.max(1, +el('oppCnt').value||9); save(); lineupView(g);
   };
