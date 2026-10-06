@@ -752,7 +752,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-06w';
+var APP_VER = '2026-10-06x';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1953,6 +1953,17 @@ function luImport(g){
       g['dup'+side] = (p.dup||[]).filter(function(sid){ return seq.indexOf(sid)>=0 && out.indexOf(sid)<0; });
       rep.push((side==='H'?g.home:g.away)+': 출전 '+(seq.length-out.length)+'명 · 결석 '+out.length+' · 반복 '+g['dup'+side].length+' · 수비 '+Object.keys(g.def[side]).length+'/9'+(p.done?'':' (⚠ 학생이 아직 [완성] 전)'));
     });
+    // 두 조 남녀 수가 맞는지 다시 확인 — 한 조가 [완성] 뒤에 상대가 결석을 바꿨을 수 있다
+    function cnt(side){
+      var seq = side==='H'?g.seqH:g.seqA, out = side==='H'?g.outH:g.outA, c = {M:0, F:0};
+      seq.concat(g['dup'+side]||[]).forEach(function(sid, i){ if(i < seq.length && out.indexOf(sid)>=0) return; var x = findP(g,sid); if(x) c[x.gender==='남'?'M':'F']++; });
+      return c;
+    }
+    if(g.seqA.length){
+      var h = cnt('H'), a = cnt('A');
+      if(h.M!==a.M || h.F!==a.F) rep.push('⚠ 남녀 수가 아직 안 맞아요 — '+g.home+' 남'+h.M+' 여'+h.F+' / '+g.away+' 남'+a.M+' 여'+a.F+'\n  (모자란 만큼은 경기 시작 때 앱이 자동으로 반복타자를 붙여요)');
+      else rep.push('✔ 남녀 수가 맞아요 — 양 조 남'+h.M+' 여'+h.F);
+    }
     save(); return rep.join('\n');
   });
 }

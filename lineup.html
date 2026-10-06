@@ -158,7 +158,8 @@ function render(){
   var sides = ['H','A'].filter(function(s){ return team(s).p.length; });
   var h = '<div class="tabs">'+sides.map(function(s){
     var c = counts(s), pk = pick(s);
-    return '<button class="tab'+(ME===s?' on':'')+'" data-side="'+s+'">'+esc(team(s).name)+(pk.done?' ✅':'')+
+    var okNow = needOf(s).ok;
+    return '<button class="tab'+(ME===s?' on':'')+'" data-side="'+s+'">'+esc(team(s).name)+(pk.done ? (okNow?' ✅':' ⚠') : '')+
       '<small>출전 '+c.n+' · 남 '+c.M+' 여 '+c.F+(c.rM+c.rF ? ' · 반복 '+(c.rM+c.rF) : '')+'</small></button>';
   }).join('')+'</div>';
   if(!ME || !team(ME).p.length){
@@ -175,6 +176,7 @@ function render(){
   if(nd.F>0) msgs.push('반복타자 <span class="ff">여자 '+nd.F+'명</span>을 더 선택하세요.');
   if(nd.M<0) msgs.push('반복타자 남자가 '+(-nd.M)+'명 많아요 — 빼 주세요.');
   if(nd.F<0) msgs.push('반복타자 여자가 '+(-nd.F)+'명 많아요 — 빼 주세요.');
+  if(pk.done && !nd.ok) h += '<div class="need bad">🔄 상대 조가 인원을 바꿔서 다시 맞춰야 해요. 맞춘 뒤 [완성]을 한 번 더 눌러 주세요.</div>';
   h += nd.ok ? '<div class="need ok">✔ 상대 조와 남녀 수가 맞아요 (양 팀 '+(nd.a.n+nd.a.rM+nd.a.rF)+'타석)</div>'
              : '<div class="need bad">⚠ '+msgs.join('<br>')+'<br><span style="font-weight:600;font-size:13px">상대보다 적은 만큼 우리 조 친구가 한 번 더 칩니다 — 아래에서 누가 칠지 고르세요</span></div>';
   if(nd.M>0 || nd.F>0){
