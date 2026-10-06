@@ -70,6 +70,11 @@ p.st{font-size:12.5px;color:var(--tx3);margin:0 0 16px}
 .cbtn.on{background:var(--info);border-color:var(--info);color:#fff}
 .cbtn small{display:block;font-size:11px;font-weight:500;color:var(--tx3);margin-top:3px}
 .cbtn.on small{color:rgba(255,255,255,.8)}
+/* 조편성 카드 남녀 구분 — 외곽선 파랑/핑크 (10/6 사용자 요청) */
+.cbtn.gm{border:2px solid #4a9be0} .cbtn.gm small{color:#8ec5f0}
+.cbtn.gf{border:2px solid #e06aaf} .cbtn.gf small{color:#f0a8d8}
+html[data-theme=light] .cbtn.gm{border-color:#3b82f6} html[data-theme=light] .cbtn.gm small{color:#1e40af}
+html[data-theme=light] .cbtn.gf{border-color:#ec4899} html[data-theme=light] .cbtn.gf small{color:#9d174d}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
 th{font-size:11.5px;color:var(--tx3);font-weight:700;letter-spacing:.03em}
@@ -740,7 +745,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-06t';
+var APP_VER = '2026-10-06u';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1551,7 +1556,7 @@ function vGroups(){
         '<p class="st" style="margin:0 0 9px">성별은 선생님이 맞춰서 고르시면 됩니다.</p>'+
         '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(92px,1fr))">'+
         pool0.map(function(s){
-          return '<button class="cbtn" data-cap="'+s.sid+'">'+esc(s.name)+
+          return '<button class="cbtn '+(s.gender==='남'?'gm':s.gender==='여'?'gf':'')+'" data-cap="'+s.sid+'">'+esc(s.name)+
                  '<small>'+esc(s.gender)+'</small></button>'; }).join('')+
         '</div><div class="row" style="margin-top:11px">'+
         '<button class="btn dn sm" id="dCancel">취소</button></div></div>';
@@ -1586,7 +1591,7 @@ function vGroups(){
           '<b>'+esc(kN[turn])+'</b> 차례 <span class="tag">주장 '+esc(nameOfSid(d.caps[turn]))+'</span></h3>'+
           '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(92px,1fr))">'+
           pool.map(function(s){
-            return '<button class="cbtn" data-pick="'+s.sid+'">'+esc(s.name)+
+            return '<button class="cbtn '+(s.gender==='남'?'gm':s.gender==='여'?'gf':'')+'" data-pick="'+s.sid+'">'+esc(s.name)+
                    '<small>'+esc(s.gender)+'</small></button>'; }).join('')+
           '</div><div class="row" style="margin-top:11px">'+
           '<button class="btn sm" id="dUndo">한 명 되돌리기</button>'+
