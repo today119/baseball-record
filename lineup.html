@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>우리 조 라인업</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+/* 학생(주장)용 라인업 화면 (2026-10-06)
+   · 선생님 앱 라인업 화면의 「📤 학생용 라인업 링크」로 열린다 — lineup.html#<토큰>
+   · 그 경기 두 조의 이름·성별만 받는다(baseball/lu_<토큰>). 학교 코드·기록은 여기에 없다.
+   · 결석·타순(끌기)·수비(박스 누르기)·반복타자(남녀 수 맞추기)를 정해 pick/<조> 에 올리면
+     선생님이 「📥 학생 라인업 불러오기」로 반영한다. 완성 카드는 단톡 보기용. */
+:root{--bg:#0d1630;--p1:#16224a;--p2:#1d2d5c;--ln:#2e4380;--tx:#eef3ff;--tx2:#a9b8dc;--tx3:#7586b3;
+  --gold:#ffc83d;--in:#f07c2a;--out:#2f7fe0;--ok:#33c47a;--warn:#ff9f43;--dn:#e05555;--m:#4a9be0;--f:#e06aaf}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:'Noto Sans KR',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{padding:14px 16px 48px;max-width:760px;margin:0 auto}
+h1{font-size:21px;margin:2px 0 2px;font-weight:900}
+.sub{color:var(--tx2);font-size:13.5px;margin:0 0 12px}
+.card{background:var(--p1);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 10px;font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .n{background:var(--gold);color:#1b1b1b;border-radius:50%;width:24px;height:24px;display:inline-grid;place-items:center;font-size:14px;flex:none}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tab{font:inherit;font-size:18px;font-weight:900;padding:13px 8px;border-radius:12px;border:2px solid var(--ln);background:var(--p2);color:var(--tx2)}
+.tab.on{background:#2563eb;border-color:#5b8cff;color:#fff}
+.tab small{display:block;font-size:12px;font-weight:700;opacity:.85;margin-top:2px}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;text-align:center}
+.vs .t{background:var(--p2);border-radius:10px;padding:8px 6px}
+.vs .t b{display:block;font-size:15px}
+.vs .t span{font-size:13px;color:var(--tx2)}
+.mm{color:var(--m);font-weight:900} .ff{color:var(--f);font-weight:900}
+.need{margin-top:10px;border-radius:10px;padding:10px 12px;font-weight:800;font-size:15px;line-height:1.5}
+.need.bad{background:rgba(255,159,67,.14);border:1px solid var(--warn);color:#ffd2a3}
+.need.ok{background:rgba(51,196,122,.13);border:1px solid var(--ok);color:#a6f0c6}
+.list{margin:0;padding:0;list-style:none}
+.it{display:grid;grid-template-columns:38px 30px 1fr auto 38px;gap:6px;align-items:center;background:var(--p2);border:2px solid var(--ln);border-radius:11px;padding:7px 8px;margin-bottom:6px}
+.it.m{border-color:rgba(74,155,224,.75)} .it.f{border-color:rgba(224,106,175,.75)}
+.it.off{opacity:.38}
+.it .ck{width:30px;height:30px;border-radius:8px;border:2px solid var(--ln);background:#0d1630;color:#fff;font-size:18px;font-weight:900;padding:0}
+.it .ck.on{background:var(--ok);border-color:var(--ok)}
+.it .no{font-size:19px;font-weight:900;color:var(--gold);text-align:center}
+.it .nm{font-size:17px;font-weight:800}
+.it .nm small{font-size:12px;color:var(--tx3);font-weight:700;margin-left:4px}
+.it .ps{font-size:13px;font-weight:800;color:#9ecbff;white-space:nowrap}
+.it .ps.no{color:var(--tx3)}
+.it .hd{font-size:22px;color:var(--tx3);text-align:center;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:4px 0}
+.it.dup{border-style:dashed}
+.ghost{opacity:.35}
+.tag{display:inline-block;font-size:11.5px;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.tag.m{background:#1d3d55;color:#8ec5f0} .tag.f{background:#4a2340;color:#f0a8d8} .tag.r{background:#4a3a14;color:#ffd77a}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.chip{background:var(--p2);border:2px solid var(--ln);color:var(--tx);border-radius:999px;padding:8px 14px;font:inherit;font-size:15.5px;font-weight:800}
+.chip.m{border-color:var(--m)} .chip.f{border-color:var(--f)}
+.field{position:relative;width:100%;aspect-ratio:1/.9;margin-top:4px}
+.field svg{position:absolute;inset:0;width:100%;height:100%}
+.spot{position:absolute;transform:translate(-50%,-50%);min-width:74px;text-align:center;border:0;padding:0;background:none;font:inherit;cursor:pointer}
+.spot .pt{display:block;font-size:11.5px;font-weight:900;color:#fff;border-radius:7px 7px 0 0;padding:2px 6px}
+.spot .pn{display:block;background:#fff;color:#14203f;font-size:15px;font-weight:900;border-radius:0 0 7px 7px;padding:4px 8px;min-height:27px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.spot .pn.no{color:#9aa6c4;font-weight:700;font-size:13px}
+.spot.in .pt{background:var(--in)} .spot.of .pt{background:var(--out)}
+.bench{color:var(--tx2);font-size:13.5px;margin-top:6px;text-align:center}
+.btn{font:inherit;border-radius:11px;border:1px solid var(--ln);background:var(--p2);color:var(--tx);padding:13px 16px;font-size:16px;font-weight:800;text-align:center;text-decoration:none}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1b1b1b}
+.btn.pri{background:#2563eb;border-color:#3b82f6;color:#fff}
+.btn[disabled]{opacity:.4}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.btns .btn{flex:1 1 auto}
+.hint{color:var(--tx3);font-size:12.5px;margin:7px 0 0;line-height:1.55}
+#out img{width:100%;border-radius:12px;display:block;border:1px solid var(--ln);margin-top:8px}
+pre{white-space:pre-wrap;background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0 0;font-family:inherit}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#111a35;border:1px solid var(--ln);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px);z-index:20}
+.toast.on{opacity:1}
+.pick{position:fixed;inset:0;background:rgba(5,10,25,.7);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.pick.on{display:flex}
+.pick .sheet{background:var(--p1);border:1px solid var(--ln);border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:760px;max-height:72vh;overflow:auto}
+.pick h3{margin:0 0 4px;font-size:17px}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx3)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--tx3);display:inline-block}
+.live.on i{background:var(--ok)}
+.msg{text-align:center;padding:40px 10px;color:var(--tx2);line-height:1.7}
+</style>
+</head>
+<body>
+<h1>⚾ 우리 조 라인업</h1>
+<p class="sub" id="sub">불러오는 중…</p>
+<div id="app"></div>
+<div class="pick" id="pick"><div class="sheet"><h3 id="pickT"></h3><p class="hint" id="pickH" style="margin:0 0 4px"></p><div class="chips" id="pickC"></div>
+  <div class="btns"><button class="btn" id="pickX">닫기</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var FBC = {
+  apiKey: "AIzaSyCtoPLR_PP2RBaQqSLxUZfIBwu8emH-wpg",
+  authDomain: "baseball-record-1d9a5.firebaseapp.com",
+  databaseURL: "https://baseball-record-1d9a5-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "baseball-record-1d9a5"
+};
+var POS = [
+  {k:'CF', n:'중견수', x:50, y:12, z:'of'}, {k:'LF', n:'좌익수', x:16, y:27, z:'of'}, {k:'RF', n:'우익수', x:84, y:27, z:'of'},
+  {k:'SS', n:'유격수', x:35, y:46, z:'in'}, {k:'2B', n:'2루수', x:65, y:46, z:'in'},
+  {k:'3B', n:'3루수', x:19, y:60, z:'in'}, {k:'1B', n:'1루수', x:81, y:60, z:'in'},
+  {k:'P',  n:'투수',   x:50, y:67, z:'in'}, {k:'C',  n:'포수',   x:50, y:92, z:'in'}
+];
+var TOK = (location.hash||'').replace(/^#/, '').replace(/[^a-z0-9]/gi, '');
+var REF = null, D = null, ME = null, sortable = null, live = false;
+var SIDE_KEY = 'lu_side_'+TOK;
+try{ ME = localStorage.getItem(SIDE_KEY); }catch(e){}
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function toast(m){ var t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('on'); }, 2000); }
+function posName(k){ for(var i=0;i<POS.length;i++) if(POS[i].k===k) return POS[i].n; return ''; }
+
+/* ── 자료 ── */
+function team(side){ return (D && D.teams && D.teams[side]) || {name:side, p:[]}; }
+function other(side){ return side==='H' ? 'A' : 'H'; }
+function pick(side){                                      // 학생이 정한 것 — 없으면 명단 순서 그대로
+  var tm = team(side), p = (D.pick && D.pick[side]) || {};
+  var ids = tm.p.map(function(x){ return x.id; });
+  var order = (p.order||[]).filter(function(id){ return ids.indexOf(id)>=0; });
+  ids.forEach(function(id){ if(order.indexOf(id)<0) order.push(id); });
+  return {order:order, out:(p.out||[]).filter(function(id){ return ids.indexOf(id)>=0; }),
+          dup:(p.dup||[]).filter(function(id){ return ids.indexOf(id)>=0; }), pos:p.pos||{}, done:!!p.done};
+}
+function person(side, id){ return team(side).p.filter(function(x){ return x.id===id; })[0] || {id:id, n:'?', g:''}; }
+function counts(side){                                     // 출전 남·여 + 반복타자 남·여
+  var pk = pick(side), c = {M:0, F:0, rM:0, rF:0, n:0};
+  team(side).p.forEach(function(x){ if(pk.out.indexOf(x.id)<0){ c.n++; if(x.g==='남') c.M++; else c.F++; } });
+  pk.dup.forEach(function(id){ var x = person(side, id); if(x.g==='남') c.rM++; else c.rF++; });
+  return c;
+}
+/* 남녀 따로 맞춘다 — 상대보다 적은 성별만큼 반복타자. 그 성별이 한 명도 없으면 다른 성별로 채운다 */
+function needOf(side){
+  var a = counts(side), b = counts(other(side));
+  if(!team(other(side)).p.length) return {M:0, F:0, ok:true, a:a, b:b};
+  var tM = Math.max(a.M, b.M), tF = Math.max(a.F, b.F);
+  var nM = tM - a.M - a.rM, nF = tF - a.F - a.rF;
+  if(a.M===0 && nM>0){ nF += nM; nM = 0; }
+  if(a.F===0 && nF>0){ nM += nF; nF = 0; }
+  return {M:nM, F:nF, ok: nM===0 && nF===0, a:a, b:b};
+}
+function save(side, p, quiet){
+  var data = {order:p.order, out:p.out, dup:p.dup, pos:p.pos, done:!!p.done, ts:Date.now()};
+  D.pick = D.pick || {}; D.pick[side] = data;
+  render();
+  REF.child('pick/'+side).set(data).catch(function(e){ toast('저장 실패 — 인터넷을 확인하세요'); });
+}
+
+/* ── 화면 ── */
+function render(){
+  if(!D){ return; }
+  $('sub').innerHTML = esc(D.game||'')+' · '+esc(team('H').name)+' vs '+esc(team('A').name)+
+    ' <span class="live'+(live?' on':'')+'"><i></i>'+(live?'실시간 연결':'연결 중')+'</span>';
+  var sides = ['H','A'].filter(function(s){ return team(s).p.length; });
+  var h = '<div class="tabs">'+sides.map(function(s){
+    var c = counts(s), pk = pick(s);
+    return '<button class="tab'+(ME===s?' on':'')+'" data-side="'+s+'">'+esc(team(s).name)+(pk.done?' ✅':'')+
+      '<small>출전 '+c.n+' · 남 '+c.M+' 여 '+c.F+(c.rM+c.rF ? ' · 반복 '+(c.rM+c.rF) : '')+'</small></button>';
+  }).join('')+'</div>';
+  if(!ME || !team(ME).p.length){
+    $('app').innerHTML = h + '<div class="card"><p class="msg" style="padding:16px">우리 조를 눌러 주세요 👆<br><span class="hint">주장이 자기 조 하나만 정하면 돼요. 상대 조 인원은 자동으로 비교돼요.</span></p></div>';
+    return;
+  }
+  var me = ME, pk = pick(me), nd = needOf(me), op = other(me);
+  // ① 상대와 비교 + 반복타자 안내
+  h += '<div class="card"><h2><span class="n">1</span>출전 인원 맞추기</h2>'+
+    '<div class="vs"><div class="t"><b>'+esc(team(me).name)+'</b><span>남 <span class="mm">'+(nd.a.M+nd.a.rM)+'</span> · 여 <span class="ff">'+(nd.a.F+nd.a.rF)+'</span></span></div><b>vs</b>'+
+    '<div class="t"><b>'+esc(team(op).name)+'</b><span>남 <span class="mm">'+(nd.b.M+nd.b.rM)+'</span> · 여 <span class="ff">'+(nd.b.F+nd.b.rF)+'</span></span></div></div>';
+  var msgs = [];
+  if(nd.M>0) msgs.push('반복타자 <span class="mm">남자 '+nd.M+'명</span>을 더 선택하세요.');
+  if(nd.F>0) msgs.push('반복타자 <span class="ff">여자 '+nd.F+'명</span>을 더 선택하세요.');
+  if(nd.M<0) msgs.push('반복타자 남자가 '+(-nd.M)+'명 많아요 — 빼 주세요.');
+  if(nd.F<0) msgs.push('반복타자 여자가 '+(-nd.F)+'명 많아요 — 빼 주세요.');
+  h += nd.ok ? '<div class="need ok">✔ 상대 조와 남녀 수가 맞아요 (양 팀 '+(nd.a.n+nd.a.rM+nd.a.rF)+'타석)</div>'
+             : '<div class="need bad">⚠ '+msgs.join('<br>')+'<br><span style="font-weight:600;font-size:13px">상대보다 적은 만큼 우리 조 친구가 한 번 더 칩니다 — 아래에서 누가 칠지 고르세요</span></div>';
+  if(nd.M>0 || nd.F>0){
+    var cand = team(me).p.filter(function(x){ return pk.out.indexOf(x.id)<0 && pk.dup.indexOf(x.id)<0 && ((nd.M>0 && x.g==='남') || (nd.F>0 && x.g!=='남')); });
+    h += '<div class="chips">'+cand.map(function(x){ return '<button class="chip '+(x.g==='남'?'m':'f')+'" data-dupadd="'+x.id+'">+ '+esc(x.n)+'</button>'; }).join('')+'</div>';
+  }
+  h += '<p class="hint">결석한 친구는 아래 목록에서 ✓를 끄세요. 상대 조가 바꾸면 이 안내도 바로 바뀝니다.</p></div>';
+  // ② 타순
+  var oi = 0;
+  h += '<div class="card"><h2><span class="n">2</span>타순 — 오른쪽 ≡ 를 끌어서 바꾸기</h2><ul class="list" id="olist">'+
+    pk.order.map(function(id){
+      var x = person(me, id), off = pk.out.indexOf(id)>=0, ps = posOf(pk, id);
+      return '<li class="it '+(x.g==='남'?'m':'f')+(off?' off':'')+'" data-id="'+id+'">'+
+        '<button class="ck'+(off?'':' on')+'" data-ck="'+id+'">'+(off?'':'✓')+'</button>'+
+        '<span class="no">'+(off ? '-' : (++oi))+'</span>'+
+        '<span class="nm">'+esc(x.n)+'<span class="tag '+(x.g==='남'?'m':'f')+'">'+esc(x.g||'?')+'</span>'+(off?'<small>결석</small>':'')+'</span>'+
+        '<span class="ps'+(ps?'':' no')+'">'+(off ? '' : ps ? posName(ps) : '대기')+'</span>'+
+        '<span class="hd">≡</span></li>';
+    }).join('')+'</ul>'+
+    (pk.dup.length ? '<div style="margin-top:8px">'+pk.dup.map(function(id){
+      var x = person(me, id);
+      return '<div class="it dup '+(x.g==='남'?'m':'f')+'"><span></span><span class="no">'+(++oi)+'</span>'+
+        '<span class="nm">'+esc(x.n)+'<span class="tag r">반복</span></span><span class="ps no">타격만</span>'+
+        '<button class="ck" data-duprm="'+id+'" style="width:34px">✕</button></div>';
+    }).join('')+'<p class="hint" style="margin-top:2px">반복타자는 타순 맨 뒤에서 한 번 더 칩니다.</p></div>' : '')+
+    '</div>';
+  // ③ 수비
+  h += '<div class="card"><h2><span class="n">3</span>수비 — 포지션 박스를 눌러 고르기</h2><div class="field">'+fieldSVG()+
+    POS.map(function(P){
+      var id = pk.pos[P.k], x = id ? person(me, id) : null;
+      return '<button class="spot '+P.z+'" data-spot="'+P.k+'" style="left:'+P.x+'%;top:'+P.y+'%">'+
+        '<span class="pt">'+P.n+'</span><span class="pn'+(x?'':' no')+'">'+(x ? esc(x.n) : '누르기')+'</span></button>';
+    }).join('')+'</div>';
+  var bench = pk.order.filter(function(id){ return pk.out.indexOf(id)<0 && !posOf(pk, id); }).map(function(id){ return person(me,id).n; });
+  var filled = Object.keys(pk.pos).length, can = Math.min(9, nd.a.n);
+  h += '<div class="bench">수비 '+filled+'/'+can+(bench.length ? ' · 대기 '+bench.length+'명: '+esc(bench.join(', ')) : '')+'</div></div>';
+  // ④ 완성
+  var ready = nd.ok && filled >= can;
+  h += '<div class="card"><h2><span class="n">4</span>완성해서 단톡에 올리기</h2>'+
+    (ready ? '' : '<p class="hint" style="margin:0 0 6px">'+(!nd.ok ? '⚠ 1번의 반복타자를 먼저 맞춰 주세요. ' : '')+(filled < can ? '⚠ 수비 '+(can-filled)+'자리가 비었어요.' : '')+'</p>')+
+    '<div class="btns"><button class="btn gold" id="make"'+(ready?'':' disabled')+'>🎴 완성 · 라인업 카드 만들기</button></div><div id="out"></div></div>';
+  $('app').innerHTML = h;
+  if(window.Sortable){
+    sortable = Sortable.create($('olist'), {handle:'.hd', animation:150, ghostClass:'ghost', onEnd:function(){
+      var ids = Array.prototype.map.call($('olist').children, function(li){ return li.dataset.id; });
+      var p = pick(me); p.order = ids; p.done = false; save(me, p);
+    }});
+  }
+}
+function posOf(pk, id){ for(var k in pk.pos) if(pk.pos[k]===id) return k; return ''; }
+function fieldSVG(){
+  return '<svg viewBox="0 0 100 90" preserveAspectRatio="none"><defs><clipPath id="fc"><path d="M50 88 L1 39 A70 70 0 0 1 99 39 Z"/></clipPath></defs>'+
+    '<path d="M50 88 L1 39 A70 70 0 0 1 99 39 Z" fill="#3a9d5a" stroke="#fff" stroke-width=".5"/>'+
+    '<g clip-path="url(#fc)"><circle cx="50" cy="63" r="34" fill="#c98d55"/></g>'+
+    '<path d="M50 84 L74 60 L50 36 L26 60 Z" fill="#45b066"/>'+
+    '<g fill="#fff">'+[[50,84],[74,60],[50,36],[26,60]].map(function(q){ return '<rect x="'+(q[0]-1.6)+'" y="'+(q[1]-1.6)+'" width="3.2" height="3.2" transform="rotate(45 '+q[0]+' '+q[1]+')"/>'; }).join('')+
+    '</g><circle cx="50" cy="61" r="2.6" fill="#d9a56d"/></svg>';
+}
+
+/* ── 누르기 ── */
+document.body.addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b || !D) return;
+  if(b.dataset.side){ ME = b.dataset.side; try{ localStorage.setItem(SIDE_KEY, ME); }catch(_){} render(); return; }
+  if(!ME) return;
+  var p = pick(ME);
+  if(b.dataset.ck){
+    var id = b.dataset.ck, i = p.out.indexOf(id);
+    if(i>=0) p.out.splice(i,1);
+    else { p.out.push(id); for(var k in p.pos) if(p.pos[k]===id) delete p.pos[k]; p.dup = p.dup.filter(function(x){ return x!==id; }); }
+    p.done = false; save(ME, p);
+  }else if(b.dataset.dupadd){ p.dup.push(b.dataset.dupadd); p.done = false; save(ME, p); }
+  else if(b.dataset.duprm){ p.dup = p.dup.filter(function(x){ return x!==b.dataset.duprm; }); p.done = false; save(ME, p); }
+  else if(b.dataset.spot){ openPick(b.dataset.spot); }
+  else if(b.dataset.pk != null){
+    var k2 = $('pick').dataset.k;
+    if(b.dataset.pk){
+      var old = p.pos[k2];
+      for(var q in p.pos) if(p.pos[q]===b.dataset.pk) delete p.pos[q];
+      p.pos[k2] = b.dataset.pk;
+      if(old && old!==b.dataset.pk) toast(person(ME, old).n+' → 대기');
+    } else delete p.pos[k2];
+    p.done = false; $('pick').classList.remove('on'); save(ME, p);
+  }
+  else if(b.id==='make'){ makeOut(); }
+});
+function openPick(k){
+  var p = pick(ME);
+  var cand = p.order.filter(function(id){ return p.out.indexOf(id)<0; });
+  $('pickT').textContent = posName(k)+' — 누가 맡을까요?';
+  $('pickH').textContent = '이미 다른 자리에 있는 친구를 고르면 그 자리는 비워집니다.';
+  $('pickC').innerHTML = cand.map(function(id){
+    var x = person(ME, id), ps = posOf(p, id);
+    return '<button class="chip '+(x.g==='남'?'m':'f')+'" data-pk="'+id+'"'+(p.pos[k]===id?' style="background:#3a3210;border-color:var(--gold)"':'')+'>'+esc(x.n)+
+      (ps && ps!==k ? ' <small style="color:var(--tx3)">('+posName(ps)+')</small>' : '')+'</button>';
+  }).join('') + '<button class="chip" data-pk="" style="border-style:dashed">비우기</button>';
+  $('pick').dataset.k = k; $('pick').classList.add('on');
+}
+$('pickX').onclick = function(){ $('pick').classList.remove('on'); };
+$('pick').onclick = function(e){ if(e.target===this) this.classList.remove('on'); };
+
+/* ── 완성: 글 + 카드 ── */
+function lineupText(side){
+  var p = pick(side), n = 0, lines = [];
+  p.order.forEach(function(id){ if(p.out.indexOf(id)>=0) return; var x = person(side,id), ps = posOf(p,id); lines.push((++n)+' '+x.n+' '+(ps?posName(ps):'대기')); });
+  p.dup.forEach(function(id){ lines.push((++n)+' '+person(side,id).n+' (반복)'); });
+  var abs = p.out.map(function(id){ return person(side,id).n; });
+  return team(side).name+' 라인업\n'+lines.join('\n')+(abs.length ? '\n결석: '+abs.join(', ') : '');
+}
+function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function makeCard(side){
+  var p = pick(side), W = 1080;
+  var nRows = p.order.length - p.out.length + p.dup.length;
+  var bench0 = p.order.filter(function(id){ return p.out.indexOf(id)<0 && !posOf(p,id); }).length;
+  var leftH = 110 + nRows*64 + 24, rightH = 120 + 518*0.9 + 90 + (bench0 ? 130 : 0) + (p.out.length ? 130 : 0) + 20;
+  var PH = Math.max(leftH, rightH, 760), H = 190 + PH + 36;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var c = cv.getContext('2d'), F = "'Noto Sans KR', system-ui, sans-serif";
+  var bg = c.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#13204a'); bg.addColorStop(1,'#0b1328'); c.fillStyle = bg; c.fillRect(0,0,W,H);
+  c.fillStyle = '#ffc83d'; c.font = '900 62px '+F; c.fillText('⚾ '+team(side).name+' 라인업', 52, 102);
+  c.fillStyle = '#a9b8dc'; c.font = '700 30px '+F; c.fillText((D.game||'')+'  ·  vs '+team(other(side)).name, 56, 152);
+  // 타격순서
+  var rows = [];
+  p.order.forEach(function(id){ if(p.out.indexOf(id)<0) rows.push({x:person(side,id), ps:posOf(p,id)}); });
+  p.dup.forEach(function(id){ rows.push({x:person(side,id), dup:true}); });
+  var lx = 36, ly = 190, lw = 440, lh = PH;
+  c.fillStyle = 'rgba(29,45,92,.85)'; rr(c, lx, ly, lw, lh, 26); c.fill(); c.strokeStyle = '#2e4380'; c.lineWidth = 3; c.stroke();
+  c.fillStyle = '#eef3ff'; c.font = '900 32px '+F; c.textAlign = 'center'; c.fillText('타 격 순 서', lx+lw/2, ly+54); c.textAlign = 'left';
+  var step = 64, fs = 35;
+  rows.forEach(function(r, i){
+    var y = ly + 96 + i*step + step*0.66;
+    c.fillStyle = r.x.g==='남' ? 'rgba(74,155,224,.16)' : 'rgba(224,106,175,.16)'; rr(c, lx+14, y-step*0.7, lw-28, step*0.9, 10); c.fill();
+    c.fillStyle = '#ffc83d'; c.font = '900 '+fs+'px '+F; c.textAlign = 'right'; c.fillText(String(i+1), lx+76, y); c.textAlign = 'left';
+    c.fillStyle = '#eef3ff'; c.font = '800 '+fs+'px '+F; c.fillText(r.x.n, lx+96, y);
+    c.textAlign = 'right'; c.font = '800 '+(fs*0.64)+'px '+F;
+    c.fillStyle = r.dup ? '#ffd77a' : r.ps ? '#9ecbff' : '#7586b3';
+    c.fillText(r.dup ? '반복' : r.ps ? posName(r.ps) : '대기', lx+lw-26, y); c.textAlign = 'left';
+  });
+  // 수비 배치
+  var fx = 496, fy = 190, fw = 548, fh = PH;
+  c.fillStyle = 'rgba(29,45,92,.85)'; rr(c, fx, fy, fw, fh, 26); c.fill(); c.strokeStyle = '#2e4380'; c.stroke();
+  c.fillStyle = '#eef3ff'; c.font = '900 32px '+F; c.textAlign = 'center'; c.fillText('수 비 배 치', fx+fw/2, fy+54); c.textAlign = 'left';
+  var gx = fx+15, gy = fy+120, gw = 518, gh = gw*0.9, sx = gw/100, sy = gh/90;
+  function P(x, y){ return [gx + x*sx, gy + y*sy]; }
+  c.save(); c.beginPath(); var a = P(50,88); c.moveTo(a[0],a[1]); a = P(1,39); c.lineTo(a[0],a[1]);
+  c.ellipse(gx+50*sx, gy+88*sy, 70*sx, 70*sy, 0, Math.PI*1.25, Math.PI*1.75); c.closePath(); c.fillStyle = '#3a9d5a'; c.fill(); c.clip();
+  c.beginPath(); c.ellipse(gx+50*sx, gy+63*sy, 34*sx, 34*sy, 0, 0, Math.PI*2); c.fillStyle = '#c98d55'; c.fill(); c.restore();
+  c.beginPath(); [[50,84],[74,60],[50,36],[26,60]].forEach(function(q, i){ var pp = P(q[0],q[1]); i ? c.lineTo(pp[0],pp[1]) : c.moveTo(pp[0],pp[1]); }); c.closePath(); c.fillStyle = '#45b066'; c.fill();
+  [[50,84],[74,60],[50,36],[26,60]].forEach(function(q){ var pp = P(q[0],q[1]); c.save(); c.translate(pp[0],pp[1]); c.rotate(Math.PI/4); c.fillStyle = '#fff'; c.fillRect(-8,-8,16,16); c.restore(); });
+  POS.forEach(function(Q){
+    var pp = P(Q.x, Q.y), id = p.pos[Q.k], nm = id ? person(side,id).n : '-';
+    c.font = '900 30px '+F; var bw = Math.max(118, c.measureText(nm).width + 28);
+    c.fillStyle = Q.z==='of' ? '#2f7fe0' : '#f07c2a'; rr(c, pp[0]-bw/2, pp[1]-46, bw, 30, 8); c.fill();
+    c.fillStyle = '#fff'; rr(c, pp[0]-bw/2, pp[1]-22, bw, 48, 8); c.fill();
+    c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = '900 20px '+F; c.fillText(Q.n, pp[0], pp[1]-24);
+    c.fillStyle = id ? '#14203f' : '#9aa6c4'; c.font = '900 30px '+F; c.fillText(nm, pp[0], pp[1]+13); c.textAlign = 'left';
+  });
+  var bench = p.order.filter(function(id){ return p.out.indexOf(id)<0 && !posOf(p,id); }).map(function(id){ return person(side,id).n; });
+  var abs = p.out.map(function(id){ return person(side,id).n; });
+  c.textAlign = 'center'; var yy = gy + gh + 104;
+  function para(title, arr, col){
+    if(!arr.length) return;
+    c.fillStyle = col; c.font = '800 28px '+F; c.fillText(title+' '+arr.length+'명', fx+fw/2, yy); yy += 42;
+    c.fillStyle = '#c9d6f0'; c.font = '600 25px '+F; var line = '';
+    arr.forEach(function(nm){ var t = line ? line+', '+nm : nm; if(c.measureText(t).width > fw-60){ c.fillText(line, fx+fw/2, yy); yy += 36; line = nm; } else line = t; });
+    if(line){ c.fillText(line, fx+fw/2, yy); yy += 56; }
+  }
+  para('대기', bench, '#a9b8dc'); para('결석', abs, '#ff9f9f');
+  c.textAlign = 'left';
+  return cv;
+}
+function makeOut(){
+  var side = ME, p = pick(side);
+  p.done = true; save(side, p);
+  var go = function(){
+    var cv = makeCard(side), url = cv.toDataURL('image/png'), txt = lineupText(side);
+    $('out').innerHTML = '<p class="hint" style="margin:10px 0 0">✅ 선생님 앱으로도 전송됐어요. 이미지를 <b>꾹 눌러 저장</b>하거나 [공유]로 단톡에 올리세요.</p>'+
+      '<img id="cardImg" alt="라인업 카드" src="'+url+'">'+
+      '<div class="btns"><button class="btn pri" id="share">📤 카톡으로 공유</button><a class="btn" download="'+esc(team(side).name)+'_라인업.png" href="'+url+'">💾 이미지 저장</a></div>'+
+      '<pre>'+esc(txt)+'</pre><div class="btns"><button class="btn" id="copy">📋 글 복사</button></div>';
+    $('copy').onclick = function(){
+      var ok = function(){ toast('글을 복사했어요'); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function(){ toast('글을 꾹 눌러 복사해 주세요'); });
+      else toast('글을 꾹 눌러 복사해 주세요');
+    };
+    $('share').onclick = function(){
+      cv.toBlob(function(blob){
+        var f = new File([blob], team(side).name+'_라인업.png', {type:'image/png'});
+        if(navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f]}).catch(function(){});
+        else toast('바로 공유가 안 되는 기기예요 — 이미지를 꾹 눌러 저장해 주세요');
+      });
+    };
+    $('cardImg').scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  (document.fonts && document.fonts.load) ? document.fonts.load("900 30px 'Noto Sans KR'").then(go, go) : go();
+}
+
+/* ── 시작 ── */
+if(!TOK || !window.firebase){
+  $('sub').textContent = '';
+  $('app').innerHTML = '<div class="card"><p class="msg">선생님이 단톡에 올린 <b>라인업 링크</b>로 열어 주세요.</p></div>';
+}else{
+  var app = firebase.initializeApp(FBC);
+  REF = firebase.database(app).ref('baseball/lu_'+TOK);
+  firebase.database(app).ref('.info/connected').on('value', function(s){ live = !!s.val(); if(D) render(); });
+  REF.on('value', function(s){
+    var v = s.val();
+    if(!v || !v.teams){ $('sub').textContent = ''; $('app').innerHTML = '<div class="card"><p class="msg">링크가 만료됐거나 잘못됐어요.<br>선생님께 새 링크를 받아 주세요.</p></div>'; return; }
+    var dragging = document.querySelector('.sortable-chosen');
+    D = v; if(!dragging) render();
+  }, function(){ $('app').innerHTML = '<div class="card"><p class="msg">불러오지 못했어요. 인터넷을 확인해 주세요.</p></div>'; });
+}
+</script>
+</body>
+</html>
