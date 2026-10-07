@@ -71,6 +71,35 @@ p.st{font-size:12.5px;color:var(--tx3);margin:0 0 16px}
 .cbtn small{display:block;font-size:11px;font-weight:500;color:var(--tx3);margin-top:3px}
 .cbtn.on small{color:rgba(255,255,255,.8)}
 /* 조편성 카드 남녀 구분 — 외곽선 파랑/핑크 (10/6 사용자 요청) */
+.lucol h3{flex-wrap:wrap}
+.luneed{border-radius:10px;padding:9px 12px;font-weight:800;font-size:14.5px;line-height:1.5;margin-bottom:6px}
+.luneed.bad{background:rgba(224,163,60,.14);border:1px solid var(--warn);color:var(--warn)}
+.luneed.ok{background:rgba(47,169,107,.13);border:1px solid var(--hit);color:var(--hit)}
+.lum{color:#4a9be0} .luf{color:#e06aaf}
+.luchips{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0}
+.luchip{background:var(--panel2);border:2px solid var(--line2);color:var(--tx);border-radius:999px;padding:8px 14px;font:inherit;font-size:15px;font-weight:800}
+.luchip.m{border-color:#4a9be0} .luchip.f{border-color:#e06aaf} .luchip.sel{border-color:var(--warn);background:rgba(224,163,60,.18)}
+.luchip small{color:var(--tx3);font-weight:600}
+.lulist{list-style:none;margin:0;padding:0}
+.luit{display:grid;grid-template-columns:36px 30px 1fr auto 36px;gap:6px;align-items:center;background:var(--panel2);border:2px solid var(--line2);border-radius:11px;padding:6px 8px;margin-bottom:6px}
+.luit.m{border-color:rgba(74,155,224,.75)} .luit.f{border-color:rgba(224,106,175,.75)} .luit.off{opacity:.38} .luit.dup{border-style:dashed}
+.luck{width:30px;height:30px;border-radius:8px;border:2px solid var(--line2);background:var(--panel);color:#fff;font-size:17px;font-weight:900;padding:0}
+.luck.on{background:var(--hit);border-color:var(--hit)}
+.luno{font-size:18px;font-weight:900;color:var(--warn);text-align:center}
+.lunm{font-size:16px;font-weight:800} .lunm small{color:var(--tx3);font-weight:700}
+.lups{font-size:13px;font-weight:800;color:#5aa2ef;white-space:nowrap} .lups.no{color:var(--tx3)}
+.luhd{font-size:22px;color:var(--tx3);text-align:center;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:3px 0}
+.lughost{opacity:.35}
+.lufield{position:relative;width:100%;max-width:520px;margin:10px auto 0;aspect-ratio:1/.9}
+.lufield svg{position:absolute;inset:0;width:100%;height:100%}
+.luspot{position:absolute;transform:translate(-50%,-50%);min-width:70px;text-align:center;border:0;padding:0;background:none;font:inherit;cursor:pointer}
+.luspot .pt{display:block;font-size:11px;font-weight:900;color:#fff;border-radius:7px 7px 0 0;padding:2px 6px}
+.luspot .pn{display:block;background:#fff;color:#14203f;font-size:14.5px;font-weight:900;border-radius:0 0 7px 7px;padding:4px 8px;min-height:26px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.luspot .pn.no{color:#9aa6c4;font-weight:700;font-size:12.5px}
+.luspot.in .pt{background:#f07c2a} .luspot.of .pt{background:#2f7fe0}
+.lusheet{position:fixed;inset:0;background:rgba(5,10,25,.6);z-index:80;display:flex;align-items:flex-end;justify-content:center}
+.lusheet .lus{background:var(--panel);border:1px solid var(--line2);border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:720px;max-height:70vh;overflow:auto}
+.lusheet h3{margin:0 0 4px}
 .cbtn.gm{border:2px solid #4a9be0} .cbtn.gm small{color:#8ec5f0}
 .cbtn.gf{border:2px solid #e06aaf} .cbtn.gf small{color:#f0a8d8}
 html[data-theme=light] .cbtn.gm{border-color:#3b82f6} html[data-theme=light] .cbtn.gm small{color:#1e40af}
@@ -752,7 +781,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-06x';
+var APP_VER = '2026-10-07a';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1968,54 +1997,138 @@ function luImport(g){
   });
 }
 
+/* ── 라인업 화면 도우미 (10/7, 학생용 화면과 같은 모양) ── */
+var LU_POS = [
+  {k:'CF', x:50, y:12, z:'of'}, {k:'LF', x:16, y:27, z:'of'}, {k:'RF', x:84, y:27, z:'of'},
+  {k:'SS', x:35, y:46, z:'in'}, {k:'2B', x:65, y:46, z:'in'}, {k:'3B', x:19, y:60, z:'in'},
+  {k:'1B', x:81, y:60, z:'in'}, {k:'P', x:50, y:67, z:'in'}, {k:'C', x:50, y:92, z:'in'}
+];
+function luFieldSVG(){
+  return '<svg viewBox="0 0 100 90" preserveAspectRatio="none"><defs><clipPath id="lufc"><path d="M50 88 L1 39 A70 70 0 0 1 99 39 Z"/></clipPath></defs>'+
+    '<path d="M50 88 L1 39 A70 70 0 0 1 99 39 Z" fill="#3a9d5a" stroke="#fff" stroke-width=".5"/>'+
+    '<g clip-path="url(#lufc)"><circle cx="50" cy="63" r="34" fill="#c98d55"/></g>'+
+    '<path d="M50 84 L74 60 L50 36 L26 60 Z" fill="#45b066"/><g fill="#fff">'+
+    [[50,84],[74,60],[50,36],[26,60]].map(function(q){ return '<rect x="'+(q[0]-1.6)+'" y="'+(q[1]-1.6)+'" width="3.2" height="3.2" transform="rotate(45 '+q[0]+' '+q[1]+')"/>'; }).join('')+
+    '</g><circle cx="50" cy="61" r="2.6" fill="#d9a56d"/></svg>';
+}
+/* 남녀 따로 맞춘다 — 성별마다 양 팀 중 많은 쪽에 맞춰 반복타자. 그 성별이 0명이면 다른 성별로 */
+function luCount(g, side){
+  var seq = side==='H'?g.seqH:g.seqA, out = side==='H'?g.outH:g.outA, c = {M:0, F:0, rM:0, rF:0};
+  seq.forEach(function(sid){ if(out.indexOf(sid)>=0) return; var p = findP(g,sid); if(p) c[p.gender==='남'?'M':'F']++; });
+  (g['dup'+side]||[]).forEach(function(sid){ var p = findP(g,sid); if(p) c[p.gender==='남'?'rM':'rF']++; });
+  return c;
+}
+function luNeed(g, side){
+  var o = side==='H'?'A':'H', a = luCount(g, side), b = luCount(g, o);
+  var oseq = o==='H'?g.seqH:g.seqA;
+  if(!oseq || !oseq.length) return {M:0, F:0, ok:true, has:false, a:a, b:b};
+  var nM = Math.max(a.M, b.M) - a.M - a.rM, nF = Math.max(a.F, b.F) - a.F - a.rF;
+  if(a.M===0 && nM>0){ nF += nM; nM = 0; }
+  if(a.F===0 && nF>0){ nM += nF; nF = 0; }
+  return {M:nM, F:nF, ok:nM===0 && nF===0, has:true, a:a, b:b};
+}
+function luPick(g, side, k){
+  var seq = side==='H'?g.seqH:g.seqA, out = side==='H'?g.outH:g.outA, def = (g.def||{})[side]||{};
+  var P = POS.filter(function(x){return x.k===k;})[0];
+  var d = document.createElement('div'); d.className = 'lusheet';
+  d.innerHTML = '<div class="lus"><h3>'+esc(P.n)+' — 누가 맡을까요?</h3><p class="st" style="margin:0 0 8px">다른 자리에 있던 학생을 고르면 그 자리는 비워집니다.</p><div class="luchips">'+
+    seq.filter(function(sid){ return out.indexOf(sid)<0; }).map(function(sid){
+      var p = findP(g,sid); if(!p) return ''; var ps = posOf(g, side, sid), Q = POS.filter(function(x){return x.k===ps;})[0];
+      return '<button class="luchip '+(p.gender==='남'?'m':'f')+(def[k]===sid?' sel':'')+'" data-pk="'+sid+'">'+esc(p.name)+(Q && ps!==k ? ' <small>('+Q.n+')</small>' : '')+'</button>';
+    }).join('')+'<button class="luchip" data-pk="" style="border-style:dashed">비우기</button></div>'+
+    '<div class="row" style="margin-top:10px"><button class="btn" data-pkx="1">닫기</button></div></div>';
+  document.body.appendChild(d);
+  d.onclick = function(e){
+    var b = e.target.closest('button');
+    if(e.target===d || (b && b.dataset.pkx)){ d.remove(); return; }
+    if(!b || b.dataset.pk==null) return;
+    g.def = g.def || {}; g.def[side] = g.def[side] || {};
+    if(b.dataset.pk){ var kicked = setPos(g, side, b.dataset.pk, k); if(kicked && kicked!==b.dataset.pk){ var kp = findP(g,kicked); toast((kp?kp.name:'앞 선수')+' → 대기'); } }
+    else delete g.def[side][k];
+    d.remove(); save(); lineupView(g);
+  };
+}
+var _sortP = null;
+function luSortable(g){
+  function go(){
+    el('v-game').querySelectorAll('.lulist').forEach(function(ul){
+      Sortable.create(ul, {handle:'.luhd', animation:150, ghostClass:'lughost', onEnd:function(){
+        var side = ul.dataset.side, ids = Array.prototype.map.call(ul.children, function(li){ return li.dataset.sid; });
+        if(side==='H') g.seqH = ids; else g.seqA = ids;
+        save(); lineupView(g);
+      }});
+    });
+  }
+  if(window.Sortable) return go();
+  _sortP = _sortP || new Promise(function(res, rej){
+    var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js';
+    sc.onload = res; sc.onerror = function(){ _sortP = null; rej(); }; document.head.appendChild(sc);
+  });
+  _sortP.then(go, function(){ toast('끌기 도구를 못 불러왔어요 (인터넷 확인)'); });
+}
+
 /* ── 당일 라인업·타순 짜기 ─────────────────── */
 function lineupView(g){
-  var nH = activeCount(g,'H'), nA = activeCount(g,'A');
+  var nH = activeCount(g,'H') + (g.seqH.length ? (g.dupH||[]).length : 0), nA = activeCount(g,'A') + (g.seqA.length ? (g.dupA||[]).length : 0);
   var target = Math.max(nH, nA);
   var dupH = Math.max(0, target-nH), dupA = Math.max(0, target-nA);
 
+  /* 10/7 학생용 라인업 화면(lineup.html) 모양으로 — ≡ 끌어서 타순 · 야구장 박스로 수비 · 남녀 테두리 · 반복타자로 남녀 수 맞추기 */
   function col(side, name){
     var seq = side==='H'?g.seqH:g.seqA, out = side==='H'?g.outH:g.outA;
-    var dup = side==='H'?dupH:dupA;
     if(side==='A' && !seq.length){
       return '<div class="card"><h3>'+esc(name)+' <span class="tag">명단 없음</span></h3>'+
         '<label style="font-size:11.5px;color:var(--tx3)">오늘 출전 인원수</label>'+
         '<input type="number" min="1" max="40" id="oppCnt" value="'+(g.oppCount||9)+'">'+
         '<p class="st" style="margin:9px 0 0">상대 학급 명단이 없어 인원수로만 진행합니다.</p></div>';
     }
-    var live = seq.filter(function(sid){return out.indexOf(sid)<0;}).length;
-    var placed = Object.keys((g.def||{})[side]||{}).length;
-    return '<div class="card"><h3>'+esc(name)+' · 출전 <b style="color:var(--warn)">'+live+'명</b>'+
-      (dup ? ' <span class="tag dup">중복 '+dup+'</span>' : '')+
-      ' <span class="tag">수비 '+placed+'/9</span></h3>'+
-      '<div class="row" style="margin-bottom:9px">'+
+    var dups = g['dup'+side] || [], nd = luNeed(g, side), def = (g.def||{})[side] || {};
+    var oi = 0, live = seq.filter(function(sid){return out.indexOf(sid)<0;}).length;
+    var msgs = [];
+    if(nd.M>0) msgs.push('반복타자 <b class="lum">남자 '+nd.M+'명</b>을 더 선택하세요.');
+    if(nd.F>0) msgs.push('반복타자 <b class="luf">여자 '+nd.F+'명</b>을 더 선택하세요.');
+    if(nd.M<0) msgs.push('반복타자 남자가 '+(-nd.M)+'명 많아요.');
+    if(nd.F<0) msgs.push('반복타자 여자가 '+(-nd.F)+'명 많아요.');
+    var cand = (nd.M>0||nd.F>0) ? seq.filter(function(sid){ var p=findP(g,sid); return p && out.indexOf(sid)<0 && dups.indexOf(sid)<0 && ((nd.M>0&&p.gender==='남')||(nd.F>0&&p.gender!=='남')); }) : [];
+    return '<div class="card lucol"><h3>'+esc(name)+' · 출전 <b style="color:var(--warn)">'+live+'명</b>'+
+        ' <span class="tag m">남 '+(nd.a.M+nd.a.rM)+'</span> <span class="tag f">여 '+(nd.a.F+nd.a.rF)+'</span>'+
+        (dups.length ? ' <span class="tag dup">반복 '+dups.length+'</span>' : '')+
+        ' <span class="tag">수비 '+Object.keys(def).length+'/9</span></h3>'+
+      (nd.has ? (nd.ok ? '<div class="luneed ok">✔ 상대 조와 남녀 수가 맞아요</div>'
+                       : '<div class="luneed bad">⚠ '+msgs.join('<br>')+'</div>') : '')+
+      (cand.length ? '<div class="luchips">'+cand.map(function(sid){ var p=findP(g,sid);
+          return '<button class="luchip '+(p.gender==='남'?'m':'f')+'" data-dupadd="'+side+'" data-sid="'+sid+'">+ '+esc(p.name)+'</button>'; }).join('')+'</div>' : '')+
+      '<div class="row" style="margin:9px 0">'+
         '<button class="btn sm" data-all="'+side+'">전원 체크</button>'+
         '<button class="btn sm" data-mix="'+side+'">남녀 교차</button>'+
         '<button class="btn sm" data-auto="'+side+'">빈 자리 자동 채우기</button>'+
         '<button class="btn sm dn" data-clrp="'+side+'">수비 비우기</button></div>'+
-      '<table>'+seq.map(function(sid,i){
+      '<ul class="lulist" data-side="'+side+'">'+seq.map(function(sid){
         var p = findP(g,sid); if(!p) return '';
-        var on = out.indexOf(sid)<0;
-        return '<tr'+(on?'':' style="opacity:.38"')+'>'+
-          '<td style="width:26px"><input type="checkbox" style="width:auto" data-ck="'+side+'" data-sid="'+sid+'"'+(on?' checked':'')+'></td>'+
-          '<td style="width:24px;color:var(--tx3)">'+(i+1)+'</td>'+
-          '<td>'+esc(p.name)+'</td>'+
-          '<td style="width:32px"><span class="tag '+(p.gender==='남'?'m':'f')+'">'+esc(p.gender)+'</span></td>'+
-          '<td style="width:96px"><select data-pos="'+side+'" data-sid="'+sid+'"'+(on?'':' disabled')+'>'+
-            posOptions(g, side, sid)+
-            '</select></td>'+
-          '<td class="n" style="width:76px">'+
-            '<button class="btn sm" data-mv="'+side+':'+i+':-1">▲</button> '+
-            '<button class="btn sm" data-mv="'+side+':'+i+':1">▼</button></td></tr>';
-      }).join('')+'</table>'+
-      '<p class="st" style="margin:9px 0 0">포지션은 <b>그날그날 바꾸는 것</b>이라 여기서 정합니다. '+
-      '<b>이미 찬 자리는 목록에 안 나옵니다</b> — 남은 자리만 고르면 됩니다. '+
-      '비워 두면 경기 시작할 때 타순대로 채워지고, 경기가 시작된 뒤에는 <b>[경기 세팅]</b>에서 바꿉니다.</p></div>';
+        var off = out.indexOf(sid)>=0, ps = posOf(g, side, sid), P = POS.filter(function(x){return x.k===ps;})[0];
+        return '<li class="luit '+(p.gender==='남'?'m':'f')+(off?' off':'')+'" data-sid="'+sid+'">'+
+          '<button class="luck'+(off?'':' on')+'" data-ck="'+side+'" data-sid="'+sid+'">'+(off?'':'✓')+'</button>'+
+          '<span class="luno">'+(off?'-':(++oi))+'</span>'+
+          '<span class="lunm">'+esc(p.name)+' <span class="tag '+(p.gender==='남'?'m':'f')+'">'+esc(p.gender)+'</span>'+(off?' <small>결석</small>':'')+'</span>'+
+          '<span class="lups'+(P?'':' no')+'">'+(off?'':(P?P.n:'대기'))+'</span>'+
+          '<span class="luhd">≡</span></li>';
+      }).join('')+'</ul>'+
+      dups.map(function(sid){ var p = findP(g,sid)||{name:'?'};
+        return '<div class="luit dup '+(p.gender==='남'?'m':'f')+'"><span></span><span class="luno">'+(++oi)+'</span>'+
+          '<span class="lunm">'+esc(p.name)+' <span class="tag dup">반복</span></span><span class="lups no">타격만</span>'+
+          '<button class="luck" data-duprm="'+side+'" data-sid="'+sid+'">✕</button></div>'; }).join('')+
+      '<div class="lufield">'+luFieldSVG()+LU_POS.map(function(q){
+        var sid = def[q.k], p = sid ? findP(g,sid) : null, P = POS.filter(function(x){return x.k===q.k;})[0];
+        return '<button class="luspot '+q.z+'" data-spot="'+side+'" data-k="'+q.k+'" style="left:'+q.x+'%;top:'+q.y+'%">'+
+          '<span class="pt">'+P.n+'</span><span class="pn'+(p?'':' no')+'">'+(p?esc(p.name):'누르기')+'</span></button>';
+      }).join('')+'</div>'+
+      '<p class="st" style="margin:8px 0 0">오른쪽 <b>≡</b> 를 끌어 타순을 바꾸고, ✓ 를 끄면 결석입니다. 포지션 박스를 눌러 수비를 고르세요. '+
+      '비워 둔 자리는 경기 시작 때 타순대로 채워집니다.</p></div>';
   }
 
   el('v-game').innerHTML =
     '<h2 class="t">'+gLabel(g)+' 라인업</h2>'+
-    '<p class="st">오늘 안 나온 학생은 <b>체크를 끄세요.</b> ▲▼ 로 타순을 바꿉니다.</p>'+
+    '<p class="st">오늘 안 나온 학생은 <b>✓ 를 끄세요.</b> ≡ 를 끌어 타순을 바꾸고, 야구장 박스를 눌러 수비를 정합니다.</p>'+
     '<div class="card"><div class="row"><button class="btn pri" id="luMakeB">📤 학생용 라인업 링크</button>'+
       (g.luTok ? '<button class="btn" id="luGetB">📥 학생 라인업 불러오기</button>' : '')+
       '<span class="st" style="margin:0">주장이 폰으로 결석·타순·수비·반복타자를 정하면 '+(g.luTok?'[불러오기]로':'링크를 만든 뒤 [불러오기]로')+' 한 번에 들어와요.</span></div></div>'+
@@ -2034,13 +2147,24 @@ function lineupView(g){
     '<button class="btn dn" id="cancelG">취소</button></div>';
 
   el('v-game').querySelectorAll('[data-ck]').forEach(function(cb){
-    cb.onchange = function(){
+    cb.onclick = function(){
       var side=cb.dataset.ck, sid=cb.dataset.sid, out = side==='H'?g.outH:g.outA;
       var i = out.indexOf(sid);
-      if(cb.checked){ if(i>=0) out.splice(i,1); } else if(i<0) out.push(sid);
+      if(i>=0) out.splice(i,1);
+      else { out.push(sid); setPos(g, side, sid, ''); g['dup'+side] = (g['dup'+side]||[]).filter(function(x){ return x!==sid; }); }
       save(); lineupView(g);
     };
   });
+  el('v-game').querySelectorAll('[data-dupadd]').forEach(function(b){
+    b.onclick = function(){ var k='dup'+b.dataset.dupadd; g[k] = (g[k]||[]).concat([b.dataset.sid]); save(); lineupView(g); };
+  });
+  el('v-game').querySelectorAll('[data-duprm]').forEach(function(b){
+    b.onclick = function(){ var k='dup'+b.dataset.duprm; g[k] = (g[k]||[]).filter(function(x){ return x!==b.dataset.sid; }); save(); lineupView(g); };
+  });
+  el('v-game').querySelectorAll('[data-spot]').forEach(function(b){
+    b.onclick = function(){ luPick(g, b.dataset.spot, b.dataset.k); };
+  });
+  luSortable(g);
   el('v-game').querySelectorAll('[data-mv]').forEach(function(b){
     b.onclick = function(){
       var q = b.dataset.mv.split(':'), seq = q[0]==='H'?g.seqH:g.seqA;
