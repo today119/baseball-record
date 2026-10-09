@@ -781,7 +781,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-07b';
+var APP_VER = '2026-10-09';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1010,6 +1010,34 @@ function watchClass(cn){
   base.once('value').then(function(){ if(_wc && _wc.key===cn) _wc.ready = true; })
     .catch(function(){ if(_wc && _wc.key===cn) _wc.ready = true; });
 }
+/* ── 새 기기 첫 화면 (2026-10-09) ──
+   학급을 «눌러야» 그 반 명단을 받아 와서, 새 기기 첫 화면엔 모든 반이 「명단 없음」으로 떴다.
+   → 연결되면 모든 반 명단(합치기)과 반별 응원가 목록을 한 번에 받아 학급 버튼에 「28명 · 🎵18」로 보여 준다. */
+var _pre = '';
+function preloadAll(){
+  if(!DB || _pre === S.cfg.school) return;
+  _pre = S.cfg.school;
+  var names = S.cfg.classNames.slice(0, S.cfg.classCount), left = names.length * 2;
+  function step(){ if(--left === 0){ save(); if(V==='home') vHome(); } }
+  names.forEach(function(cn){
+    DB.ref(ROOT()+'/classes/'+ck(cn)+'/roster').once('value').then(function(s){
+      var v = s.val();
+      if(v && v.length){
+        var c = cls(cn), by = {};
+        c.roster.forEach(function(r,i){ by[r.sid] = i; });
+        v.forEach(function(r){
+          if(!r || !r.sid) return;
+          if(by[r.sid]!=null) c.roster[by[r.sid]] = Object.assign({}, c.roster[by[r.sid]], r);
+          else c.roster.push(r);
+        });
+        c.roster.sort(function(a,b){ return (+a.num||0)-(+b.num||0); });
+      }
+    }).catch(function(){}).then(step);
+    DB.ref(ROOT()+'/songIdx/'+ck(cn)).once('value').then(function(s){
+      SONG.idx[cn] = s.val() || {};
+    }).catch(function(){}).then(step);
+  });
+}
 function unwatchClass(){
   if(_wc) _wc.refs.forEach(function(x){ try{ x[0].off(x[1], x[2]); }catch(e){} });
   _wc = null;
@@ -1204,6 +1232,7 @@ function initFB(){
     _connRef.on('value', function(s){
       setNet(!!s.val(), s.val()? 'Firebase 연결' : '오프라인 (로컬 저장)');
       if(s.val() && S.cur) watchClass(S.cur);   // 붙자마자 지금 학급 자료를 받아 온다
+      if(s.val()) preloadAll();                 // 모든 반 명단·응원가 수 (첫 화면용)
     });
     watchSharedCfg();
   }catch(e){ DB=null; setNet(false,'설정 오류 — 로컬 저장'); }
@@ -1346,8 +1375,9 @@ function vHome(){
       '<button class="btn sm'+(S.cfg.showAll?' pri':'')+'" id="showAll">전체 보기</button></div>' : '') +
     '<div class="grid cgrid">' + names.map(function(n){
       var c = S.classes[n], cnt = c && c.roster ? c.roster.length : 0;
+      var sg = SONG.idx[n] ? Object.keys(SONG.idx[n]).length : 0;
       return '<button class="cbtn'+(S.cur===n?' on':'')+'" data-c="'+esc(n)+'">'+esc(n)+
-             '<small>'+(cnt? cnt+'명' : '명단 없음')+'</small></button>';
+             '<small>'+(cnt? cnt+'명' : (DB && _pre!==S.cfg.school ? '받는 중…' : '명단 없음'))+(sg? ' · 🎵'+sg : '')+'</small></button>';
     }).join('') + '</div>';
   if(el('onlyMine')) el('onlyMine').onclick = function(){ S.cfg.showAll=false; save(); vHome(); };
   if(el('showAll'))  el('showAll').onclick  = function(){ S.cfg.showAll=true;  save(); vHome(); };
