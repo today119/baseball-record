@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-09d';
+var APP_VER = '2026-10-09e';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2160,7 +2160,7 @@ function luPick(g, side, k){
     g.def = g.def || {}; g.def[side] = g.def[side] || {};
     if(b.dataset.pk){ var kicked = setPos(g, side, b.dataset.pk, k); if(kicked && kicked!==b.dataset.pk){ var kp = findP(g,kicked); toast((kp?kp.name:'앞 선수')+' → 대기'); } }
     else delete g.def[side][k];
-    d.remove(); save(); lineupView(g);
+    d.remove(); luRefresh(g);
   };
 }
 var _sortP = null;
@@ -2170,7 +2170,7 @@ function luSortable(g){
       Sortable.create(ul, {handle:'.luhd', animation:150, ghostClass:'lughost', onEnd:function(){
         var side = ul.dataset.side, ids = Array.prototype.map.call(ul.children, function(li){ return li.dataset.sid; });
         if(side==='H') g.seqH = ids; else g.seqA = ids;
-        save(); lineupView(g);
+        luRefresh(g);
       }});
     });
   }
@@ -2182,8 +2182,67 @@ function luSortable(g){
   _sortP.then(go, function(){ toast('끌기 도구를 못 불러왔어요 (인터넷 확인)'); });
 }
 
+/* ── 경기 중 라인업 (2026-10-09 — 「경기 세팅」을 라인업 화면으로 통일) ──
+   경기 전: seq/out/dup/def 만 고치고 「경기 시작」 때 타순(orderH/A)을 만든다.
+   경기 중: 같은 화면에서 고칠 때마다 타순을 «다시 만들되», 지금 타자(st.idx)는 같은 사람을 따라가게 한다.
+   이미 기록한 타석(atbats)은 건드리지 않는다. */
+function lineupPlayers(g, side){
+  var pa = paCount(cls()), seq = side==='H'?g.seqH:g.seqA, out = side==='H'?g.outH:g.outA;
+  if(side==='A' && !seq.length){
+    var n = g.oppCount||9, arr=[];
+    for(var i=0;i<n;i++) arr.push({sid:'opp'+g.no+'_'+i, num:String(i+1), name:'상대'+(i+1), gender: i%2?'여':'남', pa:0});
+    return arr;
+  }
+  return seq.filter(function(sid){ return out.indexOf(sid)<0; })
+    .map(function(sid){ var p=findP(g,sid); return p ? Object.assign({}, p, {pa: pa[sid]||0}) : null; }).filter(Boolean);
+}
+/* 경기 중 라인업 화면에 들어갈 때 — 지금 타순(orderH/A)을 라인업 재료(seq·dup)로 되돌린다.
+   (예전 「경기 세팅」에서 ▲▼ 로 바꾼 순서도 그대로 살아난다) */
+function liveSeedLineup(g){
+  ['H','A'].forEach(function(side){
+    var ord = (side==='H'?g.orderH:g.orderA)||[], seq = (side==='H'?g.seqH:g.seqA)||[];
+    var out = (side==='H'?g.outH:g.outA)||[];
+    if(side==='A' && !seq.length) return;
+    var base = [];
+    ord.forEach(function(p){ if(!p.dup && base.indexOf(p.sid)<0) base.push(p.sid); });
+    var rest = seq.filter(function(sid){ return base.indexOf(sid)<0; });
+    var nOut = out.filter(function(sid){ return base.indexOf(sid)<0; });
+    rest.forEach(function(sid){ if(nOut.indexOf(sid)<0) nOut.push(sid); });   // 타순에 없던 학생 = 결석
+    if(side==='H'){ g.seqH = base.concat(rest); g.outH = nOut; } else { g.seqA = base.concat(rest); g.outA = nOut; }
+    g['dup'+side] = ord.filter(function(p){ return p.dup; }).map(function(p){ return p.sid; });
+  });
+}
+function liveRebuild(g){
+  var atk = atkSide(g), old = atk==='H'?g.orderH:g.orderA, cur = old[g.st.idx];
+  var hp = lineupPlayers(g,'H'), ap = lineupPlayers(g,'A');
+  if(!hp.length || !ap.length){ toast('양 팀 모두 한 명 이상 출전해야 합니다'); return false; }
+  var target = Math.max(hp.length, ap.length);
+  g.orderH = buildOrder(hp, target, g.dupH);
+  g.orderA = buildOrder(ap, target, g.dupA);
+  var nord = atk==='H'?g.orderH:g.orderA, k = -1;
+  if(cur){
+    nord.forEach(function(p,i){ if(k<0 && p.sid===cur.sid && !!p.dup===!!cur.dup) k = i; });
+    if(k<0) nord.forEach(function(p,i){ if(k<0 && p.sid===cur.sid) k = i; });
+  }
+  g.st.idx = k>=0 ? k : Math.min(g.st.idx, nord.length-1);   // 지금 타자가 빠졌으면 그 자리의 다음 사람
+  return true;
+}
+function luRefresh(g){
+  if(g.status==='live'){
+    if(liveRebuild(g)){
+      syncOrder(S.cur, g); syncState(S.cur, g);
+      if(DB) patch(gPath(S.cur,g), {seqH:g.seqH||[], seqA:g.seqA||[], outH:g.outH||[], outA:g.outA||[],
+                                    dupH:g.dupH||[], dupA:g.dupA||[], oppCount:g.oppCount||null});
+    }
+  }
+  save(); lineupView(g);
+}
+
 /* ── 당일 라인업·타순 짜기 ─────────────────── */
 function lineupView(g){
+  var live = g.status==='live';
+  var curP = live ? ((atkSide(g)==='H'?g.orderH:g.orderA)||[])[g.st.idx] : null;
+  var curSide = live ? atkSide(g) : '';
   var nH = activeCount(g,'H') + (g.seqH.length ? (g.dupH||[]).length : 0), nA = activeCount(g,'A') + (g.seqA.length ? (g.dupA||[]).length : 0);
   var target = Math.max(nH, nA);
   var dupH = Math.max(0, target-nH), dupA = Math.max(0, target-nA);
@@ -2221,16 +2280,19 @@ function lineupView(g){
       '<ul class="lulist" data-side="'+side+'">'+seq.map(function(sid){
         var p = findP(g,sid); if(!p) return '';
         var off = out.indexOf(sid)>=0, ps = posOf(g, side, sid), P = POS.filter(function(x){return x.k===ps;})[0];
-        return '<li class="luit '+(p.gender==='남'?'m':'f')+(off?' off':'')+'" data-sid="'+sid+'">'+
+        var isNow = curP && side===curSide && !curP.dup && curP.sid===sid;
+        return '<li class="luit '+(p.gender==='남'?'m':'f')+(off?' off':'')+'" data-sid="'+sid+'"'+(isNow?' style="box-shadow:0 0 0 2px var(--warn) inset"':'')+'>'+
           '<button class="luck'+(off?'':' on')+'" data-ck="'+side+'" data-sid="'+sid+'">'+(off?'':'✓')+'</button>'+
           '<span class="luno">'+(off?'-':(++oi))+'</span>'+
-          '<span class="lunm">'+esc(p.name)+' <span class="tag '+(p.gender==='남'?'m':'f')+'">'+esc(p.gender)+'</span>'+(off?' <small>결석</small>':'')+'</span>'+
+          '<span class="lunm">'+esc(p.name)+' <span class="tag '+(p.gender==='남'?'m':'f')+'">'+esc(p.gender)+'</span>'+(off?' <small>결석</small>':'')+
+            (isNow?' <span class="tag" style="background:var(--warn);color:#241a05">지금 타자</span>':'')+'</span>'+
           '<span class="lups'+(P?'':' no')+'">'+(off?'':(P?P.n:'대기'))+'</span>'+
           '<span class="luhd">≡</span></li>';
       }).join('')+'</ul>'+
       dups.map(function(sid){ var p = findP(g,sid)||{name:'?'};
-        return '<div class="luit dup '+(p.gender==='남'?'m':'f')+'"><span></span><span class="luno">'+(++oi)+'</span>'+
-          '<span class="lunm">'+esc(p.name)+' <span class="tag dup">반복</span></span><span class="lups no">타격만</span>'+
+        var isNow = curP && side===curSide && curP.dup && curP.sid===sid;
+        return '<div class="luit dup '+(p.gender==='남'?'m':'f')+'"'+(isNow?' style="box-shadow:0 0 0 2px var(--warn) inset"':'')+'><span></span><span class="luno">'+(++oi)+'</span>'+
+          '<span class="lunm">'+esc(p.name)+' <span class="tag dup">반복</span>'+(isNow?' <span class="tag" style="background:var(--warn);color:#241a05">지금 타자</span>':'')+'</span><span class="lups no">타격만</span>'+
           '<button class="luck" data-duprm="'+side+'" data-sid="'+sid+'">✕</button></div>'; }).join('')+
       '<div class="lufield">'+luFieldSVG()+LU_POS.map(function(q){
         var sid = def[q.k], p = sid ? findP(g,sid) : null, P = POS.filter(function(x){return x.k===q.k;})[0];
@@ -2238,19 +2300,30 @@ function lineupView(g){
           '<span class="pt">'+P.n+'</span><span class="pn'+(p?'':' no')+'">'+(p?esc(p.name):'누르기')+'</span></button>';
       }).join('')+'</div>'+
       '<p class="st" style="margin:8px 0 0">오른쪽 <b>≡</b> 를 끌어 타순을 바꾸고, ✓ 를 끄면 결석입니다. 포지션 박스를 눌러 수비를 고르세요. '+
-      '비워 둔 자리는 경기 시작 때 타순대로 채워집니다.</p></div>';
+      (live ? '타순·결석·반복타자를 바꾸면 <b>바로 경기 타순에 반영</b>되고, 지금 타자는 그대로 따라갑니다.</p></div>'
+            : '비워 둔 자리는 경기 시작 때 타순대로 채워집니다.</p></div>');
   }
 
   el('v-game').innerHTML =
+    (live ?
+      '<div class="row" style="margin-bottom:9px;justify-content:space-between;align-items:flex-end">'+
+        '<div><h2 class="t">'+gLabel(g)+' 라인업 <span class="tag" style="background:var(--warn);color:#241a05">경기 중</span></h2>'+
+        '<p class="st" style="margin:0">늦게 온 학생은 <b>✓ 를 켜고</b>, 빠진 학생은 끄세요. 이미 기록한 타석은 그대로 남습니다.</p></div>'+
+        '<div class="row" style="align-items:flex-end">'+
+          '<div><label style="font-size:11.5px;color:var(--tx3)">경기 날짜</label>'+
+          '<input type="date" id="gDt" value="'+esc(g.date||'')+'" style="width:154px"></div>'+
+          ((g.atbats||[]).length ? '' : '<button class="btn" id="swFirst">선공 바꾸기 (지금: '+esc(firstSide(g)==='H'?g.home:g.away)+')</button>')+
+          '<button class="btn pri" id="setDone">경기로 돌아가기</button></div></div>'
+    :
     '<h2 class="t">'+gLabel(g)+' 라인업</h2>'+
-    '<p class="st">오늘 안 나온 학생은 <b>✓ 를 끄세요.</b> ≡ 를 끌어 타순을 바꾸고, 야구장 박스를 눌러 수비를 정합니다.</p>'+
-    '<div class="card"><div class="row"><button class="btn pri" id="luMakeB">📤 학생용 라인업 링크</button>'+
+    '<p class="st">오늘 안 나온 학생은 <b>✓ 를 끄세요.</b> ≡ 를 끌어 타순을 바꾸고, 야구장 박스를 눌러 수비를 정합니다.</p>')+
+    (live ? '' : '<div class="card"><div class="row"><button class="btn pri" id="luMakeB">📤 학생용 라인업 링크</button>'+
       (g.luTok ? '<button class="btn" id="luGetB">📥 학생 라인업 불러오기</button>' : '')+
       '<span class="st" style="margin:0">주장이 폰으로 결석·타순·수비·반복타자를 정하면 '+(g.luTok?'[불러오기]로':'링크를 만든 뒤 [불러오기]로')+' 한 번에 들어와요.</span></div></div>'+
     '<details class="card" id="luPaste"'+(g._luOpen?' open':'')+'><summary style="cursor:pointer;font-weight:800">📋 카톡 라인업 붙여넣기 <span class="st" style="font-weight:500">— 주장이 단톡에 보낸 글을 그대로</span></summary>'+
       '<textarea id="luText" rows="6" style="margin-top:10px" placeholder="A조\n1 강지원 중견수\n2 고현주 좌익수\n3 김예림 유격수\n…\n\nB조\n1 김하늘 투수\n…"></textarea>'+
       '<div class="row" style="margin-top:8px"><button class="btn pri" id="luApply">적용</button>'+
-      '<span class="st" style="margin:0">A조·B조를 한꺼번에 붙여도 돼요. <b>글에 나온 순서 = 타순</b>, 이름 뒤 포지션(중견수·유격·1루·CF…)은 수비로, 글에 없는 학생은 결석(체크 끔)으로 들어갑니다.</span></div></details>'+
+      '<span class="st" style="margin:0">A조·B조를 한꺼번에 붙여도 돼요. <b>글에 나온 순서 = 타순</b>, 이름 뒤 포지션(중견수·유격·1루·CF…)은 수비로, 글에 없는 학생은 결석(체크 끔)으로 들어갑니다.</span></div></details>')+
     '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(288px,1fr))">'+
       col('H', g.home)+col('A', g.away)+'</div>'+
     (dupH||dupA ?
@@ -2258,8 +2331,9 @@ function lineupView(g){
       '<p class="st" style="margin:0">'+esc(dupH?g.home:g.away)+'에 <b>중복 타자 '+(dupH||dupA)+'명</b>이 붙어 '+
       '양 팀 모두 <b>'+target+'타석</b>이 됩니다. 남녀 비율은 유지되고 타석 수가 적은 학생부터 뽑힙니다.</p></div>'
       : '<div class="card"><p class="st" style="margin:0">양 팀 <b>'+target+'명</b>으로 인원이 같습니다.</p></div>')+
-    '<div class="row"><button class="btn pri" id="goGame" style="flex:1;justify-content:center;padding:14px;font-size:15px">경기 시작</button>'+
-    '<button class="btn dn" id="cancelG">취소</button></div>';
+    (live ? '<div class="row"><button class="btn pri" id="setDone2" style="flex:1;justify-content:center;padding:14px;font-size:15px">경기로 돌아가기</button></div>'
+          : '<div class="row"><button class="btn pri" id="goGame" style="flex:1;justify-content:center;padding:14px;font-size:15px">경기 시작</button>'+
+            '<button class="btn dn" id="cancelG">취소</button></div>');
 
   el('v-game').querySelectorAll('[data-ck]').forEach(function(cb){
     cb.onclick = function(){
@@ -2267,14 +2341,14 @@ function lineupView(g){
       var i = out.indexOf(sid);
       if(i>=0) out.splice(i,1);
       else { out.push(sid); setPos(g, side, sid, ''); g['dup'+side] = (g['dup'+side]||[]).filter(function(x){ return x!==sid; }); }
-      save(); lineupView(g);
+      luRefresh(g);
     };
   });
   el('v-game').querySelectorAll('[data-dupadd]').forEach(function(b){
-    b.onclick = function(){ var k='dup'+b.dataset.dupadd; g[k] = (g[k]||[]).concat([b.dataset.sid]); save(); lineupView(g); };
+    b.onclick = function(){ var k='dup'+b.dataset.dupadd; g[k] = (g[k]||[]).concat([b.dataset.sid]); luRefresh(g); };
   });
   el('v-game').querySelectorAll('[data-duprm]').forEach(function(b){
-    b.onclick = function(){ var k='dup'+b.dataset.duprm; g[k] = (g[k]||[]).filter(function(x){ return x!==b.dataset.sid; }); save(); lineupView(g); };
+    b.onclick = function(){ var k='dup'+b.dataset.duprm; g[k] = (g[k]||[]).filter(function(x){ return x!==b.dataset.sid; }); luRefresh(g); };
   });
   el('v-game').querySelectorAll('[data-spot]').forEach(function(b){
     b.onclick = function(){ luPick(g, b.dataset.spot, b.dataset.k); };
@@ -2286,18 +2360,18 @@ function lineupView(g){
       var i = +q[1], j = i + (+q[2]);
       if(j<0 || j>=seq.length) return;
       var t = seq[i]; seq[i]=seq[j]; seq[j]=t;
-      save(); lineupView(g);
+      luRefresh(g);
     };
   });
   el('v-game').querySelectorAll('[data-all]').forEach(function(b){
-    b.onclick = function(){ if(b.dataset.all==='H') g.outH=[]; else g.outA=[]; save(); lineupView(g); };
+    b.onclick = function(){ if(b.dataset.all==='H') g.outH=[]; else g.outA=[]; luRefresh(g); };
   });
   /* 포지션 지정 — 이미 차 있는 자리를 고르면 원래 있던 학생이 대기로 밀린다 */
   el('v-game').querySelectorAll('[data-pos]').forEach(function(sel){
     sel.onchange = function(){
       var side = sel.dataset.pos, sid = sel.dataset.sid;
       var kicked = setPos(g, side, sid, sel.value);
-      save(); lineupView(g);
+      luRefresh(g);
       if(kicked){ var kp = findP(g,kicked); toast((kp?kp.name:'앞 선수')+' → 대기로 밀렸습니다'); }
     };
   });
@@ -2309,13 +2383,13 @@ function lineupView(g){
       Object.keys(m).forEach(function(k){ taken[m[k]] = 1; });
       var rest = seq.filter(function(sid){ return out.indexOf(sid)<0 && !taken[sid]; }), i = 0;
       POS.forEach(function(P){ if(!m[P.k] && rest[i]) m[P.k] = rest[i++]; });
-      save(); lineupView(g); toast(i+'명을 빈 자리에 세웠습니다');
+      luRefresh(g); toast(i+'명을 빈 자리에 세웠습니다');
     };
   });
   el('v-game').querySelectorAll('[data-clrp]').forEach(function(b){
     b.onclick = function(){
       g.def = g.def || {}; g.def[b.dataset.clrp] = {};
-      save(); lineupView(g); toast('수비 배치를 비웠습니다');
+      luRefresh(g); toast('수비 배치를 비웠습니다');
     };
   });
   el('v-game').querySelectorAll('[data-mix]').forEach(function(b){
@@ -2325,32 +2399,44 @@ function lineupView(g){
       var mixed=[], i=0, j=0;
       while(i<M.length || j<F.length){ if(i<M.length) mixed.push(M[i++]); if(j<F.length) mixed.push(F[j++]); }
       if(side==='H') g.seqH=mixed; else g.seqA=mixed;
-      save(); lineupView(g); toast('남녀 교차로 타순을 짰습니다');
+      luRefresh(g); toast('남녀 교차로 타순을 짰습니다');
     };
   });
-  el('luMakeB').onclick = function(){
+  if(el('luMakeB')) el('luMakeB').onclick = function(){
     luMake(g).then(function(tok){ lineupView(g); luShow(g, tok); }, function(e){ alert(e.message||e); });
   };
   if(el('luGetB')) el('luGetB').onclick = function(){
     luImport(g).then(function(r){ lineupView(g); alert('학생 라인업을 불러왔어요\n\n'+r+'\n\n틀린 곳은 아래에서 바로 고치면 됩니다.'); }, function(e){ alert(e.message||e); });
   };
-  el('luPaste').ontoggle = function(){ g._luOpen = el('luPaste').open; };
-  el('luApply').onclick = function(){
+  if(el('luPaste')) el('luPaste').ontoggle = function(){ g._luOpen = el('luPaste').open; };
+  if(el('luApply')) el('luApply').onclick = function(){
     var t = el('luText').value.trim(); if(!t) return toast('카톡 글을 붙여 넣어 주세요');
     var r = applyLineupText(g, t);
     if(!r) return alert('명단에 있는 이름을 하나도 못 찾았어요.\n이름을 명단과 똑같이 적었는지 확인해 주세요.');
-    g._luOpen = false; save(); lineupView(g);
+    g._luOpen = false; luRefresh(g);
     alert('라인업을 넣었어요\n\n'+r+'\n\n틀린 곳은 아래에서 바로 고치면 됩니다.');
   };
   if(el('oppCnt')) el('oppCnt').onchange = function(){
-    g.oppCount = Math.max(1, +el('oppCnt').value||9); save(); lineupView(g);
+    g.oppCount = Math.max(1, +el('oppCnt').value||9); luRefresh(g);
   };
-  el('cancelG').onclick = function(){
+  if(el('cancelG')) el('cancelG').onclick = function(){
     if(!confirm('이 경기를 취소할까요?')) return;
     var c=cls(); c.games = c.games.filter(function(x){ return x.no!==g.no; });
     save(); render();
   };
-  el('goGame').onclick = function(){ confirmLineup(g); };
+  if(el('goGame')) el('goGame').onclick = function(){ confirmLineup(g); };
+  /* 경기 중 — 날짜·선공·돌아가기 */
+  function back(){ delete g._setup; save(); render(); }
+  if(el('setDone')) el('setDone').onclick = back;
+  if(el('setDone2')) el('setDone2').onclick = back;
+  if(el('gDt')) el('gDt').onchange = function(){
+    g.date = el('gDt').value || g.date; syncOrder(S.cur, g);
+    lineupView(g); toast('경기 날짜를 '+(gDate(g)||g.date)+'로 바꿨습니다');
+  };
+  if(el('swFirst')) el('swFirst').onclick = function(){     // 첫 타석 전에만 — 기록이 생긴 뒤 바꾸면 이닝 칸이 뒤섞인다
+    g.first = otherSide(firstSide(g)); g.st = {inning:1, half:'초', idx:0};
+    syncState(S.cur, g); lineupView(g); toast('선공을 바꿨습니다');
+  };
 }
 
 function confirmLineup(g){
@@ -2672,7 +2758,7 @@ function board(g){
 function boardImpl(g){
   var c = cls();
   watchGame(S.cur, g.no);
-  if(g._setup) return setupView(g);      // 경기 세팅 화면 (감시는 붙인 채로 둔다)
+  if(g._setup) return lineupView(g);     // 경기 중 라인업 화면 (예전 「경기 세팅」, 감시는 붙인 채로 둔다)
   document.body.classList.add('ingame');
   if(el('sunoBox')) setTimeout(placeSuno, 0);
   var atk = atkSide(g), fs = firstSide(g), ls = otherSide(fs);
@@ -2803,7 +2889,7 @@ function boardImpl(g){
       '<span class="gt">'+gLabel(g)+'<small>'+(g.mode==='intra'?'학급내':'학급대항')+' · '+g.innings+'이닝 · 전원타격제</small></span>'+
       '<button id="thB">'+(document.documentElement.dataset.theme==='light'?'🌙 어둡게':'☀ 밝게')+'</button>'+
       '<button id="undo">↶ 되돌리기</button>'+
-      '<button id="setB">경기 세팅</button>'+
+      '<button id="setB">라인업</button>'+
       '<button id="fsB">⛶ 전체화면</button>'+
       '<button id="fin" class="dn">경기 종료</button>'+
     '</div>'+
@@ -2900,7 +2986,7 @@ function boardImpl(g){
   SONG._pf = SONG._pf || {};
   if(!SONG._pf[S.cur] && SONG.idx[S.cur]){ SONG._pf[S.cur] = 1; prefetchClassSongs(S.cur); }
   el('thB').onclick = function(){ setTheme(document.documentElement.dataset.theme==='light' ? 'dark' : 'light'); board(g); };
-  el('setB').onclick = function(){ g._setup = true; document.body.classList.remove('fs'); save(); render(); };
+  el('setB').onclick = function(){ g._setup = true; liveSeedLineup(g); document.body.classList.remove('fs'); save(); render(); };
   el('fsB').onclick = function(){
     document.body.classList.toggle('fs');
     if(document.body.classList.contains('fs') && document.documentElement.requestFullscreen)
