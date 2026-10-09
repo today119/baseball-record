@@ -798,7 +798,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-09b';
+var APP_VER = '2026-10-09c';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -3192,12 +3192,11 @@ function vTT(){
   el('v-tt').innerHTML =
     '<h2 class="t">'+esc(S.cur)+' 탁구</h2>'+
     '<p class="st">스트로크 20점 + 리그전 20점 = <b>40점</b> · '+
-    '포핸드·백핸드를 따로 넣으면 <b>합계가 자동</b>으로 잡히고, '+
-    '합산 횟수만 쟀다면 <b>합계 칸에 바로</b> 넣으면 됩니다 · '+
+    '스트로크는 <b>포핸드 5구 + 백핸드 5구, 10개 중 성공 개수</b> 하나만 넣습니다 · '+
     '리그전 득점은 <b>쉼표로 나열</b>하면 평균이 자동 계산됩니다 (예: 11,7,9)</p>'+
     '<div class="card">'+
     '<div class="row" style="margin-bottom:10px">'+
-      '<button class="btn" id="ttBulk">합계 일괄 입력</button>'+
+      '<button class="btn" id="ttBulk">스트로크 일괄 입력</button>'+
       '<button class="btn" id="ttLgBulk">리그 득점 일괄 입력</button></div>'+
     '<div id="ttPaste" style="display:none;margin-bottom:11px">'+
       '<p class="st" id="ttPasteHint" style="margin:0 0 5px"></p>'+
@@ -3209,7 +3208,7 @@ function vTT(){
     (c.roster.length ?
       '<div style="overflow-x:auto"><table><tr>'+
       '<th>번호</th><th>이름</th>'+
-      '<th class="n">포핸드</th><th class="n">백핸드</th><th class="n">합계</th><th class="n">스트로크<br>점수</th>'+
+      '<th class="n">스트로크 성공<br><small>10개 중</small></th><th class="n">스트로크<br>점수</th>'+
       '<th>리그 득점 기록</th><th class="n">경기</th><th class="n">평균</th>'+
       '<th class="n">카드</th><th class="n">리그<br>점수</th><th class="n">탁구<br>합계</th></tr>'+
       c.roster.map(function(s){
@@ -3219,8 +3218,9 @@ function vTT(){
                  'data-tt="'+k+'" data-s="'+s.sid+'" value="'+(t[k]!=null?t[k]:'')+'"></td>';
         }
         return '<tr><td>'+esc(s.num)+'</td><td>'+esc(s.name)+'</td>'+
-          num('fh',5)+ num('bh',5)+
-          '<td class="n"><input type="number" min="0" max="10" style="width:58px;text-align:right;font-weight:700" '+
+          /* 2026-10-09 평가계획대로 포·백을 나누지 않고 «10개 중 성공 수» 한 칸만.
+             예전에 포·백으로 따로 넣은 학생은 그 합이 흐리게(placeholder) 보이고 그대로 점수에 들어간다. */
+          '<td class="n"><input type="number" min="0" max="10" style="width:70px;text-align:right;font-weight:700" '+
               'data-tt="sum" data-s="'+s.sid+'" value="'+(t.sum!=null?t.sum:'')+'" '+
               'placeholder="'+(v.sum==null?'':v.sum)+'"></td>'+
           '<td class="n sc" id="ttSt_'+s.sid+'">'+dash(v.st)+'</td>'+
@@ -3234,7 +3234,7 @@ function vTT(){
       }).join('')+'</table></div>'
       : '<div class="msg">명단이 없습니다</div>')+
     '<p class="st" style="margin:11px 0 0">'+
-    '스트로크 — 포핸드 5구·백핸드 5구의 성공 횟수를 <b>합산</b>해 매깁니다 '+
+    '스트로크 — 포핸드 5구 + 백핸드 5구, <b>10개 중 성공 개수</b>로 매깁니다 '+
     '(9개↑ 20 / 7~8 16 / 5~6 12 / 3~4 8 / 2개↓ 4).<br>'+
     '리그전 — 11점 단세트 조별 풀리그, <b>평균 득점</b>으로 매깁니다 '+
     '(9.0↑ 20 / 7.0~ 16 / 5.0~ 12 / 3.0~ 8 / 미만 4). '+
@@ -3276,7 +3276,7 @@ function vTT(){
     el('ttPaste').style.display = '';
     el('ttPasteBox').value = '';
     el('ttPasteHint').innerHTML = (kind==='sum')
-      ? '<b>스트로크 합계</b> — <code>번호(또는 이름):값</code> 형식. 예) <code>2:9 3:5 4:6</code><br>'+
+      ? '<b>스트로크 성공 수(10개 중)</b> — <code>번호(또는 이름):값</code> 형식. 예) <code>2:9 3:5 4:6</code><br>'+
         '시트에서 번호·값 두 열을 복사해 붙여넣어도 됩니다.'
       : '<b>리그 득점</b> — <code>번호(또는 이름):득점,득점,…</code> 형식. 예) <code>2:11,9,8</code> 또는 <code>김철수:11,9,8</code> (한 줄에 한 명)';
     el('ttPasteBox').focus();
