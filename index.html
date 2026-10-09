@@ -42,6 +42,20 @@ input,select,textarea{font:inherit;color:var(--tx);background:var(--panel2);
 .nav:hover{background:var(--panel2)}
 .nav.on{background:var(--line);color:var(--tx)}
 .nav i{font-style:normal;font-size:16px;width:20px;text-align:center}
+/* 학급 바꾸기 (2026-10-09) — 어느 메뉴에 있든 여기서 반만 바꾸면 그 메뉴 그대로 다른 반 내용이 뜬다 */
+.clsw{display:flex;align-items:center;gap:8px;width:100%;padding:10px 11px;margin:0 0 8px;border-radius:10px;
+  background:var(--panel2);border:1.5px solid var(--acc,#3b82f6);color:var(--tx);font-size:15px;font-weight:800;text-align:left}
+.clsw small{font-size:11px;color:var(--tx3);font-weight:600;margin-left:auto}
+.clsw:empty{display:none}
+#clsPop{position:fixed;inset:0;z-index:95;background:#0008;display:flex;align-items:flex-start;justify-content:center;padding:70px 16px}
+#clsPop .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;width:min(560px,100%);
+  box-shadow:0 12px 40px #0006}
+#clsPop h3{margin:0 0 12px;font-size:16px}
+#clsPop .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+#clsPop .g button{padding:12px 6px;border-radius:10px;background:var(--panel2);border:1.5px solid var(--line);
+  color:var(--tx);font-size:16px;font-weight:800;line-height:1.3}
+#clsPop .g button small{display:block;font-size:11px;font-weight:600;color:var(--tx3)}
+#clsPop .g button.on{border-color:var(--acc,#3b82f6);background:var(--line)}
 .side .foot{margin-top:auto;font-size:11px;color:var(--tx3);padding:8px 10px;line-height:1.6}
 .dot{display:inline-block;width:7px;height:7px;border-radius:99px;background:var(--tx3);margin-right:5px}
 .dot.ok{background:var(--hit)} .dot.off{background:var(--warn)}
@@ -477,6 +491,8 @@ body.fs .hdrow{display:none}
   .side{width:100%;flex:0 0 auto;flex-direction:row;overflow-x:auto;padding:8px;gap:4px;
     border-right:0;border-bottom:1px solid var(--line)}
   .brand,.side .foot{display:none}
+  .clsw{width:auto;margin:0 4px 0 0;padding:8px 12px;white-space:nowrap;flex:0 0 auto}
+  .clsw small{display:none}
   .nav{width:auto;padding:9px 12px;white-space:nowrap}
   .nav span{display:none} .nav i{font-size:19px}
   .main{padding:14px 12px 50px}
@@ -616,6 +632,7 @@ html[data-theme=light] .toast{background:#1d2b47;color:#fff}
 <div class="app">
   <nav class="side">
     <div class="brand">⚾ 야구 수행평가<small>기록 · 집계 · 내보내기</small></div>
+    <button class="clsw" id="clsw" type="button"></button>
     <button class="nav on" data-v="home"><i>🏫</i><span>학급</span></button>
     <button class="nav" data-v="roster"><i>👥</i><span>명단</span></button>
     <button class="nav" data-v="grp"><i>🧩</i><span>조편성</span></button>
@@ -781,7 +798,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-09';
+var APP_VER = '2026-10-09b';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1314,6 +1331,43 @@ function gasPost(action, payload){
 
 /* ═══════════ 화면 ═══════════════════════════════════════ */
 var V = 'home';
+/* ── 학급 바꾸기 ── 반 이름 단추 → 반 고르기 창 → 지금 메뉴 그대로 그 반으로 */
+function clsInfo(n){
+  var c = S.classes[n], cnt = c && c.roster ? c.roster.length : 0;
+  var sg = (typeof SONG!=='undefined' && SONG.idx[n]) ? Object.keys(SONG.idx[n]).length : 0;
+  return (cnt ? cnt+'명' : '명단 없음') + (sg ? ' · 🎵'+sg : '');
+}
+function drawClsw(){
+  var b = el('clsw'); if(!b) return;
+  if(!S.cfg.school){ b.innerHTML = ''; return; }
+  b.innerHTML = S.cur ? '🏫 '+esc(S.cur)+' ▾<small>바꾸기</small>' : '🏫 학급 고르기 ▾';
+}
+function setClass(cn){
+  if(!cn || cn === S.cur){ return; }
+  S.cur = cn; save();
+  watchClass(S.cur);
+  if(V === 'home') nav(cls().roster.length ? 'game' : 'roster');
+  else render();
+  toast(cn+'(으)로 바꿨어요');
+}
+function clsPicker(){
+  var all = S.cfg.classNames.slice(0, S.cfg.classCount);
+  var mine = (S.cfg.mine||[]).filter(function(n){ return all.indexOf(n)>=0; });
+  var names = (mine.length && !S.cfg.showAll) ? mine : all;
+  var d = document.createElement('div'); d.id = 'clsPop';
+  d.innerHTML = '<div class="box"><h3>학급 바꾸기 <span class="st" style="font-weight:500">— 지금 메뉴 그대로 그 반으로 바뀌어요</span></h3>'+
+    '<div class="g">'+names.map(function(n){
+      return '<button class="'+(S.cur===n?'on':'')+'" data-pc="'+esc(n)+'">'+esc(n)+'<small>'+clsInfo(n)+'</small></button>';
+    }).join('')+'</div></div>';
+  d.onclick = function(e){
+    var b = e.target.closest('[data-pc]');
+    if(b){ d.remove(); setClass(b.dataset.pc); return; }
+    if(!e.target.closest('.box')) d.remove();
+  };
+  document.body.appendChild(d);
+}
+document.getElementById('clsw').addEventListener('click', function(){ clsPicker(); });
+
 function nav(v){
   V = v;
   document.querySelectorAll('.nav').forEach(function(b){ b.classList.toggle('on', b.dataset.v===v); });
@@ -1330,6 +1384,7 @@ document.addEventListener('click', function(e){
 });
 function render(){
   document.body.classList.remove('ingame','sideopen');
+  drawClsw();
   try{ ({home:vHome, roster:vRoster, grp:vGroups, game:vGame, song:vSong, tt:vTT, rep:vRep, stats:vStats, set:vSet})[V](); }
   catch(e){ showErr(e, 'v-'+V); }
 }
