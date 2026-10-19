@@ -1831,7 +1831,7 @@ function vGroups(){
       var n = log.filter(function(ev){ return ev.sid===sid; }).length;
       if(!n) return;
       var later = log.length - 1 - log.map(function(ev){return ev.sid;}).lastIndexOf(sid);
-      if(later>0 && !confirm(nameOfSid(sid)+' 지명을 취소할까요?\n뒤에 뽑힌 학생들은 차례대로 다시 배정됩니다.')) return;
+      if(later>0 && !confirm(nameOfSid(sid)+' 선택을 취소할까요?\n그 뒤에 뽑은 학생들은 차례가 바뀌어 다른 조로 가거나, 다시 뽑아야 할 수 있어요.')) return;
       draftReplay(log.filter(function(ev){ return ev.sid!==sid; }));
       save(); vGroups(); toast(nameOfSid(sid)+' 지명 취소');
     };
