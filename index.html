@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-09e';
+var APP_VER = '2026-10-19a';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -1610,9 +1610,45 @@ function assignAuto(mode){
    각 라운드는 「먼저 뽑을 조」를 가위바위보로 정해 누른 뒤 번갈아 지명한다. */
 function startDraft(){
   var c = cls();
-  c.draft = { active:true, caps:[], phase:'cap', first:null, idx:0 };
+  c.draft = { active:true, caps:[], phase:'cap', first:null, idx:0, log:[] };
   c.roster.forEach(function(s){ s.group = null; });
   save(); vGroups();
+}
+/*  드래프트의 한 걸음(주장 지명·선공 선택·지명)을 적용한다.
+    걸음은 모두 d.log 에 쌓아 두고, 취소할 때는 그 걸음을 빼고 처음부터 다시 적용한다
+    (주장·선공·라운드 경계를 넘나들어도 차례가 어긋나지 않게). */
+function draftApply(ev){
+  var c = cls(), d = c.draft, k = c.gCount||2, keys = grpKeys();
+  var st = function(sid){ return c.roster.filter(function(s){return s.sid===sid;})[0]; };
+  if(ev.t==='cap'){
+    if(d.phase!=='cap') return false;
+    var s0 = st(ev.sid); if(!s0 || s0.group) return false;
+    s0.group = keys[d.caps.length]; d.caps.push(ev.sid);
+    if(d.caps.length===k){ d.phase = draftPool('F').length ? 'F' : 'M'; d.first = null; d.idx = 0; }
+  }else if(ev.t==='first'){
+    if((d.phase!=='F' && d.phase!=='M') || d.first!==null) return false;
+    d.first = ev.i; d.idx = 0;
+    if(!draftPool(d.phase).length) draftAdvance();
+  }else if(ev.t==='pick'){
+    if((d.phase!=='F' && d.phase!=='M') || d.first===null) return false;
+    var s1 = st(ev.sid);
+    if(!s1 || s1.group || draftPool(d.phase).indexOf(s1)<0) return false;
+    s1.group = keys[draftTurn()];
+    d.pickLog = (d.pickLog||[]).concat([ev.sid]);
+    draftAdvance();
+  }
+  return true;
+}
+function draftReplay(log){
+  var c = cls();
+  c.draft = { active:true, caps:[], phase:'cap', first:null, idx:0, log:[] };
+  c.roster.forEach(function(s){ s.group = null; });
+  log.forEach(function(ev){ if(draftApply(ev)) c.draft.log.push(ev); });
+}
+function draftStep(ev){                    // 새 걸음 하나 적용 + 기록
+  var c = cls();
+  if(!c.draft.log) c.draft.log = [];
+  if(draftApply(ev)) c.draft.log.push(ev);
 }
 function draftPool(g){                     // 이번 라운드에 남은 학생
   var c = cls();
@@ -1684,13 +1720,14 @@ function vGroups(){
           return '<button class="cbtn '+(s.gender==='남'?'gm':s.gender==='여'?'gf':'')+'" data-cap="'+s.sid+'">'+esc(s.name)+
                  '<small>'+esc(s.gender)+'</small></button>'; }).join('')+
         '</div><div class="row" style="margin-top:11px">'+
-        '<button class="btn dn sm" id="dCancel">취소</button></div></div>';
+        (d.caps.length ? '<button class="btn sm" data-dundo="1">↶ 방금 선택 취소</button>' : '')+
+        '<button class="btn dn sm" id="dCancel">전체 취소</button></div></div>';
 
     }else if(d.phase==='done'){
       draftBox = '<div class="card" style="border-color:var(--hit)">'+
         '<h3 style="color:var(--hit)">드래프트 완료</h3>'+
         '<div class="row"><button class="btn pri" id="dDone">확정하기</button>'+
-        '<button class="btn sm" id="dUndo">한 명 되돌리기</button></div></div>';
+        '<button class="btn sm" data-dundo="1">↶ 방금 선택 취소</button></div></div>';
 
     }else{
       var gLabel = d.phase==='F' ? '여학생' : '남학생';
@@ -1707,7 +1744,8 @@ function vGroups(){
             return '<button class="btn'+(i===sug&&d.phase==='M'?' pri':'')+'" data-first="'+i+'" '+
                    'style="flex:1;justify-content:center;padding:13px">'+esc(kN[i])+' 먼저</button>'; }).join('')+
           '</div><div class="row" style="margin-top:9px">'+
-          '<button class="btn dn sm" id="dCancel">취소</button></div></div>';
+          '<button class="btn sm" data-dundo="1">↶ 방금 선택 취소</button>'+
+          '<button class="btn dn sm" id="dCancel">전체 취소</button></div></div>';
       }else{
         var turn = draftTurn();
         draftBox =
@@ -1719,8 +1757,8 @@ function vGroups(){
             return '<button class="cbtn '+(s.gender==='남'?'gm':s.gender==='여'?'gf':'')+'" data-pick="'+s.sid+'">'+esc(s.name)+
                    '<small>'+esc(s.gender)+'</small></button>'; }).join('')+
           '</div><div class="row" style="margin-top:11px">'+
-          '<button class="btn sm" id="dUndo">한 명 되돌리기</button>'+
-          '<button class="btn dn sm" id="dCancel">취소</button></div></div>';
+          '<button class="btn sm" data-dundo="1">↶ 방금 선택 취소</button>'+
+          '<button class="btn dn sm" id="dCancel">전체 취소</button></div></div>';
       }
     }
   }
@@ -1737,7 +1775,8 @@ function vGroups(){
             (c.draft && c.draft.caps && c.draft.caps.indexOf(s.sid)>=0 ? ' <span class="tag dup">주장</span>' : '')+
             '</span>'+
             '<span class="tag '+(s.gender==='남'?'m':'f')+'">'+esc(s.gender)+'</span>'+
-            (d ? '' : '<button class="btn sm" data-mvg="'+s.sid+'">이동</button>')+'</div>';
+            (d ? (d.log ? '<button class="btn sm" data-dx="'+s.sid+'" title="이 학생 선택 취소">✕</button>' : '')
+               : '<button class="btn sm" data-mvg="'+s.sid+'">이동</button>')+'</div>';
         }).join('') : '<div class="msg">비어 있음</div>')+'</div>';
     }).join('')+'</div>';
 
@@ -1768,34 +1807,44 @@ function vGroups(){
   };
   el('v-grp').querySelectorAll('[data-cap]').forEach(function(b){
     b.onclick = function(){
-      var sid=b.dataset.cap, i=c.draft.caps.length;
-      c.draft.caps.push(sid);
-      c.roster.filter(function(s){return s.sid===sid;})[0].group = keys[i];
-      if(c.draft.caps.length===k){
-        c.draft.phase = draftPool('F').length ? 'F' : 'M';
-        c.draft.first = null; c.draft.idx = 0;
-      }
+      draftStep({t:'cap', sid:b.dataset.cap});
       save(); vGroups();
     };
   });
   el('v-grp').querySelectorAll('[data-first]').forEach(function(b){
     b.onclick = function(){
-      c.draft.first = +b.dataset.first; c.draft.idx = 0;
-      if(!draftPool(c.draft.phase).length) draftAdvance();
+      draftStep({t:'first', i:+b.dataset.first});
       save(); vGroups();
     };
   });
   el('v-grp').querySelectorAll('[data-pick]').forEach(function(b){
     b.onclick = function(){
-      var turn = draftTurn();
-      var st = c.roster.filter(function(s){return s.sid===b.dataset.pick;})[0];
-      st.group = keys[turn];
-      c.draft.pickLog = (c.draft.pickLog||[]).concat([st.sid]);
-      draftAdvance();
+      draftStep({t:'pick', sid:b.dataset.pick});
       save(); vGroups();
     };
   });
-  if(el('dUndo')) el('dUndo').onclick = function(){
+  el('v-grp').querySelectorAll('[data-dundo]').forEach(function(b){ b.onclick = draftUndo; });
+  //  학생 이름 옆 ✕ — 그 학생 지명만 빼고 나머지는 순서대로 다시 적용
+  el('v-grp').querySelectorAll('[data-dx]').forEach(function(b){
+    b.onclick = function(){
+      var sid = b.dataset.dx, log = c.draft.log||[];
+      var n = log.filter(function(ev){ return ev.sid===sid; }).length;
+      if(!n) return;
+      var later = log.length - 1 - log.map(function(ev){return ev.sid;}).lastIndexOf(sid);
+      if(later>0 && !confirm(nameOfSid(sid)+' 지명을 취소할까요?\n뒤에 뽑힌 학생들은 차례대로 다시 배정됩니다.')) return;
+      draftReplay(log.filter(function(ev){ return ev.sid!==sid; }));
+      save(); vGroups(); toast(nameOfSid(sid)+' 지명 취소');
+    };
+  });
+  function draftUndo(){
+    if(c.draft.log){
+      if(!c.draft.log.length) return toast('취소할 선택이 없습니다');
+      var last = c.draft.log[c.draft.log.length-1];
+      draftReplay(c.draft.log.slice(0,-1));
+      save(); vGroups();
+      return toast(last.t==='first' ? '먼저 뽑을 조 선택 취소' : nameOfSid(last.sid)+' 선택 취소');
+    }
+    //  예전 버전에서 시작한 드래프트(log 없음) — 지명 하나만 되돌린다
     var log = c.draft.pickLog||[];
     if(!log.length) return toast('되돌릴 지명이 없습니다');
     var sid = log.pop();
@@ -1805,9 +1854,9 @@ function vGroups(){
     if(c.draft.phase==='done'){ c.draft.phase = st && st.gender==='여' ? 'F':'M'; }
     if(c.draft.idx>0) c.draft.idx--;
     save(); vGroups();
-  };
+  }
   if(el('dCancel')) el('dCancel').onclick = function(){
-    if(!confirm('드래프트를 취소할까요? 배정이 초기화됩니다.')) return;
+    if(!confirm('드래프트를 처음부터 다시 할까요? 주장·지명이 모두 지워집니다.')) return;
     c.draft = null; c.roster.forEach(function(s){ s.group=null; });
     syncRoster(S.cur); vGroups();
   };
