@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-21c';
+var APP_VER = '2026-10-21d';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -992,11 +992,15 @@ function watchClass(cn){
     var v = s.val(); if(!v) return;
     var c = cls(cn), have = {}, added = 0, swapped = false;
     Object.keys(v).forEach(function(k){
-      var g = v[k]; if(!g || !g.made) return;
+      var g = v[k]; if(!g) return;
       var li = c.games.findIndex(function(x){ return x.no===g.no; });
       if(li<0) return;
       var mine = c.games[li];
-      if(mine.made===g.made || (_w && _w.key===cn+'#'+g.no)) return;
+      if(_w && _w.key===cn+'#'+g.no) return;
+      var srvLive = (g.cur && g.cur.status ? g.cur.status : g.status) === 'live';
+      var other = g.made ? mine.made!==g.made
+                         : (srvLive && mine.status!=='live' && mine.status!=='lineup');   // made 없는 옛 경기: 서버는 진행 중인데 내 건 끝난 경기
+      if(!other) return;
       if(mine.status==='lineup'){
         var top = 0;
         c.games.forEach(function(x){ top = Math.max(top, x.no); });
