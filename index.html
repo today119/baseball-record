@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-21b';
+var APP_VER = '2026-10-21c';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -983,10 +983,28 @@ function watchClass(cn){
     done(); if(added) say('명단 '+added+'명을 받았습니다');
   });
 
-  /* 경기 목록 — 없는 경기만 채운다. 이미 있는 경기는 경기별 감시(watchGame)가 맡는다. */
+  /* 경기 목록 — 없는 경기만 채운다. 이미 있는 경기는 경기별 감시(watchGame)가 맡는다.
+     10/21: 같은 번호라도 «다른 경기»(made 가 다름)면 — 다른 기기에서 취소·다시 만든 경우 —
+       · 이 기기에 남은 옛 경기 → 서버 경기로 바꿔 끼운다 (예전엔 「이미 있다」며 영영 안 받아 시크릿 탭을 써야 했다)
+       · 아직 안 올린 내 새 경기(라인업 단계) → 내 쪽 번호를 비켜 준다
+       · 지금 이 기기에서 열어 둔 경기는 건드리지 않는다 */
   on(base.child('games'), 'value', function(s){
     var v = s.val(); if(!v) return;
-    var c = cls(cn), have = {}, added = 0;
+    var c = cls(cn), have = {}, added = 0, swapped = false;
+    Object.keys(v).forEach(function(k){
+      var g = v[k]; if(!g || !g.made) return;
+      var li = c.games.findIndex(function(x){ return x.no===g.no; });
+      if(li<0) return;
+      var mine = c.games[li];
+      if(mine.made===g.made || (_w && _w.key===cn+'#'+g.no)) return;
+      if(mine.status==='lineup'){
+        var top = 0;
+        c.games.forEach(function(x){ top = Math.max(top, x.no); });
+        Object.keys(v).forEach(function(q){ if(v[q] && v[q].no) top = Math.max(top, v[q].no); });
+        mine.no = top+1;
+      } else c.games.splice(li, 1);
+      swapped = true;
+    });
     c.games.forEach(function(g){ have[g.no] = 1; });
     Object.keys(v).forEach(function(k){
       var g = v[k]; if(!g || have[g.no]) return;
@@ -1003,7 +1021,7 @@ function watchClass(cn){
       sortRec(o.atbats); sortRec(o.defense);
       c.games.push(o); added++;
     });
-    if(added){ c.games.sort(function(a,b){ return a.no-b.no; }); done(); say('지난 경기 '+added+'개를 받았습니다'); }
+    if(added || swapped){ c.games.sort(function(a,b){ return a.no-b.no; }); done(); say(swapped ? '다른 기기에서 다시 만든 경기를 받았습니다' : '지난 경기 '+added+'개를 받았습니다'); }
   });
 
   /* 조편성·조 이름·탁구·보고서 — 학생별 칸이라 받은 쪽 값으로 채운다 */
@@ -2006,6 +2024,7 @@ function startGame(mode){
 
   var g = {
     no: (c.games.reduce(function(m,x){return Math.max(m,x.no);},0))+1,
+    made: Date.now(),                   // 경기 고유 표시 — 같은 번호의 다른 경기를 가려낸다(10/21)
     mode:mode, innings:innings, home:hname, away:aname, oppClass:oppClass, oppCount:oppCount,
     hs:0, as:0, status:'lineup', st:{inning:1, half:'초', idx:0},
     first: ((el('first')||{}).value==='A') ? 'A' : 'H',
