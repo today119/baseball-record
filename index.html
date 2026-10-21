@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-21a';
+var APP_VER = '2026-10-21b';
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2109,12 +2109,17 @@ function luKey(g){
   var n = [g.home, g.away].map(function(x){ return ck(String(x||'')); }).sort();
   return (g.mode==='intra' ? ck(S.cur)+'~' : '') + n.join('~');
 }
+/* 대진 공용 링크가 우선 — 경기에 따로 만든 옛 링크가 붙어 있어도 공용 링크로 바꾼다(10/21 수업 중 사고).
+   공용 링크가 아직 없는데 경기에 링크가 있으면 그걸 공용으로 등록한다. */
 function luFind(g){
-  if(g.luTok) return Promise.resolve(g.luTok);
-  if(!DB) return Promise.resolve(null);
-  return DB.ref(ROOT()+'/luLinks/'+luKey(g)).once('value').then(function(s){
-    var tok = s.val(); if(tok){ g.luTok = tok; save(); } return tok || null;
-  });
+  if(!DB) return Promise.resolve(g.luTok || null);
+  var ref = DB.ref(ROOT()+'/luLinks/'+luKey(g));
+  return ref.once('value').then(function(s){
+    var tok = s.val();
+    if(tok){ if(g.luTok !== tok){ g.luTok = tok; save(); } return tok; }
+    if(g.luTok) return ref.set(g.luTok).then(function(){ return g.luTok; });
+    return null;
+  }, function(){ return g.luTok || null; });
 }
 /* 이 경기의 H/A 가 링크 안에선 어느 칸인지 — 지난번과 홈·원정이 바뀌었으면 뒤집는다 */
 function luSides(g, teams){
@@ -2484,9 +2489,10 @@ function lineupView(g){
     };
   });
   /* 같은 대진 링크가 이미 있으면 찾아 붙인다(다른 기기·다시 만든 경기) — 경기마다 한 번만 묻는다 */
-  if(!live && !g.luTok && DB && !LU_LOOKED.has(g)){
+  if(!live && DB && !LU_LOOKED.has(g)){
     LU_LOOKED.add(g);
-    luFind(g).then(function(tok){ if(tok && el('luMakeB')) lineupView(g); }, function(){});
+    var had = g.luTok;
+    luFind(g).then(function(tok){ if(tok && tok!==had && el('luMakeB')) lineupView(g); }, function(){});
   }
   if(el('luMakeB')) el('luMakeB').onclick = function(){
     luMake(g).then(function(tok){ lineupView(g); luShow(g, tok); }, function(e){ alert(e.message||e); });
