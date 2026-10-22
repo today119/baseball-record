@@ -801,7 +801,9 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-21d';
+var APP_VER = '2026-10-22a';
+/* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
+function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
 var DB=null, FB=null;
 var S = load();
@@ -2882,7 +2884,7 @@ function boardImpl(g){
   var b = order[g.st.idx];
   var st = tally(g.atbats, g.defense, {});
   var cum = tally(allAtbats(c), allDefense(c), {});
-  g.bases = g.bases || [null,null,null];
+  g.bases = normBases(g.bases);
   var dmap = defOf(g, dside);
   g._pick = g._pick || [];                    // 아웃 기여로 고른 선수
   g._swap = !!g._swap;                        // 교대 모드
@@ -3144,7 +3146,7 @@ function boardImpl(g){
       });
       g.st = sb;
     }
-    if(last.basesBefore) g.bases = last.basesBefore;
+    if(last.basesBefore) g.bases = normBases(last.basesBefore);
     g.defense = g.defense.filter(function(d){       // 그 타석에 묶였던 수비 아웃도 같이
       if(d.ab===last.id){ drop(gPath(S.cur,g)+'/df/'+d.id); return false; } return true; });
     g._s=0; g._b=0; g._pick=[];
