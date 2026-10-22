@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-22b';
+var APP_VER = '2026-10-22c';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -3099,9 +3099,11 @@ function boardImpl(g){
   el('pickClr').onclick = function(){ g._pick = []; board(g); };
   el('menuB').onclick = function(){ document.body.classList.add('sideopen'); };
   bindSongBar();
-  watchSongIdx(S.cur);
   SONG._pf = SONG._pf || {};
-  if(!SONG._pf[S.cur] && SONG.idx[S.cur]){ SONG._pf[S.cur] = 1; prefetchClassSongs(S.cur); }
+  [S.cur, g.mode!=='intra' && g.oppClass].forEach(function(cn){
+    if(!cn) return; watchSongIdx(cn);
+    if(!SONG._pf[cn] && SONG.idx[cn]){ SONG._pf[cn] = 1; prefetchClassSongs(cn); }
+  });
   el('thB').onclick = function(){ setTheme(document.documentElement.dataset.theme==='light' ? 'dark' : 'light'); board(g); };
   el('setB').onclick = function(){ g._setup = true; liveSeedLineup(g); document.body.classList.remove('fs'); save(); render(); };
   el('fsB').onclick = function(){
@@ -4133,17 +4135,19 @@ function decodeAudio(ab){
 /* ── 반별 목록 감시 ── */
 function watchSongIdx(cn){
   if(!DB || !cn) return;
-  if(SONG.idxKey === cn && SONG.idxRef) return;
-  if(SONG.idxRef){ try{ SONG.idxRef.off(); }catch(e){} }
-  SONG.idxKey = cn;
-  SONG.idxRef = DB.ref(ROOT()+'/songIdx/'+ck(cn));
-  SONG.idxRef.on('value', function(s){
+  /* 반끼리 경기면 상대 반 목록도 같이 본다 → 반마다 따로 감시 (10/22) */
+  SONG.idxRefs = SONG.idxRefs || {};
+  if(SONG.idxRefs[cn]) return;
+  SONG.idxRefs[cn] = DB.ref(ROOT()+'/songIdx/'+ck(cn));
+  SONG.idxRefs[cn].on('value', function(s){
     SONG.idx[cn] = s.val() || {};
-    if(V==='song') vSong();
+    if(V==='song' && cn===S.cur) vSong();
     SONG._pf = SONG._pf || {};
     if(V==='game' && !SONG._pf[cn]){ SONG._pf[cn] = 1; prefetchClassSongs(cn); }
   });
 }
+/* 그 팀 선수의 응원가가 들어 있는 반 — 반끼리 경기의 원정(A)은 상대 반 */
+function songCls(g, side){ return (side==='A' && g.mode!=='intra' && g.oppClass) ? g.oppClass : S.cur; }
 function songMeta(cn, sid){ return ((SONG.idx[cn]||{})[ck(sid)]) || null; }
 
 /* ── 🔗 수노 링크 응원가 (2026-10-06) ──
@@ -4375,17 +4379,17 @@ function cheerBatter(g, force){
   if(!SONG.auto && !force) return;
   var atk = atkSide(g), order = atk==='H' ? g.orderH : g.orderA, b = order[g.st.idx];
   if(!b || g.status!=='live'){ stopAll(); return; }
-  var c = cls(), cum = tally(allAtbats(c), allDefense(c), {});
+  var c = cls(), cum = tally(allAtbats(c), allDefense(c), {}), sc = songCls(g, atk);
   var my = ++SONG.seq;
   stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
-  ensureSong(S.cur, b.sid);                            // 멘트 나가는 동안 미리 준비
+  ensureSong(sc, b.sid);                               // 멘트 나가는 동안 미리 준비
   speak(introText(g, b, g.st.idx, cum), function(){
     if(my !== SONG.seq) return;
     SONG.seq--;                                        // playSong 이 다시 올린다
-    var sm = songMeta(S.cur, b.sid);
+    var sm = songMeta(sc, b.sid);
     if(sm && sm.link) showSuno(sm, b.name+' 응원가');      // 수노 링크 → 플레이어 창 (▶ 는 사람이)
-    else playSong(S.cur, b.sid, b.name+' 응원가');
-    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(S.cur, nx.sid); }, 1500);
+    else playSong(sc, b.sid, b.name+' 응원가');
+    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(sc, nx.sid); }, 1500);
   });
 }
 
