@@ -385,10 +385,10 @@ html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt
 .olist{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
   display:flex;flex-direction:column;gap:calc(var(--u) * .25);padding:0 calc(var(--u) * .5) 0 calc(var(--u) * .1)}
 .orow{display:flex;align-items:center;gap:calc(var(--u) * .45);padding:calc(var(--u) * .42) calc(var(--u) * .55);
-  border-radius:calc(var(--u) * .5);border:1.5px solid transparent;font-size:calc(var(--u) * 1.15);flex:0 0 auto}
+  border-radius:calc(var(--u) * .5);border:1.5px solid transparent;font-size:calc(var(--u) * 1.5);flex:0 0 auto}
 .orow .o{width:1.6em;text-align:right;font-weight:900;color:#7d92ba;flex:0 0 auto}
 .orow .nm{flex:1 1 auto;min-width:0;font-weight:800;color:#e2e9f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.orow .av{font-weight:900;color:var(--gold);font-size:calc(var(--u) * 1);flex:0 0 auto}
+.orow .av{font-weight:900;color:var(--gold);font-size:calc(var(--u) * 1.3);flex:0 0 auto}
 .orow .rc{flex:0 0 auto}
 .orow.now{border-color:var(--gold);background:rgba(245,196,81,.12)}
 .orow.now .o,.orow.now .nm{color:var(--gold)}
@@ -427,16 +427,16 @@ html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt
 .po{position:absolute;transform:translate(-50%,-50%);overflow:hidden;
   min-width:calc(var(--u) * 5.2);border-radius:calc(var(--u) * .45);text-align:center;cursor:pointer;transition:all .12s;
   box-shadow:0 calc(var(--u)*.14) calc(var(--u)*.5) rgba(0,0,0,.55)}
-.po .pp{display:block;font-size:calc(var(--u) * .75);font-weight:900;color:#fff;
+.po .pp{display:block;font-size:calc(var(--u) * .95);font-weight:900;color:#fff;
   background:#e2711d;padding:calc(var(--u) * .14) calc(var(--u) * .3);letter-spacing:.02em}
 .po.of .pp{background:#1d7fc0}
-.po .pn{display:block;font-size:calc(var(--u) * 1.1);font-weight:900;color:#132019;
+.po .pn{display:block;font-size:calc(var(--u) * 1.45);font-weight:900;color:#132019;
   background:#eef3f6;padding:calc(var(--u) * .2) calc(var(--u) * .35);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(var(--u) * 7)}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(var(--u) * 8.5)}
 .po.pick{outline:calc(var(--u) * .2) solid var(--gold)}
 .po.pick .pp{background:#b8860f} .po.pick .pn{background:var(--gold);color:#241a05}
 .po.swap{outline:calc(var(--u) * .14) dashed var(--info)}
-.bench{font-size:calc(var(--u) * .95);color:#7d92ba;text-align:center;flex:0 0 auto}
+.bench{font-size:calc(var(--u) * 1.15);color:#7d92ba;text-align:center;flex:0 0 auto}
 .dbtn{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u) * .5);flex:0 0 auto}
 .dbtn button{height:calc(var(--u) * 3.4);padding:0;border-radius:calc(var(--u) * .55);
   font-size:calc(var(--u) * 1.1);font-weight:900;background:#1f3260;border:1px solid #3a5590;color:#e2e9f8}
@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-22a';
+var APP_VER = '2026-10-22b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -3153,6 +3153,7 @@ function boardImpl(g){
     dropAB(S.cur, g, last.id);            // 배열 전체가 아니라 그 한 칸만 지운다
     stopAll();
     syncState(S.cur,g); board(g); toast('한 타석 되돌림');
+    cheerBatter(g);                       // 되돌린 타자의 소개·응원가 창을 다시
   };
   el('fin').onclick = function(){
     if(!confirm('경기를 종료할까요?')) return;
@@ -4360,8 +4361,11 @@ function speak(text, done){
     googleTTS(text).then(function(buf){
       var c = SONG.ctx, s = c.createBufferSource(); s.buffer = buf; s.connect(c.destination);
       SONG._gsrc = s;
-      s.onended = function(){ if(SONG._gsrc===s){ SONG._gsrc = null; SONG.speaking = false; songBar(); done && done(); } };
+      var fired = false, fin = function(){ if(fired || SONG._gsrc!==s) return; fired = true; SONG._gsrc = null; SONG.speaking = false; songBar(); done && done(); };
+      s.onended = fin;
+      try{ if(c.state==='suspended') c.resume(); }catch(e){}
       s.start(0);
+      setTimeout(fin, buf.duration*1000 + 1500);     // 아이패드가 onended 를 빠뜨리면 응원가 창이 안 떠서
     }).catch(function(e){ console.warn('구글 음성 → 기기 음성으로', e); speakWeb(text, done); });
   } else speakWeb(text, done);
 }
