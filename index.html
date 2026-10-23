@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-22c';
+var APP_VER = '2026-10-23a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -1361,7 +1361,7 @@ var V = 'home';
 /* ── 학급 바꾸기 ── 반 이름 단추 → 반 고르기 창 → 지금 메뉴 그대로 그 반으로 */
 function clsInfo(n){
   var c = S.classes[n], cnt = c && c.roster ? c.roster.length : 0;
-  var sg = (typeof SONG!=='undefined' && SONG.idx[n]) ? Object.keys(SONG.idx[n]).length : 0;
+  var sg = (typeof SONG!=='undefined' && SONG.idx[n]) ? songCount(SONG.idx[n]) : 0;
   return (cnt ? cnt+'명' : '명단 없음') + (sg ? ' · 🎵'+sg : '');
 }
 function drawClsw(){
@@ -1458,7 +1458,7 @@ function vHome(){
       '<button class="btn sm'+(S.cfg.showAll?' pri':'')+'" id="showAll">전체 보기</button></div>' : '') +
     '<div class="grid cgrid">' + names.map(function(n){
       var c = S.classes[n], cnt = c && c.roster ? c.roster.length : 0;
-      var sg = SONG.idx[n] ? Object.keys(SONG.idx[n]).length : 0;
+      var sg = SONG.idx[n] ? songCount(SONG.idx[n]) : 0;
       return '<button class="cbtn'+(S.cur===n?' on':'')+'" data-c="'+esc(n)+'">'+esc(n)+
              '<small>'+(cnt? cnt+'명' : (DB && _pre!==S.cfg.school ? '받는 중…' : '명단 없음'))+(sg? ' · 🎵'+sg : '')+'</small></button>';
     }).join('') + '</div>';
@@ -4149,6 +4149,10 @@ function watchSongIdx(cn){
 /* 그 팀 선수의 응원가가 들어 있는 반 — 반끼리 경기의 원정(A)은 상대 반 */
 function songCls(g, side){ return (side==='A' && g.mode!=='intra' && g.oppClass) ? g.oppClass : S.cur; }
 function songMeta(cn, sid){ return ((SONG.idx[cn]||{})[ck(sid)]) || null; }
+/* 응원가를 안 낸 학생은 그 반 「학급 응원가」(songIdx/<반>/_class)로 대신 튼다 (2026-10-23) */
+var CLASS_SID = '_class';
+function songSid(cn, sid){ return songMeta(cn, sid) || !songMeta(cn, CLASS_SID) ? sid : CLASS_SID; }
+function songCount(ix){ return Object.keys(ix||{}).filter(function(k){ return k.charAt(0) !== '_'; }).length; }
 
 /* ── 🔗 수노 링크 응원가 (2026-10-06) ──
    수노가 9/3 부터 무료 다운로드를 막아(평생 7곡) 학생들이 파일 대신 «공유 링크»를 냈다.
@@ -4382,14 +4386,15 @@ function cheerBatter(g, force){
   var c = cls(), cum = tally(allAtbats(c), allDefense(c), {}), sc = songCls(g, atk);
   var my = ++SONG.seq;
   stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
-  ensureSong(sc, b.sid);                               // 멘트 나가는 동안 미리 준비
+  var sid = songSid(sc, b.sid), lab = sid === CLASS_SID ? sc+' 학급 응원가' : b.name+' 응원가';
+  ensureSong(sc, sid);                                 // 멘트 나가는 동안 미리 준비
   speak(introText(g, b, g.st.idx, cum), function(){
     if(my !== SONG.seq) return;
     SONG.seq--;                                        // playSong 이 다시 올린다
-    var sm = songMeta(sc, b.sid);
-    if(sm && sm.link) showSuno(sm, b.name+' 응원가');      // 수노 링크 → 플레이어 창 (▶ 는 사람이)
-    else playSong(sc, b.sid, b.name+' 응원가');
-    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(sc, nx.sid); }, 1500);
+    var sm = songMeta(sc, sid);
+    if(sm && sm.link) showSuno(sm, lab);               // 수노 링크 → 플레이어 창 (▶ 는 사람이)
+    else playSong(sc, sid, lab);
+    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(sc, songSid(sc, nx.sid)); }, 1500);
   });
 }
 
