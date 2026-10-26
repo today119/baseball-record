@@ -437,6 +437,13 @@ html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt
 .po.pick .pp{background:#b8860f} .po.pick .pn{background:var(--gold);color:#241a05}
 .po.swap{outline:calc(var(--u) * .14) dashed var(--info)}
 .bench{font-size:calc(var(--u) * 1.15);color:#7d92ba;text-align:center;flex:0 0 auto}
+.rolechips{display:flex;flex-wrap:wrap;justify-content:center;gap:calc(var(--u) * .35);margin-top:calc(var(--u) * .35)}
+.rolechips button{padding:calc(var(--u) * .35) calc(var(--u) * .7);border-radius:999px;border:1px solid #3a4c70;
+  background:transparent;color:inherit;font:inherit;font-weight:700}
+.rolechips button.on{background:var(--hit);border-color:var(--hit);color:#fff}
+.rolechips small{font-weight:800;opacity:.9}
+html[data-theme=light] .rolechips button{border-color:#c9d3e1;color:#1d2b47;background:#fff}
+html[data-theme=light] .rolechips button.on{background:var(--hit);border-color:var(--hit);color:#fff}
 .dbtn{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u) * .5);flex:0 0 auto}
 .dbtn button{height:calc(var(--u) * 3.4);padding:0;border-radius:calc(var(--u) * .55);
   font-size:calc(var(--u) * 1.1);font-weight:900;background:#1f3260;border:1px solid #3a5590;color:#e2e9f8}
@@ -453,6 +460,7 @@ html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt
 .popbox h4{margin:0 0 4px;font-size:17px;font-weight:800}
 .popbox p{margin:0 0 12px;font-size:13px;color:var(--tx3)}
 .popgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.popgrid button.ok{background:var(--hit);border-color:var(--hit);color:#fff}
 .popgrid button{padding:15px 0;border-radius:9px;font-size:16px;font-weight:800;
   background:var(--line);border:1px solid var(--line2)}
 
@@ -801,7 +809,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-26e';
+var APP_VER = '2026-10-26f';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2855,6 +2863,45 @@ function awardDef(g, sids, via){
   made.forEach(function(r){ syncDF(S.cur, g, r); });
   return made;
 }
+/* 역할 — 수비에 안 들어가도 볼보이·배트 정리·기구 정리를 맡으면 수비 참여 +1 (사용자 요청 10/26).
+   따로 저장하지 않고 수비 참여 기록(dp_학생)에 role 을 붙인다 → 경기당 최대 1, 9자리에 들어가도 두 번 안 센다 */
+var ROLES = ['볼보이','배트 정리','기구 정리'];
+function roleOf(g, sid){
+  var r = (g.defense||[]).filter(function(d){ return d.kind==='play' && d.sid===sid && d.role; })[0];
+  return r ? r.role : '';
+}
+function rolePop(g, sid){
+  var cur = roleOf(g, sid), d = document.createElement('div');
+  var had = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
+  d.className='pop';
+  d.innerHTML = '<div class="popbox"><h4>'+esc(pName(g,sid))+' 역할</h4>'+
+    '<p>'+(had && !cur ? '이미 수비 참여를 받았어요 (역할을 줘도 점수는 같아요)' : '역할을 맡으면 «수비 참여»와 같은 점수')+'</p>'+
+    '<div class="popgrid">'+
+      ROLES.map(function(r){ return '<button data-r="'+r+'"'+(r===cur?' class="ok"':'')+'>'+r+'</button>'; }).join('')+
+      (cur ? '<button data-r="-">역할 빼기</button>' : '')+
+      '<button data-r="" style="grid-column:1/-1">닫기</button>'+
+    '</div></div>';
+  document.body.appendChild(d);
+  d.onclick = function(e){ if(e.target===d) d.remove(); };
+  d.querySelectorAll('[data-r]').forEach(function(btn){
+    btn.onclick = function(){
+      var r = btn.dataset.r; d.remove();
+      if(!r) return;
+      var rec = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
+      if(r==='-'){
+        /* 역할로만 받은 참여면 지우고, 9자리에서 받은 참여(via end·swap)는 남기고 이름표만 뗀다 */
+        if(rec && rec.via==='role'){
+          g.defense = g.defense.filter(function(x){ return x!==rec; });
+          drop(gPath(S.cur,g)+'/df/'+rec.id);
+        } else if(rec){ delete rec.role; syncDF(S.cur, g, rec); }
+        toast(pName(g,sid)+' 역할 뺌'); board(g); return;
+      }
+      if(rec){ rec.role = r; syncDF(S.cur, g, rec); }
+      else { var m = awardDef(g, [sid], 'role'); if(m[0]){ m[0].role = r; syncDF(S.cur, g, m[0]); } }
+      toast(pName(g,sid)+' · '+r+' (수비 참여 +1)'); board(g);
+    };
+  });
+}
 function onField(g, side){
   var m = defOf(g, side);
   return Object.keys(m).map(function(k){ return m[k]; }).filter(Boolean);
@@ -3003,8 +3050,12 @@ function boardImpl(g){
             'style="left:'+P.x+'%;top:'+P.y+'%"><div class="pp">'+P.n+'</div>'+
             '<div class="pn">'+esc(sid? pName(g,sid) : '—')+'</div></div>';
         }).join('')+'</div></div>'+
-      '<div class="bench">대기 '+bench.length+'명'+
-        (bench.length ? ' · '+bench.map(function(p){return esc(p.name);}).join(', ') : '')+'</div>'+
+      /* 10/26: 대기 학생 이름을 누르면 역할(볼보이·배트 정리·기구 정리) — 맡으면 수비 참여와 같은 점수 */
+      '<div class="bench">대기 '+bench.length+'명'+(bench.length ? ' · 눌러서 역할 주기' : '')+
+        (bench.length ? '<div class="rolechips">'+bench.map(function(p){
+          var r = roleOf(g, p.sid);
+          return '<button data-role="'+p.sid+'" class="'+(r?'on':'')+'">'+esc(p.name)+(r?' <small>'+esc(r)+'</small>':'')+'</button>';
+        }).join('')+'</div>' : '')+'</div>'+
       '<div class="dbtn">'+
         '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
         '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">🧤 아웃 처리'+(g._pick.length?' ('+g._pick.length+'명)':'')+'</button>'+
@@ -3107,6 +3158,9 @@ function boardImpl(g){
       if(i>=0) g._pick.splice(i,1); else g._pick.push(sid);
       board(g);
     };
+  });
+  el('v-game').querySelectorAll('[data-role]').forEach(function(x){
+    x.onclick = function(){ rolePop(g, x.dataset.role); };
   });
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
   /* 10/26 되살림: 「🧤 아웃 처리」 — 고른 수비수에게 수비 아웃을 바로 준다(주자 아웃 등 타석과 따로).
