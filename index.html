@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-23a';
+var APP_VER = '2026-10-26a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -932,8 +932,8 @@ function syncGameFull(cn, g){
     if(k==='st'||k==='bases'||k==='hs'||k==='as') return; // 현재 상태는 cur 칸으로
     meta[k] = g[k];
   });
+  syncState(cn, g);                     // cur(상태) 먼저 — 종료가 meta 보다 늦게 닿아 «진행 중»으로 보이는 틈을 없앤다
   patch(gPath(cn,g), meta);
-  syncState(cn, g);
   if(g.atbats.length)  patch(gPath(cn,g)+'/ab', mapOf(g.atbats));
   if(g.defense.length) patch(gPath(cn,g)+'/df', mapOf(g.defense));
 }
@@ -999,7 +999,10 @@ function watchClass(cn){
       if(li<0) return;
       var mine = c.games[li];
       if(_w && _w.key===cn+'#'+g.no) return;
-      var srvLive = (g.cur && g.cur.status ? g.cur.status : g.status) === 'live';
+      /* 10/26: 종료 중엔 meta(status) 와 cur 가 한 박자씩 따로 올라간다 — 둘 중 하나라도 done 이면 끝난 경기.
+         (예전엔 cur 만 보고 «서버는 진행 중»이라 판단해, 방금 끝낸 내 경기를 서버의 live 사본으로 바꿔 끼웠다 = 종료가 안 됨) */
+      var srvLive = g.status!=='done' && !(g.cur && g.cur.status==='done') &&
+                    (g.cur && g.cur.status ? g.cur.status : g.status) === 'live';
       var other = g.made ? mine.made!==g.made
                          : (srvLive && mine.status!=='live' && mine.status!=='lineup');   // made 없는 옛 경기: 서버는 진행 중인데 내 건 끝난 경기
       if(!other) return;
