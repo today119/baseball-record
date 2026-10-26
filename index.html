@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-26b';
+var APP_VER = '2026-10-26c';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -834,22 +834,24 @@ function ROOT(){ return 'baseball/' + ck(S.cfg.school || 'default'); }
 function save(){ try{ localStorage.setItem('bb.v1', JSON.stringify(S)); }catch(e){} }
 
 /* Firebase 는 「바뀐 칸만」 뒤에서 보낸다. 실패해도 로컬은 이미 저장돼 있다. */
+/* 10/26 7반: 번호 없는 경기가 games/undefined 로 올라가 «유령 경기»가 됐다 → 그런 주소엔 아예 안 쓴다 */
+function badPath(path){ return /\/games\/(undefined|null|NaN)(\/|$)/.test(path); }
 function push(path, val){
-  if(!DB) return;
+  if(!DB || badPath(path)) return;
   syncing(true);
   DB.ref(ROOT()+'/'+path).set(val)
     .then(function(){ syncing(false); })
     .catch(function(){ syncing(false); });
 }
 function patch(path, obj){
-  if(!DB) return;
+  if(!DB || badPath(path)) return;
   syncing(true);
   DB.ref(ROOT()+'/'+path).update(obj)
     .then(function(){ syncing(false); })
     .catch(function(){ syncing(false); });
 }
 function drop(path){
-  if(!DB) return;
+  if(!DB || badPath(path)) return;
   syncing(true);
   DB.ref(ROOT()+'/'+path).remove()
     .then(function(){ syncing(false); })
@@ -994,7 +996,7 @@ function watchClass(cn){
     var v = s.val(); if(!v) return;
     var c = cls(cn), have = {}, added = 0, swapped = false;
     Object.keys(v).forEach(function(k){
-      var g = v[k]; if(!g) return;
+      var g = v[k]; if(!g || typeof g.no!=='number') return;
       var li = c.games.findIndex(function(x){ return x.no===g.no; });
       if(li<0) return;
       var mine = c.games[li];
@@ -1016,7 +1018,7 @@ function watchClass(cn){
     });
     c.games.forEach(function(g){ have[g.no] = 1; });
     Object.keys(v).forEach(function(k){
-      var g = v[k]; if(!g || have[g.no]) return;
+      var g = v[k]; if(!g || typeof g.no!=='number' || have[g.no]) return;
       /* 새 구조(cur/ab/df)를 예전 모양으로 펴서 넣는다 */
       var o = Object.assign({}, g);
       if(g.cur) ['st','bases','hs','as','status','def','first'].forEach(function(f){
@@ -1028,6 +1030,7 @@ function watchClass(cn){
                     return Object.assign({}, g.df[id], {id:id}); }) : (g.defense||[]);
       delete o.ab; delete o.df;
       sortRec(o.atbats); sortRec(o.defense);
+      if(!okGame(o)) return;                 // 번호·타순 없는 조각은 받지 않는다
       c.games.push(o); added++;
     });
     if(added || swapped){ c.games.sort(function(a,b){ return a.no-b.no; }); done(); say(swapped ? '다른 기기에서 다시 만든 경기를 받았습니다' : '지난 경기 '+added+'개를 받았습니다'); }
@@ -1185,12 +1188,18 @@ function unwatch(){
   _w = null;
 }
 
+/* 쓸 수 있는 경기인가 — 번호가 있고, 시작한 경기면 타순이 있어야 한다.
+   (지워진 경기에 늦게 닿은 cur 조각만 서버에 남으면 번호·타순 없는 경기가 생겨 화면이 멈췄다 — 10/26 7반) */
+function okGame(g){
+  return !!g && typeof g.no==='number' && isFinite(g.no) &&
+         (g.status==='lineup' || (!!g.orderH && !!g.orderA));
+}
 function cls(cn){
   cn = cn||S.cur;
   if(!cn) return null;
   if(!S.classes[cn]) S.classes[cn] = {roster:[], groups:{}, games:[], tt:{}, rep:{}};
   var c = S.classes[cn];
-  c.roster=c.roster||[]; c.groups=c.groups||{}; c.games=c.games||[]; c.tt=c.tt||{}; c.rep=c.rep||{};
+  c.roster=c.roster||[]; c.groups=c.groups||{}; c.games=(c.games||[]).filter(okGame); c.tt=c.tt||{}; c.rep=c.rep||{};
   c.gCount = c.gCount || 2;
   c.gNames = c.gNames || ['A조','B조','C조','D조'];
   return c;
@@ -2883,7 +2892,8 @@ function boardImpl(g){
   if(el('sunoBox')) setTimeout(placeSuno, 0);
   var atk = atkSide(g), fs = firstSide(g), ls = otherSide(fs);
   var dside = atk==='H' ? 'A' : 'H';          // 수비팀
-  var order = atk==='H' ? g.orderH : g.orderA;
+  var order = (atk==='H' ? g.orderH : g.orderA) || [];
+  if(!order.length){ g._setup = true; return lineupView(g); }   // 타순이 없으면 멈추지 말고 라인업 화면으로
   var b = order[g.st.idx];
   var st = tally(g.atbats, g.defense, {});
   var cum = tally(allAtbats(c), allDefense(c), {});
