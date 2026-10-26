@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-26c';
+var APP_VER = '2026-10-26d';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -4327,23 +4327,59 @@ function korAvg(v){                      // .333 → 3할 3푼 3리
   return o;
 }
 var KIND_SAY = ['아웃','안타','2루타','3루타','홈런','볼넷','야수선택','실책 출루'];
-function introText(g, b, idx, cum){
-  var me = cum[b.sid] || {ab:0,h:0,hr:0,rbi:0,avg:0};
-  var t = (idx+1)+'번 타자, '+b.name+'! ';
-  if(!me.ab && !me.bb) t += '오늘 첫 타석입니다. ';
-  else {
-    t += '시즌 타율 '+korAvg(me.avg)+', '+me.ab+'타수 '+me.h+'안타';
-    if(me.hr) t += ', 홈런 '+me.hr+'개';
-    if(me.rbi) t += ', 타점 '+me.rbi;
-    t += '. ';
-  }
+/* 타자 소개 — 10/26 사용자: «오늘 첫 타석입니다» 만 반복돼 단조롭다 → 문장 여러 벌 + 시즌·오늘·최근 흐름·경기 상황.
+   같은 학생에게 연달아 같은 말이 안 나오게 문장은 무작위로 고른다. hist = 이 학생의 시즌 타석(시간순) */
+function pickOne(a){ return a[Math.floor(Math.random()*a.length)]; }
+function introText(g, b, idx, cum, hist){
+  var me = cum[b.sid] || {ab:0,h:0,hr:0,rbi:0,avg:0,bb:0,obp:0,xbh:0,dOut:0};
+  var nm = b.name, no = (idx+1)+'번 타자';
+  var t = pickOne([no+', '+nm+'! ', no+' '+nm+', 타석에 들어섭니다! ', '이번 타자는 '+no+', '+nm+'! ', nm+' 선수, '+no+'로 나옵니다! ']);
   var today = (g.atbats||[]).filter(function(a){ return a.sid===b.sid; });
+  hist = hist || [];
+  var pa = me.ab + (me.bb||0);
+  /* ① 시즌 기록 — 여러 표현 중 하나 */
+  if(!pa){
+    t += pickOne(['시즌 첫 타석, 데뷔 무대입니다! ', '아직 기록이 없는 기대주! 첫 안타를 노립니다. ',
+               '오늘이 첫 타석! 어떤 타격을 보여 줄까요? ', '처음 서는 타석, 힘차게 휘둘러 봅시다! ']);
+  } else {
+    var opts = ['시즌 타율 '+korAvg(me.avg)+', '+me.ab+'타수 '+me.h+'안타. '];
+    if(me.hr) opts.push('시즌 홈런 '+me.hr+'개의 거포! ', '홈런 '+me.hr+'방을 친 장타자입니다! ');
+    if(me.rbi >= 2) opts.push('시즌 '+me.rbi+'타점, 찬스에 강한 타자! ');
+    if(me.obp >= .5 && pa >= 3) opts.push('출루율 '+korAvg(me.obp)+', 나가면 무조건 나가는 선수! ');
+    if(me.xbh >= 2) opts.push('장타만 '+me.xbh+'개! 외야수 뒤로 물러나야겠네요. ');
+    if(me.dOut >= 2) opts.push('수비에서 아웃 '+me.dOut+'개를 잡아낸 살림꾼! ');
+    if(me.ab >= 3 && me.h === 0) opts.push('아직 첫 안타를 기다리는 중! 오늘이 그날일까요? ');
+    t += pickOne(opts);
+  }
+  /* ② 최근 흐름 (시즌 마지막 3타석) */
+  var last3 = hist.slice(-3), hitRun = 0;
+  for(var k=hist.length-1; k>=0 && hist[k].kind>=1 && hist[k].kind<=4; k--) hitRun++;
+  if(hitRun >= 2) t += pickOne(['최근 '+hitRun+'연속 안타, 타격감 최고조! ', hitRun+'타석 연속 안타 행진 중! ']);
+  else if(last3.length === 3 && last3.every(function(a){ return a.kind===0; })) t += pickOne(['최근 세 타석은 아쉬웠지만, 이번엔 다르다! ', '부진 탈출을 노립니다! ']);
+  /* ③ 오늘 기록 */
   if(today.length){
+    var tAb = today.filter(function(a){ return isAB(a.kind); }).length,
+        tH = today.filter(function(a){ return a.kind>=1 && a.kind<=4; }).length;
     var last = today[today.length-1];
-    t += '앞 타석에서는 '+(last.kind===0 ? '아웃되었습니다' : KIND_SAY[last.kind]+(last.kind>=1&&last.kind<=4?'를 쳤습니다':'로 나갔습니다'))+'. ';
+    var lastSay = last.kind===0 ? '아웃' : KIND_SAY[last.kind];
+    t += pickOne([tAb ? '오늘 '+tAb+'타수 '+tH+'안타. ' : '오늘 '+today.length+'번째 타석. ',
+               '앞 타석은 '+lastSay+(last.kind===0 ? '. ' : '! '),
+               (tH >= 2 ? '오늘만 벌써 '+tH+'안타, 멀티히트! ' : (tAb ? '오늘 '+tAb+'타수 '+tH+'안타. ' : ''))]);
+  }
+  /* ④ 경기 상황 — 주자·점수 */
+  if(g.st && g.bases){
+    var on = (g.bases||[]).map(function(x){ return !!x; }), n = on.filter(Boolean).length;
+    var atk = atkSide(g), my = atk==='H' ? (g.hs||0) : (g.as||0), op = atk==='H' ? (g.as||0) : (g.hs||0), d = my - op;
+    var where = n===3 ? '만루' : on[1]&&on[2] ? '주자 2, 3루' : on[0]&&on[2] ? '주자 1, 3루' : on[0]&&on[1] ? '주자 1, 2루'
+              : on[2] ? '주자 3루' : on[1] ? '주자 2루' : on[0] ? '주자 1루' : '';
+    if(n===3) t += pickOne(['만루입니다! 한 방이면 경기가 뒤집힙니다! ', '베이스가 꽉 찼습니다, 만루 찬스! ']);
+    else if(where && d < 0 && -d <= n+1) t += pickOne([where+', '+(-d)+'점 뒤진 상황, 동점 찬스! ', where+'! 역전의 주인공이 될 수 있을까요? ']);
+    else if(where && (on[1]||on[2])) t += pickOne([where+', 득점권 찬스입니다! ', where+'! 적시타가 필요합니다! ']);
+    else if(where) t += where+'. ';
+    else if(d === 0 && (g.hs||g.as)) t += pickOne(['팽팽한 동점 승부! ', '점수는 동점, 균형을 깰 수 있을까요? ']);
   }
   var rk = bestRank(cum, b.sid);
-  if(rk && rk.r <= 3) t += '현재 반 '+rk.t+' '+rk.r+'위! ';
+  if(rk && rk.r <= 3 && Math.random() < .6) t += pickOne(['현재 반 '+rk.t+' '+rk.r+'위! ', rk.t+' 부문 반 '+rk.r+'위의 강타자! ']);
   return t;
 }
 function pickVoice(){
@@ -4407,12 +4443,14 @@ function cheerBatter(g, force){
   if(!SONG.auto && !force) return;
   var atk = atkSide(g), order = atk==='H' ? g.orderH : g.orderA, b = order[g.st.idx];
   if(!b || g.status!=='live'){ stopAll(); return; }
-  var c = cls(), cum = tally(allAtbats(c), allDefense(c), {}), sc = songCls(g, atk);
+  var sc = songCls(g, atk), c = (S.classes[sc] ? cls(sc) : cls());    // 반끼리 경기면 원정팀은 그 반 기록으로 소개
+  var cum = tally(allAtbats(c), allDefense(c), {});
+  var hist = allAtbats(c).filter(function(a){ return a.sid===b.sid; });
   var my = ++SONG.seq;
   stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
   var sid = songSid(sc, b.sid), lab = sid === CLASS_SID ? sc+' 학급 응원가' : b.name+' 응원가';
   ensureSong(sc, sid);                                 // 멘트 나가는 동안 미리 준비
-  speak(introText(g, b, g.st.idx, cum), function(){
+  speak(introText(g, b, g.st.idx, cum, hist), function(){
     if(my !== SONG.seq) return;
     SONG.seq--;                                        // playSong 이 다시 올린다
     var sm = songMeta(sc, sid);
