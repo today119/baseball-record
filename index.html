@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-26d';
+var APP_VER = '2026-10-26e';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2993,8 +2993,8 @@ function boardImpl(g){
   function fieldPanel(){
     var bench = benchOf(g, dside);
     var hint = g._swap ? '교대할 자리를 누르세요'
-      : g._pick.length ? g._pick.length+'명 선택 — 「아웃」이나 「야수선택」을 누르면 같이 기록돼요'
-      : '공을 처리한 수비수를 누른 뒤 결과 버튼';
+      : g._pick.length ? g._pick.length+'명 선택 — 「🧤 아웃 처리」 또는 「아웃」·「야수선택」'
+      : '아웃을 만든 수비수를 누르세요';
     return '<div class="fph"><span class="pt '+dside+'">'+esc(tname(dside))+'</span><span class="pmode">수비</span>'+
         '<span class="fhint'+(g._pick.length||g._swap?' on':'')+'">'+hint+'</span></div>'+
       '<div class="fwrap"><div class="field">'+fieldSVG()+POS.map(function(P){
@@ -3007,7 +3007,7 @@ function boardImpl(g){
         (bench.length ? ' · '+bench.map(function(p){return esc(p.name);}).join(', ') : '')+'</div>'+
       '<div class="dbtn">'+
         '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
-        '<button id="pickClr"'+(g._pick.length?'':' disabled')+'>선택 지우기'+(g._pick.length?' ('+g._pick.length+'명)':'')+'</button>'+
+        '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">🧤 아웃 처리'+(g._pick.length?' ('+g._pick.length+'명)':'')+'</button>'+
       '</div>';
   }
 
@@ -3109,7 +3109,18 @@ function boardImpl(g){
     };
   });
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
-  el('pickClr').onclick = function(){ g._pick = []; board(g); };
+  /* 10/26 되살림: 「🧤 아웃 처리」 — 고른 수비수에게 수비 아웃을 바로 준다(주자 아웃 등 타석과 따로).
+     결과 버튼(아웃·야수선택)으로 묶는 방식도 그대로. 여기서 기록하면 선택이 지워져 두 번 세지 않는다 */
+  el('okDef').onclick = function(){
+    if(!g._pick.length) return toast('아웃을 만든 수비수를 먼저 누르세요');
+    var made = g._pick.map(function(sid){
+      var r = {id:newId(), sid:sid, ts:stamp(), inning:g.st.inning, half:g.st.half};
+      g.defense.push(r); return r; });
+    var n = g._pick.length; g._pick = [];
+    made.forEach(function(r){ syncDF(S.cur, g, r); });
+    syncState(S.cur, g); board(g);
+    toast('🧤 수비 아웃 '+n+'명 기록');
+  };
   el('menuB').onclick = function(){ document.body.classList.add('sideopen'); };
   bindSongBar();
   SONG._pf = SONG._pf || {};
