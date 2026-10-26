@@ -801,7 +801,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-26a';
+var APP_VER = '2026-10-26b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -3140,7 +3140,17 @@ function boardImpl(g){
   el('undo').onclick = function(){
     if(!g.atbats.length) return toast('되돌릴 기록이 없습니다');
     var last = g.atbats.pop();
-    if(last.run) (last.side==='H') ? g.hs-=last.run : g.as-=last.run;
+    /* 10/26: 예전엔 타자 본인 run 만 뺐다 → 적시타를 되돌려도 홈에 들어온 주자 점수가 남았다.
+       이 타석으로 들어온 점수(sc) + 나중에 이 타자가 따로 홈인한 점수(run 중 본인 홈런 몫 제외)를 빼고,
+       점수를 받았던 앞 주자들의 run 도 하나씩 무른다(rs = 그 주자들, 10/26 이후 기록만). */
+    var selfRun = last.kind===4 ? 1 : 0;
+    var lost = (last.sc!=null ? last.sc : 0) + Math.max(0, (last.run||0) - selfRun);
+    if(last.sc==null) lost = last.run||0;
+    if(lost) (last.side==='H') ? g.hs=Math.max(0,g.hs-lost) : g.as=Math.max(0,g.as-lost);
+    (last.rs||[]).forEach(function(sid){
+      for(var i=g.atbats.length-1;i>=0;i--)
+        if(g.atbats[i].sid===sid && g.atbats[i].run){ g.atbats[i].run--; syncABRun(S.cur, g, g.atbats[i]); break; }
+    });
     if(last.stBefore){
       /* 이 타석으로 공수교대가 됐었다면, 그때 자동으로 준 수비 참여도 같이 무른다 */
       var sb = last.stBefore;
@@ -3182,6 +3192,7 @@ function boardImpl(g){
                stBefore:Object.assign({},g.st), basesBefore:before};
     g.atbats.push(rec);
     var touched=[];
+    rec.rs = res.runs.filter(function(sid){ return sid!==b.sid; });   // 되돌리기용 — 이 타석으로 홈인한 앞 주자
     res.runs.forEach(function(sid){
       if(sid===b.sid){ rec.run+=1; }
       else for(var i=g.atbats.length-2;i>=0;i--){
