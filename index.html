@@ -709,6 +709,12 @@ function buildOrder(players, targetCount, prefer){
   });
   return base;
 }
+/* 타순 길이 — 10/27 3반:9반, 남녀를 따로 맞추면(남18·여16) 고른 반복타자까지 34명인데
+   출전 수 큰 쪽(30)에서 잘라 고른 반복타자가 빠졌다 → 고른 반복타자를 더한 수 중 큰 쪽 */
+function orderTarget(hp, ap, g){
+  function n(ps, dup){ return ps.length + (dup||[]).filter(function(sid){ return ps.some(function(p){ return p.sid===sid; }); }).length; }
+  return Math.max(n(hp, g.dupH), n(ap, g.dupA));
+}
 function nextState(st, orderLen){
   var s={inning:st.inning,half:st.half,idx:st.idx+1};
   if(s.idx<orderLen) return s;
@@ -2361,7 +2367,7 @@ function liveRebuild(g){
   var atk = atkSide(g), old = atk==='H'?g.orderH:g.orderA, cur = old[g.st.idx];
   var hp = lineupPlayers(g,'H'), ap = lineupPlayers(g,'A');
   if(!hp.length || !ap.length){ toast('양 팀 모두 한 명 이상 출전해야 합니다'); return false; }
-  var target = Math.max(hp.length, ap.length);
+  var target = orderTarget(hp, ap, g);
   g.orderH = buildOrder(hp, target, g.dupH);
   g.orderA = buildOrder(ap, target, g.dupA);
   var nord = atk==='H'?g.orderH:g.orderA, k = -1;
@@ -2606,7 +2612,7 @@ function confirmLineup(g){
   }
   var hp = build('H'), ap = build('A');
   if(!hp.length || !ap.length) return toast('양 팀 모두 한 명 이상 출전해야 합니다');
-  var target = Math.max(hp.length, ap.length);
+  var target = orderTarget(hp, ap, g);
   g.orderH = buildOrder(hp, target, g.dupH);
   g.orderA = buildOrder(ap, target, g.dupA);
   g.status = 'live';
