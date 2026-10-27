@@ -809,7 +809,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-27b';
+var APP_VER = '2026-10-27c';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -1950,7 +1950,8 @@ function vGame(){
           '<td>'+(g.mode==='intra'?'학급내':'학급대항')+'</td>'+
           '<td>'+esc(g.home)+' vs '+esc(g.away)+'</td>'+
           '<td class="n">'+g.hs+' : '+g.as+'</td>'+
-          '<td class="n"><button class="btn sm dn" data-dg="'+g.no+'">삭제</button></td></tr>';
+          '<td class="n">'+(g.status==='done' ? '<button class="btn sm" data-rg="'+g.no+'">▶ 다시 열기</button> ' : '')+
+          '<button class="btn sm dn" data-dg="'+g.no+'">삭제</button></td></tr>';
       }).join('')+'</table>' : '<div class="msg">아직 경기가 없습니다</div>') + '</div>';
 
   var mode = 'intra';
@@ -2013,6 +2014,18 @@ function vGame(){
     };
   });
   el('startG').onclick = function(){ startGame(mode); };
+  /* 10/27: 실수로 「경기 종료」를 누른 경기를 이어서 한다 (9반 — 1회 초만 하고 종료됨).
+     made 를 새로 찍어야 다른 기기가 갖고 있는 «종료» 사본을 서버의 «진행 중»으로 바꿔 받는다 */
+  el('v-game').querySelectorAll('[data-rg]').forEach(function(b){
+    b.onclick = function(){
+      var g = c.games.filter(function(x){ return String(x.no)===b.dataset.rg; })[0];
+      if(!g || !confirm('경기 #'+g.no+'('+g.home+' vs '+g.away+')을 다시 열어 이어서 할까요?\n지금까지 기록은 그대로 남아요.')) return;
+      g.status = 'live'; g.made = Date.now();
+      g._s=0; g._b=0; g._o=0; g._pick=[]; g._swap=false;
+      syncGameFull(S.cur, g); render();
+      toast('경기 #'+g.no+' 다시 열림 — '+g.st.inning+'회 '+g.st.half+'부터');
+    };
+  });
   el('v-game').querySelectorAll('[data-dg]').forEach(function(b){
     b.onclick = function(){
       if(!confirm('경기 #'+b.dataset.dg+' 기록을 지울까요?')) return;
