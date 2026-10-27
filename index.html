@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<link rel="preconnect" href="https://suno.com"><link rel="dns-prefetch" href="https://cdn1.suno.ai">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>야구 수행평가 기록</title>
@@ -4548,11 +4549,13 @@ function cheerBatter(g, force){
   stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
   var sid = songSid(sc, b.sid), lab = sid === CLASS_SID ? sc+' 학급 응원가' : b.name+' 응원가';
   ensureSong(sc, sid);                                 // 멘트 나가는 동안 미리 준비
+  var sm0 = songMeta(sc, sid);
+  if(sm0 && sm0.link) showSuno(sm0, lab);              // 수노 창은 멘트 시작과 함께 띄운다 — 멘트 동안 플레이어가 미리 로딩된다
   speak(introText(g, b, g.st.idx, cum, hist), function(){
     if(my !== SONG.seq) return;
     SONG.seq--;                                        // playSong 이 다시 올린다
     var sm = songMeta(sc, sid);
-    if(sm && sm.link) showSuno(sm, lab);               // 수노 링크 → 플레이어 창 (▶ 는 사람이)
+    if(sm && sm.link){ if(!el('sunoBox')) showSuno(sm, lab); }   // 수노 링크 → 플레이어 창 (▶ 는 사람이)
     else playSong(sc, sid, lab);
     var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(sc, songSid(sc, nx.sid)); }, 1500);
   });
