@@ -809,7 +809,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-26f';
+var APP_VER = '2026-10-27a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2865,7 +2865,7 @@ function awardDef(g, sids, via){
 }
 /* 역할 — 수비에 안 들어가도 볼보이·배트 정리·기구 정리를 맡으면 수비 참여 +1 (사용자 요청 10/26).
    따로 저장하지 않고 수비 참여 기록(dp_학생)에 role 을 붙인다 → 경기당 최대 1, 9자리에 들어가도 두 번 안 센다 */
-var ROLES = ['볼보이','배트 정리','기구 정리'];
+var ROLES = ['볼보이','배트 정리','기구 정리','기록자'];
 function roleOf(g, sid){
   var r = (g.defense||[]).filter(function(d){ return d.kind==='play' && d.sid===sid && d.role; })[0];
   return r ? r.role : '';
