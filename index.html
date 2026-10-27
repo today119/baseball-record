@@ -809,7 +809,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-27a';
+var APP_VER = '2026-10-27b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2870,14 +2870,20 @@ function roleOf(g, sid){
   var r = (g.defense||[]).filter(function(d){ return d.kind==='play' && d.sid===sid && d.role; })[0];
   return r ? r.role : '';
 }
+/* 10/27: 역할을 잘 해내면 「👍 잘했어요」 → 수비 기여(아웃 처리와 같은 칸, kind 없음) +1. 여러 번 가능, good:1 로 구분 */
+function goodOf(g, sid){
+  return (g.defense||[]).filter(function(d){ return !d.kind && d.good && d.sid===sid; });
+}
 function rolePop(g, sid){
-  var cur = roleOf(g, sid), d = document.createElement('div');
+  var cur = roleOf(g, sid), d = document.createElement('div'), gd = goodOf(g, sid);
   var had = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
   d.className='pop';
   d.innerHTML = '<div class="popbox"><h4>'+esc(pName(g,sid))+' 역할</h4>'+
     '<p>'+(had && !cur ? '이미 수비 참여를 받았어요 (역할을 줘도 점수는 같아요)' : '역할을 맡으면 «수비 참여»와 같은 점수')+'</p>'+
     '<div class="popgrid">'+
       ROLES.map(function(r){ return '<button data-r="'+r+'"'+(r===cur?' class="ok"':'')+'>'+r+'</button>'; }).join('')+
+      (cur ? '<button data-r="+" class="ok" style="grid-column:1/-1">👍 역할 잘했어요 (수비 기여 +1)'+(gd.length?' · 지금 '+gd.length+'점':'')+'</button>' : '')+
+      (gd.length ? '<button data-r="x">잘했어요 1개 취소</button>' : '')+
       (cur ? '<button data-r="-">역할 빼기</button>' : '')+
       '<button data-r="" style="grid-column:1/-1">닫기</button>'+
     '</div></div>';
@@ -2887,6 +2893,17 @@ function rolePop(g, sid){
     btn.onclick = function(){
       var r = btn.dataset.r; d.remove();
       if(!r) return;
+      if(r==='+'){
+        var gr = {id:newId(), sid:sid, good:1, role:cur, ts:stamp(), inning:g.st.inning, half:g.st.half};
+        g.defense.push(gr); syncDF(S.cur, g, gr); syncState(S.cur, g);
+        toast('👍 '+pName(g,sid)+' · '+cur+' 잘했어요 (수비 기여 +1)'); board(g); return;
+      }
+      if(r==='x'){
+        var last = gd[gd.length-1];
+        g.defense = g.defense.filter(function(x){ return x!==last; });
+        drop(gPath(S.cur,g)+'/df/'+last.id); syncState(S.cur, g);
+        toast(pName(g,sid)+' 잘했어요 1개 취소'); board(g); return;
+      }
       var rec = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
       if(r==='-'){
         /* 역할로만 받은 참여면 지우고, 9자리에서 받은 참여(via end·swap)는 남기고 이름표만 뗀다 */
@@ -3053,8 +3070,8 @@ function boardImpl(g){
       /* 10/26: 대기 학생 이름을 누르면 역할(볼보이·배트 정리·기구 정리) — 맡으면 수비 참여와 같은 점수 */
       '<div class="bench">대기 '+bench.length+'명'+(bench.length ? ' · 눌러서 역할 주기' : '')+
         (bench.length ? '<div class="rolechips">'+bench.map(function(p){
-          var r = roleOf(g, p.sid);
-          return '<button data-role="'+p.sid+'" class="'+(r?'on':'')+'">'+esc(p.name)+(r?' <small>'+esc(r)+'</small>':'')+'</button>';
+          var r = roleOf(g, p.sid), n = goodOf(g, p.sid).length;
+          return '<button data-role="'+p.sid+'" class="'+(r?'on':'')+'">'+esc(p.name)+(r?' <small>'+esc(r)+(n?' 👍'+n:'')+'</small>':'')+'</button>';
         }).join('')+'</div>' : '')+'</div>'+
       '<div class="dbtn">'+
         '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
