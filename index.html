@@ -809,7 +809,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-27c';
+var APP_VER = '2026-10-27d';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2864,13 +2864,14 @@ function bestRank(cum, sid){
 
 /* 수비 참여 자동 기록 — 같은 경기에선 학생당 한 번뿐(id = dp_학생).
    via:'end' = 수비 이닝이 끝날 때 9자리에 있던 학생, via:'swap' = 이닝 도중 교체로 들고 난 학생 */
-function awardDef(g, sids, via){
+function awardDef(g, sids, via, extra){
   var have = {}, made = [];
   (g.defense||[]).forEach(function(d){ if(d.kind==='play') have[d.sid] = 1; });
   sids.forEach(function(sid){
     if(!sid || have[sid]) return; have[sid] = 1;
     var r = {id:'dp_'+ck(sid), sid:sid, kind:'play', auto:1, via:via,
              inning:g.st.inning, half:g.st.half, ts:stamp()};
+    if(extra) Object.keys(extra).forEach(function(k){ r[k] = extra[k]; });
     g.defense.push(r); made.push(r);
   });
   made.forEach(function(r){ syncDF(S.cur, g, r); });
@@ -2927,7 +2928,9 @@ function rolePop(g, sid){
         toast(pName(g,sid)+' 역할 뺌'); board(g); return;
       }
       if(rec){ rec.role = r; syncDF(S.cur, g, rec); }
-      else { var m = awardDef(g, [sid], 'role'); if(m[0]){ m[0].role = r; syncDF(S.cur, g, m[0]); } }
+      /* 10/27 고침: role 을 올린 «뒤에» 붙이면, 처음 올릴 때 바로 돌아온 child_added(역할 없는 사본)가
+         목록의 칸을 바꿔 끼워 화면에선 역할이 사라졌다 → 처음부터 role 을 넣어 올린다 */
+      else awardDef(g, [sid], 'role', {role:r});
       toast(pName(g,sid)+' · '+r+' (수비 참여 +1)'); board(g);
     };
   });
