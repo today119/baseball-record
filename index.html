@@ -4554,6 +4554,8 @@ function cheerBatter(g, force){
   var my = ++SONG.seq;
   stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
   var sid = songSid(sc, b.sid), lab = sid === CLASS_SID ? sc+' 학급 응원가' : b.name+' 응원가';
+  /* 10/27 3반:9반 — 상대 반에 본인·학급 응원가가 다 없으면 무음이었다 → 우리 반 학급 응원가로 대신 */
+  if(!songMeta(sc, sid) && sc !== S.cur && songMeta(S.cur, CLASS_SID)){ sc = S.cur; sid = CLASS_SID; lab = b.name+' 응원가 (공용)'; }
   ensureSong(sc, sid);                                 // 멘트 나가는 동안 미리 준비
   var sm0 = songMeta(sc, sid);
   if(sm0 && sm0.link) showSuno(sm0, lab);              // 수노 창은 멘트 시작과 함께 띄운다 — 멘트 동안 플레이어가 미리 로딩된다
@@ -4563,7 +4565,7 @@ function cheerBatter(g, force){
     var sm = songMeta(sc, sid);
     if(sm && sm.link){ if(!el('sunoBox')) showSuno(sm, lab); }   // 수노 링크 → 플레이어 창 (▶ 는 사람이)
     else playSong(sc, sid, lab);
-    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ ensureSong(sc, songSid(sc, nx.sid)); }, 1500);
+    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ var nc = songCls(g, atk); ensureSong(nc, songSid(nc, nx.sid)); }, 1500);
   });
 }
 
