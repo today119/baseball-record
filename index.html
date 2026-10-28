@@ -1339,14 +1339,27 @@ function setupLink(){
    그러면 브라우저가 저장소를 비워 버려도 앱을 열 때마다 설정이 저절로 다시 들어와서,
    선생님이 다시 설정하러 다닐 일이 없다.
    대신 이미 같은 설정이면 아무 말도 하지 않는다 — 열 때마다 알림이 뜨면 성가시다. */
+/* 카톡 안 브라우저 — 저장 공간이 크롬과 따로이고 자주 비워진다 */
+var IN_KAKAO = /KAKAOTALK/i.test(navigator.userAgent);
+/* 카톡에서 열리면 기본 브라우저로 넘긴다. 학교 코드가 있으면 설정 링크째로 넘겨서 크롬에서도 바로 명단이 뜨게 한다.
+   넘어가지 못해도(구버전 카톡 등) 이 창에서 그대로 쓸 수 있다. */
+function openOutsideKakao(){
+  if(!IN_KAKAO) return;
+  var url = setupLink() || (location.origin + location.pathname);
+  try{ location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url); }catch(e){}
+}
 function applySetupLink(){
   var m = /[#&]setup=([^&]+)/.exec(location.hash || '');
   if(!m) return false;
   var p = null;
   try{ p = JSON.parse(b64d(m[1])); }catch(e){}
-  /* 주소창에서 즉시 지운다 — 화면을 띄워 놓거나 방문기록이 남아도 설정값이 안 보이게 */
-  try{ history.replaceState(null, '', location.pathname + location.search); }
-  catch(e){ location.hash = ''; }
+  /* 주소창에서 즉시 지운다 — 화면을 띄워 놓거나 방문기록이 남아도 설정값이 안 보이게
+     ★ 단 카톡 안 브라우저에서는 남긴다. 「다른 브라우저로 열기」는 지금 주소를 넘기는데,
+       지워 버리면 크롬에 학교 코드 없는 주소가 가서 명단이 빈다(2026-10-28 안드로이드 태블릿). */
+  if(!IN_KAKAO){
+    try{ history.replaceState(null, '', location.pathname + location.search); }
+    catch(e){ location.hash = ''; }
+  }
   if(!p) return false;
   var changed = false;
   if(p.school && RETIRED_CODES.indexOf(p.school)<0 && S.cfg.school !== p.school){ S.cfg.school = p.school; changed = true; }
@@ -4897,6 +4910,7 @@ var _fromLink = applySetupLink();
 initFB();
 render();
 if(_fromLink) toast('설정을 불러왔습니다 — 이제 앱 주소로 바로 들어오시면 됩니다');
+openOutsideKakao();
 window.addEventListener('online', function(){ if(!S.cfg.fb) setNet(false,'로컬 저장'); });
 </script>
 </body>
