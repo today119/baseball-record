@@ -824,7 +824,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-29b';
+var APP_VER = '2026-10-29c';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -4645,6 +4645,16 @@ function cheerBatter(g, force){
   var atk = atkSide(g), order = atk==='H' ? g.orderH : g.orderA, b = order[g.st.idx];
   if(!b || g.status!=='live'){ stopAll(); return; }
   var sc = songCls(g, atk), c = (S.classes[sc] ? cls(sc) : cls());    // 반끼리 경기면 원정팀은 그 반 기록으로 소개
+  /* 10/29 2반:7반(7반 선공) — 경기 시작 직후엔 상대 반 응원가 목록이 아직 안 와서 «없음»으로 보고 우리 반 공용 곡으로 넘어갔다
+     → 상대 반 목록을 아직 못 받았으면 먼저 받아 오고 다시 부른다 */
+  if(sc !== S.cur && SONG.idx[sc] === undefined && DB){
+    watchSongIdx(sc);
+    DB.ref(ROOT()+'/songIdx/'+ck(sc)).once('value').then(function(s){
+      SONG.idx[sc] = s.val() || {};
+      if(atkSide(g)===atk && (atk==='H' ? g.orderH : g.orderA)[g.st.idx]===b) cheerBatter(g, force);
+    }).catch(function(){ SONG.idx[sc] = SONG.idx[sc] || {}; });
+    return;
+  }
   var cum = tally(allAtbats(c), allDefense(c), {});
   var hist = allAtbats(c).filter(function(a){ return a.sid===b.sid; });
   var my = ++SONG.seq;
