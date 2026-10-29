@@ -438,6 +438,14 @@ html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt
 .po.pick .pp{background:#b8860f} .po.pick .pn{background:var(--gold);color:#241a05}
 .po.swap{outline:calc(var(--u) * .14) dashed var(--info)}
 .bench{font-size:calc(var(--u) * 1.15);color:#7d92ba;text-align:center;flex:0 0 auto}
+.rolebox{max-width:560px;width:calc(100vw - 32px)}
+.rpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:46vh;overflow:auto}
+.rpick button{padding:12px 4px;border-radius:9px;font-size:16px;font-weight:800;border:1px solid var(--line2);background:none;color:inherit}
+.rpick button.ok{background:var(--hit);border-color:var(--hit);color:#fff}
+.rpick small{display:block;font-size:11px;font-weight:700;opacity:.85;margin-top:2px}
+.rgood{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.rgood b{width:100%;color:var(--tx3)}
+.rgood button{padding:8px 12px;border-radius:999px;border:1px solid var(--line2);background:none;color:inherit;font-weight:800;font-size:14px}
 .rolechips{display:flex;flex-wrap:wrap;justify-content:center;gap:calc(var(--u) * .35);margin-top:calc(var(--u) * .35)}
 .rolechips button{padding:calc(var(--u) * .35) calc(var(--u) * .7);border-radius:999px;border:1px solid #3a4c70;
   background:transparent;color:inherit;font:inherit;font-weight:700}
@@ -816,7 +824,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-27d';
+var APP_VER = '2026-10-29a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2908,52 +2916,76 @@ function roleOf(g, sid){
 function goodOf(g, sid){
   return (g.defense||[]).filter(function(d){ return !d.kind && d.good && d.sid===sid; });
 }
-function rolePop(g, sid){
-  var cur = roleOf(g, sid), d = document.createElement('div'), gd = goodOf(g, sid);
-  var had = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
-  d.className='pop';
-  d.innerHTML = '<div class="popbox"><h4>'+esc(pName(g,sid))+' 역할</h4>'+
-    '<p>'+(had && !cur ? '이미 수비 참여를 받았어요 (역할을 줘도 점수는 같아요)' : '역할을 맡으면 «수비 참여»와 같은 점수')+'</p>'+
-    '<div class="popgrid">'+
-      ROLES.map(function(r){ return '<button data-r="'+r+'"'+(r===cur?' class="ok"':'')+'>'+r+'</button>'; }).join('')+
-      (cur ? '<button data-r="+" class="ok" style="grid-column:1/-1">👍 역할 잘했어요 (수비 기여 +1)'+(gd.length?' · 지금 '+gd.length+'점':'')+'</button>' : '')+
-      (gd.length ? '<button data-r="x">잘했어요 1개 취소</button>' : '')+
-      (cur ? '<button data-r="-">역할 빼기</button>' : '')+
-      '<button data-r="" style="grid-column:1/-1">닫기</button>'+
-    '</div></div>';
-  document.body.appendChild(d);
-  d.onclick = function(e){ if(e.target===d) d.remove(); };
-  d.querySelectorAll('[data-r]').forEach(function(btn){
-    btn.onclick = function(){
-      var r = btn.dataset.r; d.remove();
-      if(!r) return;
-      if(r==='+'){
-        var gr = {id:newId(), sid:sid, good:1, role:cur, ts:stamp(), inning:g.st.inning, half:g.st.half};
-        g.defense.push(gr); syncDF(S.cur, g, gr); syncState(S.cur, g);
-        toast('👍 '+pName(g,sid)+' · '+cur+' 잘했어요 (수비 기여 +1)'); board(g); return;
-      }
-      if(r==='x'){
-        var last = gd[gd.length-1];
-        g.defense = g.defense.filter(function(x){ return x!==last; });
-        drop(gPath(S.cur,g)+'/df/'+last.id); syncState(S.cur, g);
-        toast(pName(g,sid)+' 잘했어요 1개 취소'); board(g); return;
-      }
-      var rec = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
-      if(r==='-'){
-        /* 역할로만 받은 참여면 지우고, 9자리에서 받은 참여(via end·swap)는 남기고 이름표만 뗀다 */
-        if(rec && rec.via==='role'){
-          g.defense = g.defense.filter(function(x){ return x!==rec; });
-          drop(gPath(S.cur,g)+'/df/'+rec.id);
-        } else if(rec){ delete rec.role; syncDF(S.cur, g, rec); }
-        toast(pName(g,sid)+' 역할 뺌'); board(g); return;
-      }
-      if(rec){ rec.role = r; syncDF(S.cur, g, rec); }
-      /* 10/27 고침: role 을 올린 «뒤에» 붙이면, 처음 올릴 때 바로 돌아온 child_added(역할 없는 사본)가
-         목록의 칸을 바꿔 끼워 화면에선 역할이 사라졌다 → 처음부터 role 을 넣어 올린다 */
-      else awardDef(g, [sid], 'role', {role:r});
-      toast(pName(g,sid)+' · '+r+' (수비 참여 +1)'); board(g);
-    };
+/* 10/29 (사용자): 대기 학생 이름 칩이 수비 칸을 좁게 만들어서 → 역할 버튼 4개만 두고,
+   누르면 «수비에 안 들어간 학생»을 여러 명 골라 넣는다. 한 학생이 역할 여러 개도 가능(role = '볼보이·기록자') */
+function sideSids(g, side){
+  var seen = {};
+  return (side==='H' ? g.orderH : g.orderA).map(function(p){ return p.sid; }).filter(function(s){ if(seen[s]) return false; return seen[s] = 1; });
+}
+function rolesOf(g, sid){ return roleOf(g, sid).split('·').filter(Boolean); }
+function setRoles(g, sid, arr){
+  var rec = (g.defense||[]).filter(function(x){ return x.kind==='play' && x.sid===sid; })[0];
+  if(!arr.length){
+    /* 역할로만 받은 참여면 지우고, 9자리에서 받은 참여(via end·swap)는 남기고 이름표만 뗀다 */
+    if(rec && rec.via==='role'){
+      g.defense = g.defense.filter(function(x){ return x!==rec; });
+      drop(gPath(S.cur,g)+'/df/'+rec.id);
+    } else if(rec){ delete rec.role; syncDF(S.cur, g, rec); }
+    return;
+  }
+  var s = arr.join('·');
+  if(rec){ rec.role = s; syncDF(S.cur, g, rec); }
+  /* 10/27 고침: role 을 올린 «뒤에» 붙이면 child_added(역할 없는 사본)가 목록 칸을 바꿔 끼운다 → 처음부터 role 을 넣어 올린다 */
+  else awardDef(g, [sid], 'role', {role:s});
+}
+function rolePick(g, side, role){
+  var bench = benchOf(g, side), ids = bench.map(function(p){ return p.sid; });
+  /* 이 역할을 맡았다가 수비로 들어간 학생도 목록에 남겨 뺄 수 있게 */
+  sideSids(g, side).forEach(function(sid){
+    if(rolesOf(g, sid).indexOf(role)>=0 && ids.indexOf(sid)<0) ids.push(sid);
   });
+  var sel = {}; ids.forEach(function(sid){ if(rolesOf(g, sid).indexOf(role)>=0) sel[sid] = 1; });
+  var d = document.createElement('div');
+  d.className = 'pop';
+  function draw(){
+    var who = ids.filter(function(sid){ return sel[sid]; });
+    d.innerHTML = '<div class="popbox rolebox"><h4>'+esc(role)+' 맡을 학생</h4>'+
+      '<p>수비에 안 들어간 학생 · 여러 명 고를 수 있어요 · 맡으면 «수비 참여»와 같은 점수</p>'+
+      (ids.length ? '<div class="rpick">'+ids.map(function(sid){
+        var other = rolesOf(g, sid).filter(function(r){ return r!==role; }), n = goodOf(g, sid).length;
+        return '<button data-s="'+sid+'" class="'+(sel[sid]?'ok':'')+'">'+esc(pName(g,sid))+
+          (other.length ? '<small>'+esc(other.join('·'))+'</small>' : '')+(n ? '<small>👍'+n+'</small>' : '')+'</button>';
+      }).join('')+'</div>' : '<p>대기 학생이 없어요 (모두 수비 중)</p>')+
+      (who.length ? '<div class="rgood"><b>👍 잘했어요 (수비 기여 +1)</b>'+who.map(function(sid){
+        return '<button data-g="'+sid+'">'+esc(pName(g,sid))+'</button>'; }).join('')+'</div>' : '')+
+      '<div class="popgrid" style="margin-top:12px">'+
+        '<button data-x="cancel">취소</button><button data-x="save" class="ok">확인</button></div></div>';
+    d.querySelectorAll('[data-s]').forEach(function(b){
+      b.onclick = function(){ var s = b.dataset.s; if(sel[s]) delete sel[s]; else sel[s] = 1; draw(); };
+    });
+    d.querySelectorAll('[data-g]').forEach(function(b){
+      b.onclick = function(){
+        var sid = b.dataset.g, gr = {id:newId(), sid:sid, good:1, role:role, ts:stamp(), inning:g.st.inning, half:g.st.half};
+        g.defense.push(gr); syncDF(S.cur, g, gr); syncState(S.cur, g);
+        toast('👍 '+pName(g,sid)+' · '+role+' 잘했어요 (수비 기여 +1)'); draw();
+      };
+    });
+    d.querySelector('[data-x=cancel]').onclick = function(){ d.remove(); board(g); };
+    d.querySelector('[data-x=save]').onclick = function(){
+      var add = 0, del = 0;
+      ids.forEach(function(sid){
+        var rs = rolesOf(g, sid), has = rs.indexOf(role)>=0;
+        if(sel[sid] && !has){ rs.push(role); setRoles(g, sid, rs); add++; }
+        else if(!sel[sid] && has){ setRoles(g, sid, rs.filter(function(r){ return r!==role; })); del++; }
+      });
+      d.remove();
+      if(add || del) toast(role+' · '+(add?add+'명 넣음':'')+(add&&del?' · ':'')+(del?del+'명 뺌':''));
+      board(g);
+    };
+  }
+  draw();
+  document.body.appendChild(d);
+  d.onclick = function(e){ if(e.target===d){ d.remove(); board(g); } };
 }
 function onField(g, side){
   var m = defOf(g, side);
@@ -3103,12 +3135,11 @@ function boardImpl(g){
             'style="left:'+P.x+'%;top:'+P.y+'%"><div class="pp">'+P.n+'</div>'+
             '<div class="pn">'+esc(sid? pName(g,sid) : '—')+'</div></div>';
         }).join('')+'</div></div>'+
-      /* 10/26: 대기 학생 이름을 누르면 역할(볼보이·배트 정리·기구 정리) — 맡으면 수비 참여와 같은 점수 */
-      '<div class="bench">대기 '+bench.length+'명'+(bench.length ? ' · 눌러서 역할 주기' : '')+
-        (bench.length ? '<div class="rolechips">'+bench.map(function(p){
-          var r = roleOf(g, p.sid), n = goodOf(g, p.sid).length;
-          return '<button data-role="'+p.sid+'" class="'+(r?'on':'')+'">'+esc(p.name)+(r?' <small>'+esc(r)+(n?' 👍'+n:'')+'</small>':'')+'</button>';
-        }).join('')+'</div>' : '')+'</div>'+
+      /* 10/29: 역할 버튼 4개 → 누르면 대기 학생 고르기(rolePick). 이름 칩을 늘어놓지 않아 수비 칸이 넓다 */
+      '<div class="bench"><div class="rolechips">'+ROLES.map(function(r){
+          var n = sideSids(g, dside).filter(function(sid){ return rolesOf(g, sid).indexOf(r)>=0; }).length;
+          return '<button data-role="'+r+'" class="'+(n?'on':'')+'">'+esc(r)+(n?' <small>'+n+'명</small>':'')+'</button>';
+        }).join('')+'</div></div>'+
       '<div class="dbtn">'+
         '<button id="swapB" class="'+(g._swap?'on':'')+'">수비 교대</button>'+
         '<button id="okDef" class="'+(g._pick.length?'ok':'')+'">🧤 아웃 처리'+(g._pick.length?' ('+g._pick.length+'명)':'')+'</button>'+
@@ -3213,7 +3244,7 @@ function boardImpl(g){
     };
   });
   el('v-game').querySelectorAll('[data-role]').forEach(function(x){
-    x.onclick = function(){ rolePop(g, x.dataset.role); };
+    x.onclick = function(){ rolePick(g, dside, x.dataset.role); };
   });
   el('swapB').onclick = function(){ g._swap = !g._swap; g._pick=[]; board(g); };
   /* 10/26 되살림: 「🧤 아웃 처리」 — 고른 수비수에게 수비 아웃을 바로 준다(주자 아웃 등 타석과 따로).
