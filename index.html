@@ -824,7 +824,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-29a';
+var APP_VER = '2026-10-29b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -984,12 +984,66 @@ function syncMisc(cn, key){
      이제 학급을 고르면 그 학급 자료를 통째로 받아 온다.
    ★ 받은 것으로 「덮어쓰지」 않고 합친다 —
      한쪽 기기에서 아직 안 올라간 것이 있어도 지워지지 않게. */
+/* 서버 경기(cur/ab/df) → 앱 안 모양(st…/atbats/defense) */
+function srvGame(g){
+  var o = Object.assign({}, g);
+  if(g.cur) ['st','bases','hs','as','status','def','first'].forEach(function(f){
+    if(g.cur[f]!==undefined && g.cur[f]!==null) o[f] = g.cur[f]; });
+  delete o.cur;
+  o.atbats  = g.ab ? Object.keys(g.ab).map(function(id){
+                return Object.assign({}, g.ab[id], {id:id}); }) : (g.atbats||[]);
+  o.defense = g.df ? Object.keys(g.df).map(function(id){
+                return Object.assign({}, g.df[id], {id:id}); }) : (g.defense||[]);
+  delete o.ab; delete o.df;
+  sortRec(o.atbats); sortRec(o.defense);
+  return o;
+}
+/* ── 10/29 (사용자 «3반 vs 10반 기록이 10반 기록실엔 안 보여») ──
+   반끼리 경기는 기록한 반(홈) 아래에만 저장된다 → 상대 반(oppClass) 기록실·평가에도 그 경기를 «손님 경기»로 더한다.
+   저장은 하지 않고(동기화 충돌 방지) 서버에서 읽어 GUEST[반] 에 두기만 한다. 이 기기에 그 반 경기가 있으면 그걸 먼저 쓴다. */
+var GUEST = {}, _gq = {};
+function isGuestOf(g, cn){ return g && g.mode!=='intra' && g.oppClass===cn; }
+function guestGames(cn){
+  if(!cn) return [];
+  var out = [], seen = {};
+  S.cfg.classNames.slice(0, S.cfg.classCount).forEach(function(h){
+    if(h===cn) return;
+    var c = S.classes[h];
+    (c && c.games || []).forEach(function(g){ if(isGuestOf(g, cn)){ seen[h+'#'+g.no+'#'+(g.made||'')] = 1; out.push(g); } });
+  });
+  (GUEST[cn]||[]).forEach(function(x){ if(!seen[x.h+'#'+x.g.no+'#'+(x.g.made||'')]) out.push(x.g); });
+  return out;
+}
+function fetchGuests(cn, force){
+  if(!DB || !cn) return;
+  if(!force && _gq[cn] && Date.now()-_gq[cn] < 20000) return;
+  _gq[cn] = Date.now();
+  var hs = S.cfg.classNames.slice(0, S.cfg.classCount).filter(function(h){ return h!==cn; }), left = hs.length, got = [];
+  hs.forEach(function(h){
+    DB.ref(ROOT()+'/classes/'+ck(h)+'/games').once('value').then(function(s){
+      var v = s.val() || {};
+      Object.keys(v).forEach(function(k){
+        var g = v[k]; if(!g || typeof g.no!=='number' || !isGuestOf(g, cn)) return;
+        var o = srvGame(g); if(okGame(o)) got.push({h:h, g:o});
+      });
+    }).catch(function(){}).then(function(){
+      if(--left) return;
+      var before = JSON.stringify((GUEST[cn]||[]).map(function(x){ return [x.h, x.g.no, (x.g.atbats||[]).length, (x.g.defense||[]).length, x.g.status]; }));
+      GUEST[cn] = got;
+      var after = JSON.stringify(got.map(function(x){ return [x.h, x.g.no, (x.g.atbats||[]).length, (x.g.defense||[]).length, x.g.status]; }));
+      if(before!==after && S.cur===cn && (V==='stats' || V==='home')) render();
+    });
+  });
+}
+function nameOfCls(c){ for(var k in S.classes) if(S.classes[k]===c) return k; return null; }
+function gamesOf(c){ return c.games.concat(guestGames(nameOfCls(c))); }
 var _wc = null;
 function watchClass(cn){
   if(!DB || !cn){ return; }
   if(_wc && _wc.key===cn) return;
   unwatchClass();
   _wc = {key:cn, refs:[], ready:false};
+  fetchGuests(cn, true);
   var base = DB.ref(ROOT()+'/classes/'+ck(cn));
   function on(ref, ev, fn){ ref.on(ev, fn); _wc.refs.push([ref, ev, fn]); }
   function done(){ save(); render(); }
@@ -1043,16 +1097,7 @@ function watchClass(cn){
     Object.keys(v).forEach(function(k){
       var g = v[k]; if(!g || typeof g.no!=='number' || have[g.no]) return;
       /* 새 구조(cur/ab/df)를 예전 모양으로 펴서 넣는다 */
-      var o = Object.assign({}, g);
-      if(g.cur) ['st','bases','hs','as','status','def','first'].forEach(function(f){
-        if(g.cur[f]!==undefined && g.cur[f]!==null) o[f] = g.cur[f]; });
-      delete o.cur;
-      o.atbats  = g.ab ? Object.keys(g.ab).map(function(id){
-                    return Object.assign({}, g.ab[id], {id:id}); }) : (g.atbats||[]);
-      o.defense = g.df ? Object.keys(g.df).map(function(id){
-                    return Object.assign({}, g.df[id], {id:id}); }) : (g.defense||[]);
-      delete o.ab; delete o.df;
-      sortRec(o.atbats); sortRec(o.defense);
+      var o = srvGame(g);
       if(!okGame(o)) return;                 // 번호·타순 없는 조각은 받지 않는다
       c.games.push(o); added++;
     });
@@ -2067,7 +2112,7 @@ function vGame(){
 
 function paCount(c){
   var m={};
-  c.games.forEach(function(g){ (g.atbats||[]).forEach(function(a){ m[a.sid]=(m[a.sid]||0)+1; }); });
+  gamesOf(c).forEach(function(g){ (g.atbats||[]).forEach(function(a){ m[a.sid]=(m[a.sid]||0)+1; }); });
   return m;
 }
 
@@ -3475,11 +3520,11 @@ function pickPlayer(order, cb){
   if(isNaN(i) || !order[i]) return toast('번호가 올바르지 않습니다');
   cb(order[i].sid);
 }
-function allAtbats(c){ return c.games.reduce(function(a,g){ return a.concat(g.atbats||[]); },[]); }
-function allDefense(c){ return c.games.reduce(function(a,g){ return a.concat(g.defense||[]); },[]); }
+function allAtbats(c){ return gamesOf(c).reduce(function(a,g){ return a.concat(g.atbats||[]); },[]); }
+function allDefense(c){ return gamesOf(c).reduce(function(a,g){ return a.concat(g.defense||[]); },[]); }
 function inningMap(c){
   var m = {};
-  c.games.filter(function(g){return g.status==='done';}).forEach(function(g){
+  gamesOf(c).filter(function(g){return g.status==='done';}).forEach(function(g){
     var played = Math.min(g.innings, Math.max(1, g.st.inning - (g.st.half==='초'?1:0)));
     var seen = {};
     g.orderH.concat(g.orderA).forEach(function(p){
@@ -3823,7 +3868,7 @@ function rkRows(cn, roster, atbats, gNames){
     var gi = s && s.group ? GK.indexOf(s.group) : -1;
     var grp = gi>=0 ? (gNames||[])[gi] || (s.group+'조') : '';
     return {sid:sid, cn:cn, name:nm, grp:grp, ab:x.ab, h:x.h, hr:x.hr, avg:x.avg, num:s?s.num:''};
-  }).filter(function(r){ return r.name; });
+  }).filter(function(r){ return r.name && (by[r.sid] || !Object.keys(by).length); });   // 10/29: 반끼리 경기의 상대 반 학생은 그 반 줄로만
 }
 function rkMine(){
   var c = cls();
@@ -3832,7 +3877,7 @@ function rkMine(){
 function rkFetchAll(cb){
   var local = {};
   S.cfg.classNames.slice(0, S.cfg.classCount).forEach(function(cn){
-    var c = S.classes[cn]; if(c && c.games && c.games.length) local[cn] = c; });
+    var c = S.classes[cn]; if(c && ((c.games && c.games.length) || cn===S.cur)) local[cn] = c; });
   function finish(remote){
     var rows = [];
     S.cfg.classNames.slice(0, S.cfg.classCount).forEach(function(cn){
@@ -3842,10 +3887,16 @@ function rkFetchAll(cb){
         return;
       }
       var abs = [];
-      Object.keys(v.games||{}).forEach(function(k){
-        var g = v.games[k]; if(!g) return;
+      function addG(g){
         if(g.ab) Object.keys(g.ab).forEach(function(id){ abs.push(g.ab[id]); });
         else (g.atbats||[]).forEach(function(a){ if(a) abs.push(a); });
+      }
+      Object.keys(v.games||{}).forEach(function(k){ var g = v.games[k]; if(g) addG(g); });
+      /* 10/29: 다른 반이 기록한 반끼리 경기(상대가 이 반) */
+      Object.keys(remote).forEach(function(h){
+        if(h===ck(cn)) return;
+        var gs = (remote[h]||{}).games||{};
+        Object.keys(gs).forEach(function(k){ if(isGuestOf(gs[k], cn)) addG(gs[k]); });
       });
       rows = rows.concat(rkRows(cn, v.roster, abs, v.gNames || ['A조','B조','C조','D조']));
     });
@@ -3914,7 +3965,8 @@ function bindRank(){
 function vStats(){
   if(!S.cur) return needClass('v-stats');
   var c = cls();
-  var t = tally(allAtbats(c), allDefense(c), inningMap(c));
+  fetchGuests(S.cur);
+  var t = tally(allAtbats(c), allDefense(c), inningMap(c)), ng = guestGames(S.cur).filter(function(g){return g.status==='done';}).length;
   var ZERO = {ab:0,bb:0,h:0,h2:0,h3:0,hr:0,tb:0,xbh:0,r:0,rbi:0,dOut:0,dPlay:0,inn:0,g:0,
               avg:0,slg:0,obp:0,ops:0,contrib:0,contribG:0,dSum:0};
   var rows = c.roster.map(function(s){ return Object.assign({num:s.num,name:s.name,gender:s.gender,group:s.group||'A'}, ZERO, t[s.sid]||{}); });
@@ -3922,7 +3974,7 @@ function vStats(){
 
   el('v-stats').innerHTML =
     '<h2 class="t">'+esc(S.cur)+' 기록실</h2>'+
-    '<p class="st">경기 '+c.games.filter(function(g){return g.status==='done';}).length+'개 누적 · 타율순</p>'+
+    '<p class="st">경기 '+(c.games.filter(function(g){return g.status==='done';}).length+ng)+'개 누적'+(ng?' (다른 반에서 기록한 반끼리 경기 '+ng+'개 포함)':'')+' · 타율순</p>'+
     rankHTML()+
     leaderHTML(rows)+
     '<div class="card"><div class="row" style="margin-bottom:11px">'+
