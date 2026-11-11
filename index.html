@@ -784,7 +784,7 @@ function canAddDefense(list){ return (list||[]).length<2; }
 /* 주루 — bases=[1루,2루,3루], 각 칸에 sid 또는 null.
    kind: 0=아웃  1=1루타  2=2루타  3=3루타  4=홈런  5=포볼(밀어내기)  6=야수선택  7=실책 출루
    안타·홈런은 모든 주자를 그만큼 밀고, 포볼은 「차 있는 루만」 연쇄로 민다. */
-function advance(bases, batterSid, kind){
+function advance(bases, batterSid, kind, fcIdx){
   var b = (bases||[null,null,null]).slice(), runs=[];
   if(kind===0) return {bases:b, runs:runs};
 
@@ -799,12 +799,19 @@ function advance(bases, batterSid, kind){
     b[0]=batterSid;
     return {bases:b, runs:runs};
   }
-  if(kind===6){                       // 야수선택 — 타자만 1루로, 주자는 그대로
-    b[0] = b[0] || null;              // (죽은 주자는 다이아몬드에서 따로 지운다)
-    var tmp = b[0];
+  if(kind===6){                       // 야수선택 — 타자는 1루로
+    /* 11/11: 아웃된 주자를 고른다(fcIdx = 0·1·2루, -1 = 아무도 안 죽음).
+       고른 주자보다 뒤(아래 루)에 있던 주자는 타자에 밀려 한 루씩 간다. 앞 주자는 그대로 */
+    var j = fcIdx==null ? -1 : fcIdx, out = null;
+    if(j>=0 && b[j]){ out = b[j]; b[j] = null; }
+    else j = -1;
+    if(j<0){                          // 다 살았으면 포볼처럼 밀리는 주자만 민다
+      if(b[0]){ if(b[1]){ if(b[2]) runs.push(b[2]); b[2]=b[1]; } b[1]=b[0]; }
+    } else {
+      for(var k=j-1;k>=0;k--){ if(b[k]){ b[k+1]=b[k]; b[k]=null; } }
+    }
     b[0] = batterSid;
-    if(tmp){ /* 1루에 있던 주자는 보통 아웃 — 화면에서 확인·수정 */ }
-    return {bases:b, runs:runs, fc:true};
+    return {bases:b, runs:runs, fc:true, fcOut:out};
   }
 
   var step = kind===7 ? 1 : kind;     // 실책 출루 = 주자 진루는 1루타와 같다 (기록상 안타는 아님)
@@ -824,7 +831,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-11a';
+var APP_VER = '2026-11-11b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -3050,7 +3057,8 @@ function playLog(g){
       return (P ? P.n+' ' : '')+esc(pName(g, f.sid));
     }).join(' → ');
     var what = KIND_LOG[a.kind] || '';
-    if(fld) what += a.kind===6 ? ' ('+fld+' 주자 아웃)' : ' ('+fld+')';
+    if(a.kind===6 && a.fcOut) what += ' ('+(a.fcBase+1)+'루 주자 '+esc(pName(g, a.fcOut))+' 아웃'+(fld?' · '+fld:'')+')';
+    else if(fld) what += ' ('+fld+')';
     var sc = a.sc!=null ? a.sc : (a.rbi||0);
     return '<li><span class="pi">'+(a.inning||'')+'회 '+(a.half||'')+'</span>'+
       '<span class="pn2">'+no+'<b>'+esc(a.name||nameOf(g,a.sid))+'</b></span>'+
@@ -3081,7 +3089,7 @@ function boardImpl(g){
   function tname(side){ return side==='H' ? g.home : g.away; }
   var pickTag = g._pick.length ? ' <small class="ptag">🧤 '+g._pick.map(function(sid){ return esc(pName(g,sid)); }).join('·')+'</small>' : '';
   var outsNow = (g.atbats||[]).filter(function(a){
-    return a.inning===g.st.inning && a.half===g.st.half && a.kind===0; }).length;
+    return a.inning===g.st.inning && a.half===g.st.half && (a.kind===0 || (a.kind===6 && a.fcOut)); }).length;
 
   /* ── 점수 카드 ── */
   function tcard(side){
@@ -3383,10 +3391,13 @@ function boardImpl(g){
     unwatch(); syncGameFull(S.cur,g); render(); toast(gLabel(g)+' 종료');
   };
 
-  function swing(kind){
+  function swing(kind, fcIdx){
     if(!b) return;
+    /* 야수선택이고 주자가 있으면 — 누가 아웃됐는지 먼저 고른다 */
+    if(kind===6 && fcIdx===undefined && g.bases.some(function(x){ return x; }))
+      return fcPop(g, function(i){ swing(6, i); });
     var before = g.bases.slice();
-    var res = advance(g.bases, b.sid, kind);
+    var res = advance(g.bases, b.sid, kind, fcIdx);
     g.bases = res.bases;
     var scored = res.runs.length;
 
@@ -3395,6 +3406,7 @@ function boardImpl(g){
                run:0, rbi:((kind===5||kind===7)?0:scored),   /* 포볼 밀어내기·실책 득점은 타점 없음 */
                sc:scored, inning:g.st.inning, half:g.st.half,
                stBefore:Object.assign({},g.st), basesBefore:before};
+    if(res.fcOut){ rec.fcOut = res.fcOut; rec.fcBase = fcIdx; }
     g.atbats.push(rec);
     var touched=[];
     rec.rs = res.runs.filter(function(sid){ return sid!==b.sid; });   // 되돌리기용 — 이 타석으로 홈인한 앞 주자
@@ -3432,12 +3444,27 @@ function boardImpl(g){
     syncState(S.cur, g);
     board(g);
     cheerBatter(g);                                         // 다음 타자 소개 → 응원가
-    if(kind===6) toast('야수선택 — 죽은 주자를 다이아몬드에서 눌러 지우세요');
+    if(kind===6) toast(res.fcOut ? '야수선택 — '+pName(g,res.fcOut)+'('+(fcIdx+1)+'루 주자) 아웃' : '야수선택 — 주자 모두 세이프');
     else if(kind===7) toast('실책 출루 — 주자가 더 갔으면 베이스를 눌러 고치세요');
     else if(scored) toast(b.name+' · '+scored+'점');
   }
 }
 
+/* 11/11 야수선택 — 어느 루 주자가 아웃됐는지 고른다. 비어 있는 루는 안 보인다 */
+function fcPop(g, cb){
+  var d = document.createElement('div');
+  d.className='pop';
+  d.innerHTML = '<div class="popbox"><h4>야수선택</h4><p>어느 주자가 아웃됐나요?</p><div class="popgrid">'+
+    [0,1,2].filter(function(i){ return g.bases[i]; }).map(function(i){
+      return '<button data-i="'+i+'">'+(i+1)+'루 주자<br><small>'+esc(pName(g,g.bases[i]))+'</small></button>'; }).join('')+
+    '<button data-i="-1">아무도 안 죽음</button>'+
+    '<button data-i="X" style="grid-column:1/-1">취소</button></div></div>';
+  document.body.appendChild(d);
+  d.onclick = function(e){ if(e.target===d) d.remove(); };
+  d.querySelectorAll('[data-i]').forEach(function(btn){
+    btn.onclick = function(){ d.remove(); if(btn.dataset.i!=='X') cb(+btn.dataset.i); };
+  });
+}
 /* 주자를 눌렀을 때 — 어디로 갔는지 고른다 */
 function runnerPop(g, idx, sid){
   var d = document.createElement('div');
