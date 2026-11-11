@@ -831,7 +831,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-11b';
+var APP_VER = '2026-11-11c';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -4627,6 +4627,7 @@ function speakWeb(text, done){
     speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance(text);
     u.lang = 'ko-KR'; var v = pickVoice(); if(v) u.voice = v;
+    if(!v && !SONG._voiceWarn){ SONG._voiceWarn = 1; logErr('tts: no ko voice', '', 'speakWeb'); toast('이 기기에 한국어 음성이 없어요 — 구글 음성 키를 넣으면 소개가 나와요'); }
     u.rate = 1.08; u.pitch = 1.08; u.volume = 1;
     u.onend = fin; u.onerror = fin;
     SONG.speaking = true; songBar();
@@ -4666,8 +4667,18 @@ function speak(text, done){
       try{ if(c.state==='suspended') c.resume(); }catch(e){}
       s.start(0);
       setTimeout(fin, buf.duration*1000 + 1500);     // 아이패드가 onended 를 빠뜨리면 응원가 창이 안 떠서
-    }).catch(function(e){ console.warn('구글 음성 → 기기 음성으로', e); speakWeb(text, done); });
-  } else speakWeb(text, done);
+    }).catch(function(e){
+      console.warn('구글 음성 → 기기 음성으로', e);
+      /* 11/11 «노래는 나오는데 타자 소개가 안 나와» — 왜 기기 음성으로 넘어갔는지 화면과 서버에 남긴다 */
+      if(!SONG._ttsWarn){ SONG._ttsWarn = 1; toast('구글 음성 실패 → 기기 음성으로: '+String(e && e.message || e).slice(0,60));
+        logErr('tts google fail: '+(e && e.message || e), '', 'speak'); }
+      speakWeb(text, done);
+    });
+  } else {
+    if(!SONG._ttsWarn){ SONG._ttsWarn = 1; logErr('tts: no key on this device', '', 'speak');
+      toast('이 기기엔 구글 음성 키가 없어 기기 음성으로 소개해요 (⚙️ 설정에서 확인)'); }
+    speakWeb(text, done);
+  }
 }
 
 /* 타자가 바뀔 때 — 소개 멘트 → 끝나면 응원가 반복 */
