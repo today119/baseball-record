@@ -824,7 +824,7 @@ function advance(bases, batterSid, kind){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-10-29c';
+var APP_VER = '2026-11-11a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -3295,6 +3295,7 @@ function boardImpl(g){
   /* 10/26 되살림: 「🧤 아웃 처리」 — 고른 수비수에게 수비 아웃을 바로 준다(주자 아웃 등 타석과 따로).
      결과 버튼(아웃·야수선택)으로 묶는 방식도 그대로. 여기서 기록하면 선택이 지워져 두 번 세지 않는다 */
   el('okDef').onclick = function(){
+    if(g._swap){ g._swap = false; board(g); return toast('교대 모드를 껐어요 — 아웃을 만든 수비수를 누르세요'); }
     if(!g._pick.length) return toast('아웃을 만든 수비수를 먼저 누르세요');
     var made = g._pick.map(function(sid){
       var r = {id:newId(), sid:sid, ts:stamp(), inning:g.st.inning, half:g.st.half};
@@ -3483,7 +3484,7 @@ function swapPop(g, side, posKey){
       '<button data-sid="" style="grid-column:1/-1">취소</button>'+
     '</div></div>';
   document.body.appendChild(d);
-  d.onclick = function(e){ if(e.target===d) d.remove(); };
+  d.onclick = function(e){ if(e.target===d){ g._swap = false; d.remove(); board(g); } };
   d.querySelectorAll('[data-sid]').forEach(function(btn){
     btn.onclick = function(){
       var sid = btn.dataset.sid;
@@ -3493,6 +3494,9 @@ function swapPop(g, side, posKey){
         awardDef(g, [out, sid], 'swap');      // 이닝 도중 교체 — 나간 학생도 뛰었고 들어온 학생도 뛴다
         syncState(S.cur,g); toast(P.n+' → '+pName(g,sid));
       }
+      /* 11/11: 교대 한 번(또는 취소)으로 교대 모드를 끈다 — 켜진 채로 두면 다음에 수비수를 눌러도
+         아웃 처리 선택이 아니라 교체 창이 떠서 「아웃 처리」로 못 들어갔다 */
+      g._swap = false;
       d.remove(); board(g);
     };
   });
