@@ -831,7 +831,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-11c';
+var APP_VER = '2026-11-12a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -1191,9 +1191,15 @@ function watchGame(cn, gno){
   on(base.child('cur'), 'value', function(s){
     var v = s.val(); if(!v || v._by===DEVICE) return;     // 내가 쓴 건 무시 (되울림 방지)
     var g = G(); if(!g) return;
+    var was = JSON.stringify([g.st, g.status, g.first]);
     ['st','bases','hs','as','status','def','first'].forEach(function(k){
       if(v[k]!==undefined && v[k]!==null) g[k] = v[k]; });
     done(); say('다른 기기 진행 상황 반영');
+    /* 11/12 학급대항 두 대 — 다른 기기가 친 타석으로 타자가 바뀌어도 이 기기에서 소개·응원가가 안 나왔다(소개 버튼만 됨)
+       → 받은 쪽도 타자가 바뀌면 부른다. 소리를 한 대에서만 내려면 다른 기기의 「자동」을 끄면 된다 */
+    if(_w && _w.ready && was !== JSON.stringify([g.st, g.status, g.first])){
+      if(g.status==='live') cheerBatter(g); else stopAll();
+    }
   });
 
   /* 2) 타석 — 합치기만 한다 */
