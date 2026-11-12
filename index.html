@@ -836,7 +836,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-12b';
+var APP_VER = '2026-11-12c';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -1036,16 +1036,22 @@ function fetchGuests(cn, force){
       var v = s.val() || {};
       Object.keys(v).forEach(function(k){
         var g = v[k]; if(!g || typeof g.no!=='number' || !isGuestOf(g, cn)) return;
-        var o = srvGame(g); if(okGame(o)) got.push({h:h, g:o});
+        var o = srvGame(g); if(okGame(o)){ o._hc = h; got.push({h:h, g:o}); }
       });
     }).catch(function(){}).then(function(){
       if(--left) return;
       var before = JSON.stringify((GUEST[cn]||[]).map(function(x){ return [x.h, x.g.no, (x.g.atbats||[]).length, (x.g.defense||[]).length, x.g.status]; }));
       GUEST[cn] = got;
       var after = JSON.stringify(got.map(function(x){ return [x.h, x.g.no, (x.g.atbats||[]).length, (x.g.defense||[]).length, x.g.status]; }));
-      if(before!==after && S.cur===cn && (V==='stats' || V==='home')) render();
+      if(before!==after && S.cur===cn && (V==='stats' || V==='home' ||
+         (V==='game' && !(cls().games||[]).some(function(g){ return g.status==='live' || g.status==='lineup'; })))) render();
     });
   });
+}
+function gHomeCls(g){
+  if(g._hc) return g._hc;
+  for(var k in S.classes) if((S.classes[k].games||[]).indexOf(g) >= 0) return k;
+  return null;
 }
 function nameOfCls(c){ for(var k in S.classes) if(S.classes[k]===c) return k; return null; }
 function gamesOf(c){ return c.games.concat(guestGames(nameOfCls(c))); }
@@ -2023,6 +2029,10 @@ function vGame(){
   if(draft) return lineupView(draft);
   var live = c.games.filter(function(g){return g.status==='live';})[0];
   if(live) return board(live);
+  /* 11/12 «2반:7반 경기가 2반에만 기록되고 7반엔 안 돼» — 기록실엔 들어가 있었지만 7반 「지난 경기」 목록엔 안 보였다
+     → 상대 반이 기록한 반끼리 경기도 목록에 (읽기 전용) 보여 준다 */
+  fetchGuests(S.cur);
+  var guests = guestGames(S.cur).slice().sort(function(x,y){ return String(gDate(y)||'').localeCompare(String(gDate(x)||'')) || ((y.made||0)-(x.made||0)); });
 
   el('v-game').innerHTML =
     '<h2 class="t">'+esc(S.cur)+' 경기</h2><p class="st">전원타격제 · 아웃과 무관하게 한 바퀴 돌면 공수교대</p>' +
@@ -2033,9 +2043,16 @@ function vGame(){
     '<button data-m="inter">학급대항</button></div></div>' +
     '<div id="modeBox"></div>' +
     '<div class="row" style="margin-top:12px"><button class="btn pri" id="startG">경기 시작</button></div></div>' +
-    '<div class="card"><h3>지난 경기 '+c.games.length+'</h3>' +
-    (c.games.length ?
+    '<div class="card"><h3>지난 경기 '+(c.games.length+guests.length)+'</h3>' +
+    (guests.length ? '<p class="st" style="margin:-4px 0 8px;font-size:12px">다른 반에서 기록한 반끼리 경기 '+guests.length+'개 포함 — 그 반 화면에서 고치거나 다시 열 수 있어요. 기록실·평가에는 우리 반 기록으로 들어가요.</p>' : '')+
+    (c.games.length || guests.length ?
       '<table><tr><th>#</th><th>날짜</th><th>구분</th><th>대진</th><th class="n">점수</th><th></th></tr>' +
+      guests.map(function(g){
+        var h = gHomeCls(g);
+        return '<tr class="gst"><td>—</td><td>'+esc(gDate(g)||'—')+'</td><td>학급대항</td>'+
+          '<td>'+esc(g.home)+' vs '+esc(g.away)+'</td><td class="n">'+g.hs+' : '+g.as+'</td>'+
+          '<td class="n" style="font-size:12px;color:var(--tx3)">'+(g.status==='live' ? '진행 중 · ' : '')+esc(h||g.home)+'에서 기록</td></tr>';
+      }).join('')+
       c.games.slice().reverse().map(function(g){
         return '<tr><td>'+g.no+'</td><td>'+esc(gDate(g)||'—')+'</td>'+
           '<td>'+(g.mode==='intra'?'학급내':'학급대항')+'</td>'+
