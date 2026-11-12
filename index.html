@@ -394,6 +394,11 @@ html[data-theme=light] .cbt button.cb{color:#15803d} html[data-theme=light] .cbt
 .orow.now{border-color:var(--gold);background:rgba(245,196,81,.12)}
 .orow.now .o,.orow.now .nm{color:var(--gold)}
 .orow.done{opacity:.42}
+.oskip{flex:0 0 auto;margin-left:calc(var(--u) * .2);padding:calc(var(--u) * .15) calc(var(--u) * .45);
+  border:1px solid rgba(255,120,120,.45);border-radius:calc(var(--u) * .35);background:transparent;
+  color:#ff9a9a;font-weight:900;font-size:calc(var(--u) * .85);line-height:1.2}
+.oskip.big{margin-left:auto;align-self:flex-start;font-size:calc(var(--u) * .9)}
+.nb-rk~.oskip.big{margin-left:calc(var(--u) * .4)}
 /* 지금 타자 — 같은 줄이 크게 펼쳐진다 */
 .orow.big{display:block;flex:0 0 auto;border:2px solid var(--gold);border-radius:calc(var(--u) * .8);
   background:linear-gradient(160deg,#2a2f4a 0%,#1a2547 55%,#13203f 100%);
@@ -831,7 +836,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-12a';
+var APP_VER = '2026-11-12b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2457,6 +2462,29 @@ function liveRebuild(g){
   g.st.idx = k>=0 ? k : Math.min(g.st.idx, nord.length-1);   // 지금 타자가 빠졌으면 그 자리의 다음 사람
   return true;
 }
+/* 11/12 «경기 중 결석 체크 못 한 타자 — 타율에 영향 없이 타순에서 빼는 키»
+   타석 기록은 하나도 안 만들고 그 학생을 결석(out)으로 돌린 뒤 타순을 다시 짠다(라인업 화면 ✓결석과 같은 길).
+   인원 맞춤 반복타자는 라인업 규칙대로 다시 붙는다. 되돌리려면 「라인업」에서 다시 출전으로. */
+function skipBatter(g, i){
+  var atk = atkSide(g), order = atk==='H' ? g.orderH : g.orderA, p = order[i];
+  if(!p || g.status!=='live') return;
+  if(atk==='A' && !(g.seqA||[]).length){ toast('상대 팀 인원은 「라인업」에서 바꿔 주세요'); return; }
+  var played = (g.atbats||[]).some(function(a){ return a.sid===p.sid; });
+  if(!confirm(p.name+' 학생을 타순에서 뺄까요?\n결석으로 처리돼 타수·타율에 아무것도 남지 않아요.'+
+      (played ? '\n(오늘 이미 친 타석 기록은 그대로 남아요)' : '')+'\n다시 넣으려면 「라인업」에서 출전으로 바꾸면 돼요.')) return;
+  var wasNow = i===g.st.idx;
+  liveSeedLineup(g);
+  var k = 'out'+atk; g[k] = (g[k]||[]).slice();
+  if(g[k].indexOf(p.sid)<0) g[k].push(p.sid);
+  g['dup'+atk] = (g['dup'+atk]||[]).filter(function(s){ return s!==p.sid; });
+  if(!liveRebuild(g)){ g[k] = g[k].filter(function(s){ return s!==p.sid; }); return; }
+  syncOrder(S.cur, g); syncState(S.cur, g);
+  if(DB) patch(gPath(S.cur,g), {seqH:g.seqH||[], seqA:g.seqA||[], outH:g.outH||[], outA:g.outA||[],
+                                dupH:g.dupH||[], dupA:g.dupA||[]});
+  save(); board(g);
+  if(wasNow) cheerBatter(g);
+  toast(p.name+' 결석 처리 — 타순에서 뺐어요');
+}
 function luRefresh(g){
   if(g.status==='live'){
     if(liveRebuild(g)){
@@ -3144,7 +3172,8 @@ function boardImpl(g){
     var rk = bestRank(cum, p.sid);
     return '<div class="orow now big" id="nowRow">'+
       '<div class="nb-top"><span class="nb-no">'+(i+1)+'</span><span class="nb-of">/ '+order.length+'번 타자</span>'+
-        (rk ? '<span class="nb-rk">☆ '+rk.t+' 반 '+rk.r+'위</span>' : '')+'</div>'+
+        (rk ? '<span class="nb-rk">☆ '+rk.t+' 반 '+rk.r+'위</span>' : '')+
+        (p.dup ? '' : '<button class="oskip big" data-skip="'+i+'" title="결석 — 기록 없이 타순에서 빼기">✕ 빼기</button>')+'</div>'+
       '<div class="nb-nm">'+(pp.num ? '<span>'+esc(pp.num)+'</span>' : '')+'<b>'+esc(p.name)+'</b>'+
         (p.dup ? '<em>중복</em>' : '')+'</div>'+
       '<div class="nb-st"><div><div class="l">시즌 타율</div>'+
@@ -3166,7 +3195,8 @@ function boardImpl(g){
         '<span class="o">'+(i+1)+'</span>'+
         '<span class="nm">'+esc(p.name)+(p.dup?'*':'')+'</span>'+
         '<span class="av">'+(s && s.ab ? fmtAvg(s.avg) : '')+'</span>'+
-        (last ? chipHTML(last.kind) : '')+'</div>';
+        (last ? chipHTML(last.kind) : '')+
+        (done || p.dup ? '' : '<button class="oskip" data-skip="'+i+'" title="결석 — 기록 없이 타순에서 빼기">✕</button>')+'</div>';
     }).join('');
   }
 
@@ -3275,6 +3305,9 @@ function boardImpl(g){
 
   el('v-game').querySelectorAll('.hits button').forEach(function(x){
     x.onclick = function(){ swing(+x.dataset.k); };
+  });
+  el('v-game').querySelectorAll('[data-skip]').forEach(function(x){
+    x.onclick = function(e){ e.stopPropagation(); skipBatter(g, +x.dataset.skip); };
   });
   el('v-game').querySelectorAll('[data-sc]').forEach(function(x){
     x.onclick = function(){
