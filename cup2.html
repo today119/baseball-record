@@ -109,7 +109,7 @@ function left(){var p=pool();if(!p)return[];var v=picks(),u=Object.keys(v).map(f
 function setCard(el,open,html,other){el.classList.toggle('open',!!open);el.classList.toggle('other',!!other);if(open)el.querySelector('.b').innerHTML=html}
 function render(){
   var o3=D&&D.o203,o5=D&&D.o201,L=D&&D.lunch;
-  ['203','201'].forEach(function(w){var o=D&&D['o'+w],ci=D?D['c'+w]:null;for(var i=0;i<2;i++){var el=$('c'+w+'_'+i),t=o?(i===ci?o:OPT[w][OPT[w][0]===o?1:0]):'';setCard(el,o,'<div class="s">'+(i===ci?w+'반 상대':'남은 카드')+'</div><div class="n">'+t+'</div><div class="s">'+(TM[t]||'')+'</div>',o&&i!==ci);el.disabled=!!o||BUSY}});
+  ['203','201'].forEach(function(w){var o=D&&D['o'+w],ci=D&&D['c'+w]!=null?D['c'+w]:0;for(var i=0;i<2;i++){var el=$('c'+w+'_'+i),t=o?(i===ci?o:OPT[w][OPT[w][0]===o?1:0]):'';setCard(el,o,'<div class="s">'+(i===ci?w+'반 상대':'남은 카드')+'</div><div class="n">'+t+'</div><div class="s">'+(TM[t]||'')+'</div>',o&&i!==ci);el.disabled=!!o||BUSY}});
   var v=picks(),lf=left(),ready=o3&&o5;
   if(SEL&&lf.indexOf(SEL)<0)SEL=null;if(!SEL&&lf.length)SEL=lf[0];
   $('lp').innerHTML=(pool()||['204','206','?','?']).map(function(x){var d=lf.indexOf(x)<0&&x!=='?';return '<button data-t="'+x+'" class="'+(d?'done':x===SEL&&ready?'sel':'')+'"'+(d||!ready?' disabled':'')+'>'+x+'</button>'}).join('');
