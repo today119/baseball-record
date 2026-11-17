@@ -32,11 +32,22 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
 .sn{font-size:12px;font-weight:700;color:var(--lt)}.sq{font-weight:700;margin:2px 0 8px}
 .pool{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.pool span{border:1.5px solid var(--line);border-radius:8px;padding:3px 10px;font-weight:700;font-size:15px}
 .pool span.hit{background:var(--c);color:#fff;border-color:var(--c)}.pool span.off{opacity:.35}
-.res{margin-top:10px;font-size:30px;font-weight:900;min-height:40px}.res.sm{font-size:20px;line-height:1.5}
-.res.spin{color:var(--lt)}
+.pool button{font:inherit;cursor:pointer;background:var(--card);color:var(--ink)}.pool .sel{background:var(--l);border-color:var(--l);color:#fff}.pool .done{opacity:.35;text-decoration:line-through;cursor:default}
+.pool{margin-bottom:10px}.pool span,.pool button{border:1.5px solid var(--line);border-radius:8px;padding:5px 14px;font-weight:700;font-size:16px}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;perspective:900px}
+.cd{height:118px;cursor:pointer;border:0;background:none;padding:0;font:inherit;color:inherit}
+.cd:disabled{cursor:default}
+.cd .in{position:relative;width:100%;height:100%;transition:transform .8s;transform-style:preserve-3d}
+.cd:not(:disabled):not(.open):hover .in{transform:translateY(-5px)}
+.cd.open .in{transform:rotateY(180deg)}
+.cd .f,.cd .b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px}
+.cd .f{background:repeating-linear-gradient(45deg,#c0392b 0 10px,#d4553f 10px 20px);color:#fff;font-size:42px;font-weight:900;box-shadow:0 3px 8px rgba(0,0,0,.18)}
+.cd .b{transform:rotateY(180deg);background:var(--card);border:3px solid var(--c)}
+.cd .b .n{font-size:32px;font-weight:900;line-height:1.1}.cd .b .s{font-size:13px;color:var(--mut);font-weight:700}.cd .b .o{font-size:16px;font-weight:900;color:var(--k)}
+.cd.other .in{transition-delay:1s}.cd.other .b{opacity:.5;border-color:var(--line)}
 .row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:10px;padding:10px 18px;background:var(--k);color:#fff;cursor:pointer}
-.btn:disabled{opacity:.35;cursor:default}.btn.ghost{background:transparent;color:var(--mut);border:1.5px solid var(--line);margin-left:auto}
+.btn:disabled{opacity:.35;cursor:default}.btn.ghost{background:transparent;color:var(--mut);border:1.5px solid var(--line);margin-left:auto}.row2{align-items:center}
 .t.got{color:var(--k)}
 @media (max-width:820px){.steps{grid-template-columns:1fr}}
 @media (max-width:820px){
@@ -49,11 +60,11 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
 <div class="draw" id="draw">
  <div class="dh"><b>🎲 대진 추첨</b><span id="dst" class="st"></span></div>
  <div class="steps">
-  <div class="stp" id="s1"><div class="sn">1단계</div><div class="sq">203반 8강 상대</div><div class="pool"><span>210</span><span>209</span></div><div class="res" id="r203">?</div></div>
-  <div class="stp" id="s2"><div class="sn">1단계</div><div class="sq">201반 8강 상대</div><div class="pool"><span>208</span><span>205</span></div><div class="res" id="r201">?</div></div>
-  <div class="stp" id="s3"><div class="sn">2단계</div><div class="sq">점심 1라운드 짝</div><div class="pool" id="lp"><span>204</span><span>206</span><span>?</span><span>?</span></div><div class="res sm" id="rl">?</div></div>
+  <div class="stp"><div class="sn">1단계</div><div class="sq">203반 대표: 카드 1장 고르기</div><div class="cards" id="k203"></div></div>
+  <div class="stp"><div class="sn">1단계</div><div class="sq">201반 대표: 카드 1장 고르기</div><div class="cards" id="k201"></div></div>
+  <div class="stp"><div class="sn">2단계</div><div class="sq">점심 4팀: 우리 반을 누르고 덮인 대진 1장 열기</div><div class="pool" id="lp"></div><div class="cards" id="kl"></div></div>
  </div>
- <div class="row2"><button id="go1" class="btn">1단계 추첨</button><button id="go2" class="btn" disabled>2단계 추첨</button><button id="rst" class="btn ghost">다시 하기(선생님)</button></div>
+ <div class="row2"><span class="st" id="hint"></span><button id="rst" class="btn ghost">다시 하기(선생님)</button></div>
 </div>
 <div class="br">
  <div class="col"><div class="lab">1라운드 · 점심</div>
@@ -86,22 +97,38 @@ function rnd(n){var a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n
 function shuf(x){x=x.slice();for(var i=x.length-1;i>0;i--){var j=rnd(i+1),t=x[i];x[i]=x[j];x[j]=t}return x}
 function pool(){return D&&D.o203?['204','206',D.o203==='210'?'209':'210',D.o201==='208'?'205':'208']:null}
 function row(c,d,t,g){return '<div class="row '+c+'"><div class="d">'+d+'</div><div class="tm">'+t+'</div><div>'+g+'</div></div>'}
+var SL=['① 11.25.(수) 점심','① 11.25.(수) 점심','② 11.26.(목) 점심','② 11.26.(목) 점심'];
+var OPT={'203':['210','209'],'201':['208','205']},TM={'210':'11.30.(월) 7교시','209':'12.1.(화) 4교시','208':'12.2.(수) 2교시','205':'12.4.(금) 4교시'};
+var SEL=null,BUSY=false,UNL=false;
+try{UNL=sessionStorage.getItem('cupUnl')==='1'}catch(e){}
+function card(id,i){var b=document.createElement('button');b.className='cd';b.id=id+i;b.innerHTML='<div class="in"><div class="f">?</div><div class="b"></div></div>';return b}
+(function(){['203','201'].forEach(function(w){for(var i=0;i<2;i++){var c=card('c'+w+'_',i);c.onclick=pick1.bind(null,w,i);$('k'+w).appendChild(c)}});
+ for(var i=0;i<4;i++){var c=card('cl_',i);c.onclick=pick2.bind(null,i);$('kl').appendChild(c)}})();
+function picks(){var r={};for(var i=0;i<4;i++)if(D&&D.pick&&D.pick['k'+i])r[i]=D.pick['k'+i];return r}
+function left(){var p=pool();if(!p)return[];var v=picks(),u=Object.keys(v).map(function(k){return v[k]});return p.filter(function(x){return u.indexOf(x)<0})}
+function setCard(el,open,html,other){el.classList.toggle('open',!!open);el.classList.toggle('other',!!other);if(open)el.querySelector('.b').innerHTML=html}
 function render(){
   var o3=D&&D.o203,o5=D&&D.o201,L=D&&D.lunch;
-  $('r203').textContent=o3||'?';$('r201').textContent=o5||'?';
-  [['s1',o3],['s2',o5]].forEach(function(q){[].forEach.call($(q[0]).querySelectorAll('.pool span'),function(sp){sp.className=q[1]?(sp.textContent===q[1]?'hit':'off'):''})});
-  var p=pool();$('lp').innerHTML=(p||['204','206','?','?']).map(function(x){return '<span>'+x+'</span>'}).join('');
-  $('rl').innerHTML=L?L[0]+' vs '+L[1]+'<br>'+L[2]+' vs '+L[3]:'?';
+  ['203','201'].forEach(function(w){var o=D&&D['o'+w],ci=D?D['c'+w]:null;for(var i=0;i<2;i++){var el=$('c'+w+'_'+i),t=o?(i===ci?o:OPT[w][OPT[w][0]===o?1:0]):'';setCard(el,o,'<div class="s">'+(i===ci?w+'반 상대':'남은 카드')+'</div><div class="n">'+t+'</div><div class="s">'+(TM[t]||'')+'</div>',o&&i!==ci);el.disabled=!!o||BUSY}});
+  var v=picks(),lf=left(),ready=o3&&o5;
+  if(SEL&&lf.indexOf(SEL)<0)SEL=null;if(!SEL&&lf.length)SEL=lf[0];
+  $('lp').innerHTML=(pool()||['204','206','?','?']).map(function(x){var d=lf.indexOf(x)<0&&x!=='?';return '<button data-t="'+x+'" class="'+(d?'done':x===SEL&&ready?'sel':'')+'"'+(d||!ready?' disabled':'')+'>'+x+'</button>'}).join('');
+  [].forEach.call($('lp').querySelectorAll('button'),function(b){b.onclick=function(){SEL=b.dataset.t;render()}});
+  for(var i=0;i<4;i++){var el=$('cl_'+i),t=v[i],h='';
+    if(t){var sl=D.cards[i],pj=-1;for(var j=0;j<4;j++)if(v[j]&&D.cards[j]===(sl^1))pj=j;
+      h='<div class="n">'+t+'</div><div class="s">'+SL[sl]+'</div><div class="o">상대: '+(pj>=0?v[pj]:'?')+'</div>'}
+    setCard(el,t,h,false);el.disabled=!ready||!!t||BUSY}
+  $('hint').textContent=!o3||!o5?'203·201반 대표가 카드를 1장씩 고르면 점심조 4팀이 정해져요.':L?'':lf.length?'지금 차례: '+SEL+'반 — 덮인 대진 카드 1장을 누르세요 (다른 반이면 위에서 반 번호를 먼저 누르기)':'';
   var d3=o3==='210'?'③ 11.30.(월) 7교시':o3==='209'?'③ 12.1.(화) 4교시':'③ 11.30.(월) 7교시 또는 12.1.(화) 4교시';
   var d5=o5==='208'?'⑤ 12.2.(수) 2교시':o5==='205'?'⑤ 12.4.(금) 4교시':'⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시';
   $('w3').textContent=d3;$('w5').textContent=d5;
   $('O3').textContent=o3||'210 또는 209';$('O3').className='t'+(o3?' got':'');
   $('O5').textContent=o5||'208 또는 205';$('O5').className='t'+(o5?' got':'');
-  ['LA','LB','LC','LD'].forEach(function(k,i){$(k).textContent=L?L[i]:'점심조 '+'ABCD'[i];$(k).className='t'+(L?' got':'')});
-  $('go1').disabled=!!o3;$('go2').disabled=!o3||!!L;
-  $('dst').textContent=L?'추첨 완료 · '+new Date(D.at).toLocaleString('ko-KR'):o3?'1단계 완료 — 2단계 추첨을 눌러 주세요':'아직 추첨 전이에요';
+  var Lp=[null,null,null,null];if(D&&D.cards)for(var k in v)Lp[D.cards[k]]=v[k];
+  ['LA','LB','LC','LD'].forEach(function(k,i){$(k).textContent=Lp[i]||'점심조 '+'ABCD'[i];$(k).className='t'+(Lp[i]?' got':'')});
+  $('dst').textContent=L?'추첨 완료 · '+new Date(D.at).toLocaleString('ko-KR'):o3&&o5?'1단계 완료 — 2단계 진행 중':'아직 추첨 전이에요';
   var s=row('h','날짜','시간','경기');
-  s+=row('','추첨',o3?'완료':'-','1단계 203·201 상대 → 2단계 점심조 짝');
+  s+=row('','추첨',L?'완료':o3?'진행 중':'-','1단계 203·201 상대 → 2단계 점심조 짝');
   s+=row('l','11.25.(수)','점심','① 1라운드 '+(L?L[0]+' vs '+L[1]:'점심조 A vs B'));
   s+=row('l','11.26.(목)','점심','② 1라운드 '+(L?L[2]+' vs '+L[3]:'점심조 C vs D'));
   s+=row('c',o3==='209'?'12.1.(화)':o3?'11.30.(월)':'11.30.(월) 또는 12.1.(화)',o3==='209'?'4교시':o3?'7교시':'7교시 / 4교시','③ 8강 203 vs '+(o3||'210 또는 209'));
@@ -115,32 +142,19 @@ function render(){
 }
 function load(){return fetch(DB+'?t='+Date.now()).then(function(r){return r.json()}).then(function(v){D=v;render()}).catch(function(){render()})}
 function save(){return fetch(DB,{method:'PUT',body:JSON.stringify(D)})}
-function spin(el,opts,final,ms){return new Promise(function(ok){var t0=Date.now(),i=0;el.classList.add('spin');(function f(){var p=(Date.now()-t0)/ms;if(p>=1){el.classList.remove('spin');el.innerHTML=final;return ok()}el.textContent=opts[i++%opts.length];setTimeout(f,40+p*220)})()})}
-function okPin(){var p=prompt('추첨은 선생님만 할 수 있어요. 확인 번호(4자리)를 입력하세요');return p==='7543'}
-$('go1').onclick=function(){
-  if(!okPin())return;
-  this.disabled=true;
-  load().then(function(){
-    if(D&&D.o203)return;
-    var a=['210','209'][rnd(2)],b=['208','205'][rnd(2)];
-    D={o203:a,o201:b,at:Date.now()};
-    return save().then(function(){return spin($('r203'),['210','209'],a,2600)}).then(function(){return spin($('r201'),['208','205'],b,2600)});
-  }).then(render);
-};
-$('go2').onclick=function(){
-  if(!okPin())return;
-  this.disabled=true;
-  load().then(function(){
-    if(!D||!D.o203||D.lunch)return;
-    D.lunch=shuf(pool());D.at=Date.now();
-    var L=D.lunch;
-    return save().then(function(){return spin($('rl'),pool(),L[0]+' vs '+L[1]+'<br>'+L[2]+' vs '+L[3],3200)});
-  }).then(render);
-};
+function okPin(){if(UNL)return true;var p=prompt('추첨 시작은 선생님 확인이 필요해요. 확인 번호(4자리)를 입력하세요');if(p!=='7543')return false;UNL=true;try{sessionStorage.setItem('cupUnl','1')}catch(e){}return true}
+function act(fn){if(BUSY||!okPin())return;BUSY=true;render();load().then(fn).then(function(){BUSY=false;render()},function(){BUSY=false;render()})}
+function pick1(w,i){act(function(){
+  if(D&&D['o'+w])return;D=D||{};D['o'+w]=OPT[w][rnd(2)];D['c'+w]=i;D.at=Date.now();return save()})}
+function pick2(i){var t=SEL;act(function(){
+  if(!D||!D.o203||!D.o201||D.lunch)return;var v=picks();if(v[i]||left().indexOf(t)<0)return;
+  if(!D.cards)D.cards=shuf([0,1,2,3]);v[i]=t;D.pick={};for(var k in v)D.pick['k'+k]=v[k];
+  if(Object.keys(v).length===4){var L=[];for(var k2 in v)L[D.cards[k2]]=v[k2];D.lunch=L}
+  D.at=Date.now();return save()})}
 $('rst').onclick=function(){
-  if(!okPin()||!confirm('추첨 결과를 지우고 처음부터 다시 할까요?'))return;
-  D=null;fetch(DB,{method:'DELETE'}).then(load);
+  if(prompt('다시 하기는 선생님 확인 번호(4자리)가 필요해요')!=='7543'||!confirm('추첨 결과를 지우고 처음부터 다시 할까요?'))return;
+  D=null;SEL=null;fetch(DB,{method:'DELETE'}).then(load);
 };
-load();setInterval(load,15000);
+load();setInterval(function(){if(!BUSY)load()},5000);
 </script>
 </body></html>
