@@ -836,7 +836,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-12c';
+var APP_VER = '2026-11-17a';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -4464,6 +4464,14 @@ function songMeta(cn, sid){ return ((SONG.idx[cn]||{})[ck(sid)]) || null; }
 /* 응원가를 안 낸 학생은 그 반 「학급 응원가」(songIdx/<반>/_class)로 대신 튼다 (2026-10-23) */
 var CLASS_SID = '_class';
 function songSid(cn, sid){ return songMeta(cn, sid) || !songMeta(cn, CLASS_SID) ? sid : CLASS_SID; }
+/* 본인 응원가가 없는 타자 → 학급 응원가가 있는 반들을 학번 순서로 돌아가며 (11/17: 9반 24명이 같은 곡만 나옴) */
+function altCheer(sc, sid, b){
+  if(songMeta(sc, sid) && sid !== CLASS_SID) return null;          // 본인 응원가 있음
+  var L = Object.keys(SONG.idx).filter(function(k){ return songMeta(k, CLASS_SID); }).sort(function(a, c){ return (parseInt(a)||0) - (parseInt(c)||0); });
+  if(!L.length) return null;
+  var n = parseInt(String(b.sid).replace(/^s/, ''), 10) || 0, k = L[n % L.length];
+  return { sc: k, sid: CLASS_SID, lab: b.name+' 응원가 ('+k+' 학급 곡)' };
+}
 function songCount(ix){ return Object.keys(ix||{}).filter(function(k){ return k.charAt(0) !== '_'; }).length; }
 
 /* ── 🔗 수노 링크 응원가 (2026-10-06) ──
@@ -4758,8 +4766,8 @@ function cheerBatter(g, force){
   var my = ++SONG.seq;
   stopSong(.3); closeSuno(); try{ speechSynthesis.cancel(); }catch(e){}
   var sid = songSid(sc, b.sid), lab = sid === CLASS_SID ? sc+' 학급 응원가' : b.name+' 응원가';
-  /* 10/27 3반:9반 — 상대 반에 본인·학급 응원가가 다 없으면 무음이었다 → 우리 반 학급 응원가로 대신 */
-  if(!songMeta(sc, sid) && sc !== S.cur && songMeta(S.cur, CLASS_SID)){ sc = S.cur; sid = CLASS_SID; lab = b.name+' 응원가 (공용)'; }
+  /* 11/17 3반:9반 — 응원가 안 낸 학생이 많으면 같은 학급 곡만 계속 나왔다 → 학번 따라 여러 반 학급 곡을 돌아가며 */
+  var alt = altCheer(sc, sid, b); if(alt){ sc = alt.sc; sid = alt.sid; lab = alt.lab; }
   ensureSong(sc, sid);                                 // 멘트 나가는 동안 미리 준비
   var sm0 = songMeta(sc, sid);
   if(sm0 && sm0.link) showSuno(sm0, lab);              // 수노 창은 멘트 시작과 함께 띄운다 — 멘트 동안 플레이어가 미리 로딩된다
@@ -4769,7 +4777,7 @@ function cheerBatter(g, force){
     var sm = songMeta(sc, sid);
     if(sm && sm.link){ if(!el('sunoBox')) showSuno(sm, lab); }   // 수노 링크 → 플레이어 창 (▶ 는 사람이)
     else playSong(sc, sid, lab);
-    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ var nc = songCls(g, atk); ensureSong(nc, songSid(nc, nx.sid)); }, 1500);
+    var nx = order[g.st.idx+1]; if(nx) setTimeout(function(){ var nc = songCls(g, atk), ns = songSid(nc, nx.sid), na = altCheer(nc, ns, nx); if(na){ nc = na.sc; ns = na.sid; } ensureSong(nc, ns); }, 1500);
   });
 }
 
