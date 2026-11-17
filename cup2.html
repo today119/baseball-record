@@ -116,7 +116,9 @@ function render(){
 function load(){return fetch(DB+'?t='+Date.now()).then(function(r){return r.json()}).then(function(v){D=v;render()}).catch(function(){render()})}
 function save(){return fetch(DB,{method:'PUT',body:JSON.stringify(D)})}
 function spin(el,opts,final,ms){return new Promise(function(ok){var t0=Date.now(),i=0;el.classList.add('spin');(function f(){var p=(Date.now()-t0)/ms;if(p>=1){el.classList.remove('spin');el.innerHTML=final;return ok()}el.textContent=opts[i++%opts.length];setTimeout(f,40+p*220)})()})}
+function okPin(){var p=prompt('추첨은 선생님만 할 수 있어요. 확인 번호(4자리)를 입력하세요');return p==='7543'}
 $('go1').onclick=function(){
+  if(!okPin())return;
   this.disabled=true;
   load().then(function(){
     if(D&&D.o203)return;
@@ -126,6 +128,7 @@ $('go1').onclick=function(){
   }).then(render);
 };
 $('go2').onclick=function(){
+  if(!okPin())return;
   this.disabled=true;
   load().then(function(){
     if(!D||!D.o203||D.lunch)return;
@@ -135,8 +138,7 @@ $('go2').onclick=function(){
   }).then(render);
 };
 $('rst').onclick=function(){
-  var pin=prompt('선생님 확인 번호(4자리)를 입력하세요');
-  if(pin!=='7543')return;
+  if(!okPin()||!confirm('추첨 결과를 지우고 처음부터 다시 할까요?'))return;
   D=null;fetch(DB,{method:'DELETE'}).then(load);
 };
 load();setInterval(load,15000);
