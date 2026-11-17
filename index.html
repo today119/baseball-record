@@ -836,7 +836,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-17a';
+var APP_VER = '2026-11-17b';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -2681,7 +2681,9 @@ function lineupView(g){
   if(!live && DB && !LU_LOOKED.has(g)){
     LU_LOOKED.add(g);
     var had = g.luTok;
-    luFind(g).then(function(tok){ if(tok && tok!==had && el('luMakeB')) lineupView(g); }, function(){});
+    /* 11/17 4반 방호준: 공용 링크 명단이 11/2 조편성 그대로라 조를 바꾼 학생이 옛 조에 나왔다
+       → 링크가 있으면 이 경기의 두 조 명단으로 바로 덮어쓴다(학생 선택 pick 은 그대로) */
+    luFind(g).then(function(tok){ if(!tok) return; return luMake(g).then(function(){ if(tok!==had && el('luMakeB')) lineupView(g); }); }).catch(function(){});
   }
   if(el('luMakeB')) el('luMakeB').onclick = function(){
     luMake(g).then(function(tok){ lineupView(g); luShow(g, tok); }, function(e){ alert(e.message||e); });
