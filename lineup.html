@@ -41,6 +41,7 @@ h1{font-size:21px;margin:2px 0 2px;font-weight:900}
 .it{display:grid;grid-template-columns:38px 30px 1fr auto 38px;gap:6px;align-items:center;background:var(--p2);border:2px solid var(--ln);border-radius:11px;padding:7px 8px;margin-bottom:6px}
 .it.m{border-color:rgba(74,155,224,.75)} .it.f{border-color:rgba(224,106,175,.75)}
 .it.off{opacity:.38}
+.it.sub{opacity:.6;border-style:dotted}
 .it .ck{width:30px;height:30px;border-radius:8px;border:2px solid var(--ln);background:#0d1630;color:#fff;font-size:18px;font-weight:900;padding:0}
 .it .ck.on{background:var(--ok);border-color:var(--ok)}
 .it .no{font-size:19px;font-weight:900;color:var(--gold);text-align:center}
@@ -123,8 +124,23 @@ function pick(side){                                      // 학생이 정한 �
   var ids = tm.p.map(function(x){ return x.id; });
   var order = (p.order||[]).filter(function(id){ return ids.indexOf(id)>=0; });
   ids.forEach(function(id){ if(order.indexOf(id)<0) order.push(id); });
-  return {order:order, out:(p.out||[]).filter(function(id){ return ids.indexOf(id)>=0; }),
-          dup:(p.dup||[]).filter(function(id){ return ids.indexOf(id)>=0; }), pos:p.pos||{}, done:!!p.done};
+  var abs = (p.abs || p.out || []).filter(function(id){ return ids.indexOf(id)>=0; });
+  return fix(side, {order:order, abs:abs, dup:(p.dup||[]).filter(function(id){ return ids.indexOf(id)>=0; }), pos:p.pos||{}, done:!!p.done});
+}
+/* 11/17 토너먼트: 출전 인원 고정(cap, 예 여10·남10) — 타순 위쪽부터 성별마다 cap 명까지 출전, 나머지는 「교체」.
+   out(선생님 앱이 읽는 «안 치는 사람») = 결석(abs) + 교체(sub). 교체는 수비·반복타자에서도 뺀다. */
+function capSub(side, order, abs){
+  var cap = D && D.cap; if(!cap) return [];
+  var n = {M:0, F:0}, r = [];
+  order.forEach(function(id){ if(abs.indexOf(id)>=0) return; var g = person(side,id).g==='남' ? 'M' : 'F'; if(++n[g] > (cap[g]||0)) r.push(id); });
+  return r;
+}
+function fix(side, p){
+  p.sub = capSub(side, p.order, p.abs);
+  p.out = p.abs.concat(p.sub);
+  p.dup = p.dup.filter(function(id){ return p.out.indexOf(id)<0; });
+  var pos = {}; for(var k in p.pos) if(p.out.indexOf(p.pos[k])<0) pos[k] = p.pos[k]; p.pos = pos;
+  return p;
 }
 function person(side, id){ return team(side).p.filter(function(x){ return x.id===id; })[0] || {id:id, n:'?', g:''}; }
 function counts(side){                                     // 출전 남·여 + 반복타자 남·여
@@ -144,7 +160,8 @@ function needOf(side){
   return {M:nM, F:nF, ok: nM===0 && nF===0, a:a, b:b};
 }
 function save(side, p, quiet){
-  var data = {order:p.order, out:p.out, dup:p.dup, pos:p.pos, done:!!p.done, ts:Date.now()};
+  fix(side, p);
+  var data = {order:p.order, out:p.out, abs:p.abs, dup:p.dup, pos:p.pos, done:!!p.done, ts:Date.now()};
   D.pick = D.pick || {}; D.pick[side] = data;
   render();
   REF.child('pick/'+side).set(data).catch(function(e){ toast('저장 실패 — 인터넷을 확인하세요'); });
@@ -183,17 +200,18 @@ function render(){
     var cand = team(me).p.filter(function(x){ return pk.out.indexOf(x.id)<0 && pk.dup.indexOf(x.id)<0 && ((nd.M>0 && x.g==='남') || (nd.F>0 && x.g!=='남')); });
     h += '<div class="chips">'+cand.map(function(x){ return '<button class="chip '+(x.g==='남'?'m':'f')+'" data-dupadd="'+x.id+'">+ '+esc(x.n)+'</button>'; }).join('')+'</div>';
   }
+  if(D.cap) h += '<div class="need ok" style="background:rgba(255,200,61,.12);border-color:var(--gold);color:#ffe7a6">🏆 이번 경기는 <span class="ff">여 '+D.cap.F+'명</span> · <span class="mm">남 '+D.cap.M+'명</span>이 출전해요.<br><span style="font-weight:600;font-size:13px">타순 위쪽부터 성별마다 '+D.cap.F+'명까지 출전하고, 나머지는 「교체」예요. 교체 친구를 내보내려면 ≡ 로 위로 끌어 올리세요.</span></div>';
   h += '<p class="hint">결석한 친구는 아래 목록에서 ✓를 끄세요. 상대 조가 바꾸면 이 안내도 바로 바뀝니다.</p></div>';
   // ② 타순
   var oi = 0;
   h += '<div class="card"><h2><span class="n">2</span>타순 — 오른쪽 ≡ 를 끌어서 바꾸기</h2><ul class="list" id="olist">'+
     pk.order.map(function(id){
-      var x = person(me, id), off = pk.out.indexOf(id)>=0, ps = posOf(pk, id);
-      return '<li class="it '+(x.g==='남'?'m':'f')+(off?' off':'')+'" data-id="'+id+'">'+
+      var x = person(me, id), off = pk.abs.indexOf(id)>=0, sb = pk.sub.indexOf(id)>=0, ps = posOf(pk, id);
+      return '<li class="it '+(x.g==='남'?'m':'f')+(off?' off':'')+(sb?' sub':'')+'" data-id="'+id+'">'+
         '<button class="ck'+(off?'':' on')+'" data-ck="'+id+'">'+(off?'':'✓')+'</button>'+
-        '<span class="no">'+(off ? '-' : (++oi))+'</span>'+
-        '<span class="nm">'+esc(x.n)+'<span class="tag '+(x.g==='남'?'m':'f')+'">'+esc(x.g||'?')+'</span>'+(off?'<small>결석</small>':'')+'</span>'+
-        '<span class="ps'+(ps?'':' no')+'">'+(off ? '' : ps ? posName(ps) : '대기')+'</span>'+
+        '<span class="no">'+(off||sb ? '-' : (++oi))+'</span>'+
+        '<span class="nm">'+esc(x.n)+'<span class="tag '+(x.g==='남'?'m':'f')+'">'+esc(x.g||'?')+'</span>'+(off?'<small>결석</small>':sb?'<small>교체</small>':'')+'</span>'+
+        '<span class="ps'+(ps?'':' no')+'">'+(off ? '' : sb ? '교체' : ps ? posName(ps) : '대기')+'</span>'+
         '<span class="hd">≡</span></li>';
     }).join('')+'</ul>'+
     (pk.dup.length ? '<div style="margin-top:8px">'+pk.dup.map(function(id){
@@ -243,9 +261,9 @@ document.body.addEventListener('click', function(e){
   if(!ME) return;
   var p = pick(ME);
   if(b.dataset.ck){
-    var id = b.dataset.ck, i = p.out.indexOf(id);
-    if(i>=0) p.out.splice(i,1);
-    else { p.out.push(id); for(var k in p.pos) if(p.pos[k]===id) delete p.pos[k]; p.dup = p.dup.filter(function(x){ return x!==id; }); }
+    var id = b.dataset.ck, i = p.abs.indexOf(id);
+    if(i>=0) p.abs.splice(i,1);
+    else { p.abs.push(id); for(var k in p.pos) if(p.pos[k]===id) delete p.pos[k]; p.dup = p.dup.filter(function(x){ return x!==id; }); }
     p.done = false; save(ME, p);
   }else if(b.dataset.dupadd){ p.dup.push(b.dataset.dupadd); p.done = false; save(ME, p); }
   else if(b.dataset.duprm){ p.dup = p.dup.filter(function(x){ return x!==b.dataset.duprm; }); p.done = false; save(ME, p); }
@@ -282,15 +300,15 @@ function lineupText(side){
   var p = pick(side), n = 0, lines = [];
   p.order.forEach(function(id){ if(p.out.indexOf(id)>=0) return; var x = person(side,id), ps = posOf(p,id); lines.push((++n)+' '+x.n+' '+(ps?posName(ps):'대기')); });
   p.dup.forEach(function(id){ lines.push((++n)+' '+person(side,id).n+' (반복)'); });
-  var abs = p.out.map(function(id){ return person(side,id).n; });
-  return team(side).name+' 라인업\n'+lines.join('\n')+(abs.length ? '\n결석: '+abs.join(', ') : '');
+  var abs = p.abs.map(function(id){ return person(side,id).n; }), sub = p.sub.map(function(id){ return person(side,id).n; });
+  return team(side).name+' 라인업\n'+lines.join('\n')+(sub.length ? '\n교체: '+sub.join(', ') : '')+(abs.length ? '\n결석: '+abs.join(', ') : '');
 }
 function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function makeCard(side){
   var p = pick(side), W = 1080;
   var nRows = p.order.length - p.out.length + p.dup.length;
   var bench0 = p.order.filter(function(id){ return p.out.indexOf(id)<0 && !posOf(p,id); }).length;
-  var leftH = 110 + nRows*64 + 24, rightH = 120 + 518*0.9 + 90 + (bench0 ? 130 : 0) + (p.out.length ? 130 : 0) + 20;
+  var leftH = 110 + nRows*64 + 24, rightH = 120 + 518*0.9 + 90 + (bench0 ? 130 : 0) + (p.abs.length ? 130 : 0) + (p.sub.length ? 130 : 0) + 20;
   var PH = Math.max(leftH, rightH, 760), H = 190 + PH + 36;
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   var c = cv.getContext('2d'), F = "'Noto Sans KR', system-ui, sans-serif";
@@ -334,7 +352,7 @@ function makeCard(side){
     c.fillStyle = id ? '#14203f' : '#9aa6c4'; c.font = '900 30px '+F; c.fillText(nm, pp[0], pp[1]+13); c.textAlign = 'left';
   });
   var bench = p.order.filter(function(id){ return p.out.indexOf(id)<0 && !posOf(p,id); }).map(function(id){ return person(side,id).n; });
-  var abs = p.out.map(function(id){ return person(side,id).n; });
+  var abs = p.abs.map(function(id){ return person(side,id).n; }), sub = p.sub.map(function(id){ return person(side,id).n; });
   c.textAlign = 'center'; var yy = gy + gh + 104;
   function para(title, arr, col){
     if(!arr.length) return;
@@ -343,7 +361,7 @@ function makeCard(side){
     arr.forEach(function(nm){ var t = line ? line+', '+nm : nm; if(c.measureText(t).width > fw-60){ c.fillText(line, fx+fw/2, yy); yy += 36; line = nm; } else line = t; });
     if(line){ c.fillText(line, fx+fw/2, yy); yy += 56; }
   }
-  para('대기', bench, '#a9b8dc'); para('결석', abs, '#ff9f9f');
+  para('대기', bench, '#a9b8dc'); para('교체', sub, '#ffd77a'); para('결석', abs, '#ff9f9f');
   c.textAlign = 'left';
   return cv;
 }

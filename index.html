@@ -836,7 +836,7 @@ function advance(bases, batterSid, kind, fcIdx){
 function isAB(kind){ return kind !== 5 && kind !== 6 && kind !== 7; }
 function isHit(kind){ return kind>=1 && kind<=4; }
 
-var APP_VER = '2026-11-17c';
+var APP_VER = '2026-11-17d';
 /* Firebase 는 앞칸이 비은 배열([null,'s1',null])을 {1:'s1'} 객체로 돌려준다 → 늘 3칸 배열로 */
 function normBases(b){ b = b||{}; return [b[0]||null, b[1]||null, b[2]||null]; }
 /* ───── 상태 ──────────────────────────────────────────── */
@@ -947,6 +947,13 @@ function syncState(cn, g, extra){
            status:g.status, def:g.def||null, first:firstSide(g), _by:DEVICE, _at:Date.now()};
   if(extra) Object.keys(extra).forEach(function(k){ o[k]=extra[k]; });
   patch(gPath(cn,g)+'/cur', o);
+  cupPush(g);
+}
+/* 11/17 토너먼트(cup2.html) 대진표에 점수만 올린다 — 이름 없이 반·점수·상태만(공개 페이지라서) */
+function cupPush(g, del){
+  if(!DB || !g || !g.cup || !g.cupId) return;
+  var r = DB.ref('baseball/'+ck(g.cupId)+'/res/'+ck(g.cup));
+  (del ? r.remove() : r.set({h:g.home, a:g.away, hs:g.hs||0, as:g.as||0, status:g.status, at:Date.now()})).catch(function(){});
 }
 /* 타석 한 건 */
 function syncAB(cn, g, rec){ save(); if(DB && rec && rec.id) push(gPath(cn,g)+'/ab/'+rec.id, rec); }
@@ -2026,16 +2033,29 @@ function vGame(){
     el('v-game').innerHTML = '<div class="msg">먼저 <b>명단</b>을 등록하세요</div>'; return;
   }
   var draft = c.games.filter(function(g){return g.status==='lineup';})[0];
-  if(draft) return lineupView(draft);
   var live = c.games.filter(function(g){return g.status==='live';})[0];
+  if(CUP && CUP.h===S.cur){
+    var busy = draft || live;
+    if(busy && busy.cup===CUP.n && busy.cupId===CUP.cid) CUP = null;
+    else if(busy) toast('이 반에 진행 중인 경기(#'+busy.no+')가 있어요 — 끝내거나 지운 뒤 토너먼트 경기를 시작하세요');
+  }
+  if(draft) return lineupView(draft);
   if(live) return board(live);
   /* 11/12 «2반:7반 경기가 2반에만 기록되고 7반엔 안 돼» — 기록실엔 들어가 있었지만 7반 「지난 경기」 목록엔 안 보였다
      → 상대 반이 기록한 반끼리 경기도 목록에 (읽기 전용) 보여 준다 */
   fetchGuests(S.cur);
   var guests = guestGames(S.cur).slice().sort(function(x,y){ return String(gDate(y)||'').localeCompare(String(gDate(x)||'')) || ((y.made||0)-(x.made||0)); });
 
+  var cupOn = CUP && CUP.h===S.cur;
   el('v-game').innerHTML =
     '<h2 class="t">'+esc(S.cur)+' 경기</h2><p class="st">전원타격제 · 아웃과 무관하게 한 바퀴 돌면 공수교대</p>' +
+    (cupOn ? '<div class="card" style="border:2px solid #e0a03a"><h3>🏆 '+esc(CUP.lbl)+(CUP.cap?' · 여 '+CUP.cap.F+'·남 '+CUP.cap.M+' 출전':'')+'</h3>'+
+      '<p class="st" style="margin:-2px 0 10px">경기 전에 라인업 링크를 두 반 단톡에 보내 두면, 경기를 시작할 때 학생들이 정한 타순·수비가 자동으로 들어와요.</p>'+
+      '<div class="row" style="margin-bottom:10px"><div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">선공 (가위바위보)</label>'+
+      '<select id="cupFirst"><option value="H">'+esc(CUP.h)+' 선공</option><option value="A">'+esc(CUP.a)+' 선공</option></select></div>'+
+      '<div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">이닝</label><select id="cupInn">'+[1,2,3].map(function(n){ return '<option value="'+n+'"'+(n===CUP.inn?' selected':'')+'>'+n+'이닝</option>'; }).join('')+'</select></div></div>'+
+      '<div class="row"><button class="btn" id="cupLu">📤 학생용 라인업 링크 (미리 보내기)</button>'+
+      '<button class="btn pri" id="cupGo">⚾ 이 경기 시작</button><button class="btn" id="cupX">닫기</button></div></div>' : '') +
     '<div class="card"><h3>새 경기</h3>' +
     '<div class="row" style="margin-bottom:11px">' +
     '<div class="sw" id="modeSw">' +
@@ -2098,7 +2118,7 @@ function vGame(){
         '<select id="opp">'+S.cfg.classNames.slice(0,S.cfg.classCount).filter(function(n){return n!==S.cur;})
           .map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select></div>'+
         '<div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">이닝</label>'+
-        '<select id="inn"><option value="1" selected>1이닝</option><option value="2">2이닝</option></select></div>'+
+        '<select id="inn"><option value="1" selected>1이닝</option><option value="2">2이닝</option><option value="3">3이닝</option></select></div>'+
         '<div id="firstBox" style="flex:1"></div></div>'+
         '<p class="st" style="margin:9px 0 0">우리 학급 전체 '+c.roster.length+'명이 한 팀입니다. '+
         '상대 학급 명단이 있으면 그 명단으로, 없으면 인원수만 입력해 진행합니다.</p>'+
@@ -2122,6 +2142,24 @@ function vGame(){
     };
   });
   el('startG').onclick = function(){ startGame(mode); };
+  if(cupOn){
+    var oc = S.classes[CUP.a];
+    el('cupX').onclick = function(){ CUP = null; render(); };
+    el('cupGo').onclick = function(){
+      if(!oc || !oc.roster || !oc.roster.length) return toast(CUP.a+' 명단을 아직 못 받았어요 — 잠시 뒤 다시 눌러 주세요');
+      var q = CUP; CUP = null;
+      var f = el('cupFirst').value; q.inn = +el('cupInn').value || q.inn;
+      el('cupFirst').outerHTML = '<input type="hidden" id="first" value="'+f+'">';
+      startGame('inter', {opp:q.a, inn:q.inn, cup:q.n, cid:q.cid, lbl:q.lbl, cap:q.cap});
+    };
+    el('cupLu').onclick = function(){
+      if(!oc || !oc.roster || !oc.roster.length) return toast(CUP.a+' 명단을 아직 못 받았어요 — 잠시 뒤 다시 눌러 주세요');
+      var g0 = {mode:'inter', home:S.cur, away:CUP.a, oppClass:CUP.a, cup:CUP.n, cupId:CUP.cid, cupLbl:CUP.lbl, status:'lineup', luCap:CUP.cap,
+                seqH:c.roster.map(function(p){return p.sid;}), seqA:oc.roster.map(function(p){return p.sid;})};
+      var b = this; b.disabled = true;
+      luMake(g0).then(function(tok){ b.disabled = false; luShow(g0, tok); }, function(e){ b.disabled = false; toast('링크를 못 만들었어요: '+e.message); });
+    };
+  }
   /* 10/27: 실수로 「경기 종료」를 누른 경기를 이어서 한다 (9반 — 1회 초만 하고 종료됨).
      made 를 새로 찍어야 다른 기기가 갖고 있는 «종료» 사본을 서버의 «진행 중»으로 바꿔 받는다 */
   el('v-game').querySelectorAll('[data-rg]').forEach(function(b){
@@ -2137,6 +2175,7 @@ function vGame(){
   el('v-game').querySelectorAll('[data-dg]').forEach(function(b){
     b.onclick = function(){
       if(!confirm('경기 #'+b.dataset.dg+' 기록을 지울까요?')) return;
+      c.games.forEach(function(g){ if(String(g.no)===b.dataset.dg) cupPush(g, true); });
       c.games = c.games.filter(function(g){ return String(g.no)!==b.dataset.dg; });
       save();
       if(DB) DB.ref(ROOT()+'/classes/'+ck(S.cur)+'/games/'+b.dataset.dg).remove().catch(function(){});
@@ -2151,9 +2190,9 @@ function paCount(c){
   return m;
 }
 
-function startGame(mode){
+function startGame(mode, opt){
   var c = cls();
-  var innings = +((el('inn')||{}).value || 2);
+  var innings = opt ? opt.inn : +((el('inn')||{}).value || 2);
   var hp, ap, hname, aname, oppClass=null, oppCount=0;
 
   if(mode==='intra'){
@@ -2162,7 +2201,7 @@ function startGame(mode){
     hname='A조'; aname='B조';
     if(!hp.length || !ap.length) return toast('A조와 B조 모두 인원이 있어야 합니다');
   }else{
-    var opp = el('opp') ? el('opp').value : '';
+    var opp = opt ? opt.opp : el('opp') ? el('opp').value : '';
     hp = c.roster; hname = S.cur; aname = opp || '상대';
     var oc = S.classes[opp];
     if(oc && oc.roster && oc.roster.length){ ap = oc.roster; oppClass = opp; }
@@ -2175,6 +2214,7 @@ function startGame(mode){
     mode:mode, innings:innings, home:hname, away:aname, oppClass:oppClass, oppCount:oppCount,
     hs:0, as:0, status:'lineup', st:{inning:1, half:'초', idx:0},
     first: ((el('first')||{}).value==='A') ? 'A' : 'H',
+    cup: opt ? opt.cup : null, cupId: opt ? opt.cid : null, cupLbl: opt ? opt.lbl : null, luCap: opt && opt.cap || null,
     seqH: hp.map(function(p){return p.sid;}), seqA: ap.map(function(p){return p.sid;}),
     outH: [], outA: [],
     orderH:[], orderA:[], atbats:[], defense:[], bases:[null,null,null],
@@ -2273,7 +2313,8 @@ function luLink(tok){ return location.origin + location.pathname.replace(/[^/]*$
 var LU_LOOKED = new WeakSet();
 function luKey(g){
   var n = [g.home, g.away].map(function(x){ return ck(String(x||'')); }).sort();
-  return (g.mode==='intra' ? ck(S.cur)+'~' : '') + n.join('~');
+  /* 토너먼트 경기는 평소 학급대항과 링크를 따로 쓴다 — 출전 인원 고정(cap)이 평소 경기에 번지지 않게 */
+  return (g.cup ? ck(g.cupId||'cup')+'_'+ck(g.cup)+'~' : '') + (g.mode==='intra' ? ck(S.cur)+'~' : '') + n.join('~');
 }
 /* 대진 공용 링크가 우선 — 경기에 따로 만든 옛 링크가 붙어 있어도 공용 링크로 바꾼다(10/21 수업 중 사고).
    공용 링크가 아직 없는데 경기에 링크가 있으면 그걸 공용으로 등록한다. */
@@ -2305,6 +2346,7 @@ function luMake(g){
       var m = luSides(g, old), teams = {};
       teams[m.H] = team('H'); teams[m.A] = team('A');
       var data = {v:1, made:Date.now(), cls:S.cur, game:gLabel(g), teams:teams};
+      if(g.luCap) data.cap = g.luCap;              // 11/17 토너먼트 출전 인원 고정(여·남)
       return luRef(tok).update(data).then(function(){
         return fresh ? DB.ref(ROOT()+'/luLinks/'+luKey(g)).set(tok) : null;
       }).then(function(){ g.luTok = tok; save(); return tok; });
@@ -2347,7 +2389,7 @@ function luImport(g){
       g.def = g.def || {}; g.def[side] = {};
       Object.keys(p.pos||{}).forEach(function(k){ var sid = p.pos[k]; if(seq.indexOf(sid)>=0 && out.indexOf(sid)<0) g.def[side][k] = sid; });
       g['dup'+side] = (p.dup||[]).filter(function(sid){ return seq.indexOf(sid)>=0 && out.indexOf(sid)<0; });
-      rep.push((side==='H'?g.home:g.away)+': 출전 '+(seq.length-out.length)+'명 · 결석 '+out.length+' · 반복 '+g['dup'+side].length+' · 수비 '+Object.keys(g.def[side]).length+'/9'+(p.done?'':' (⚠ 학생이 아직 [완성] 전)'));
+      rep.push((side==='H'?g.home:g.away)+': 출전 '+(seq.length-out.length)+'명 · '+(g.luCap?'결석·교체 ':'결석 ')+out.length+' · 반복 '+g['dup'+side].length+' · 수비 '+Object.keys(g.def[side]).length+'/9'+(p.done?'':' (⚠ 학생이 아직 [완성] 전)'));
     });
     // 두 조 남녀 수가 맞는지 다시 확인 — 한 조가 [완성] 뒤에 상대가 결석을 바꿨을 수 있다
     function cnt(side){
@@ -2870,8 +2912,11 @@ function gDate(g){
   return (t.getMonth()+1) + '월 ' + t.getDate() + '일(' + W[t.getDay()] + ')';
 }
 function gLabel(g){
-  var d = gDate(g);
-  return '경기 #' + g.no + (d ? ' · ' + d : '');
+  var d = gDate(g), s = [];
+  if(g.no) s.push('경기 #' + g.no);
+  if(g.cupLbl) s.push(g.cupLbl);
+  if(d) s.push(d);
+  return s.join(' · ');
 }
 
 /* 그 학생이 고를 수 있는 자리 — 남이 이미 차지한 자리는 목록에서 뺀다.
@@ -5109,7 +5154,23 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {p
 /* ※ 빠른 두 번째 탭을 touchend 에서 막는 방법은 쓰지 않는다 — 볼·스트라이크를 연달아 누를 때 두 번째가 씹힌다.
      더블탭 확대는 CSS touch-action:manipulation 으로 충분하다. */
 var _fromLink = applySetupLink();
+/* 11/17 토너먼트 대진표(cup2.html) 카드 → #cup=<경기>&cid=<대회>&h=<홈 반>&a=<상대 반>&inn=<이닝>&lbl=<이름> */
+var CUP = (function(){
+  var m = /[#&]cup=([^&]+)/.exec(location.hash || ''); if(!m) return null;
+  var q = {}; location.hash.slice(1).split('&').forEach(function(x){ var i = x.indexOf('='); if(i>0) q[x.slice(0,i)] = decodeURIComponent(x.slice(i+1)); });
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  if(!q.h || !q.a || !q.cid) return null;
+  return {n:q.cup, cid:q.cid, h:q.h, a:q.a, inn:Math.max(1, Math.min(9, +q.inn || 2)), lbl:q.lbl || ('토너먼트 '+q.h+' vs '+q.a),
+          cap: +q.cap ? {M:+q.cap, F:+q.cap} : null};
+})();
 initFB();
+if(CUP){
+  if(!S.cfg.school){ toast('토너먼트 경기는 학교 코드가 있는 선생님 기기에서 열어 주세요'); CUP = null; }
+  else if(S.cfg.classNames.indexOf(CUP.h) < 0){ toast(CUP.h+' 학급이 없어요'); CUP = null; }
+  else { S.cur = CUP.h; save(); watchClass(S.cur); V = 'game';
+         document.querySelectorAll('.nav').forEach(function(b){ b.classList.toggle('on', b.dataset.v==='game'); });
+         document.querySelectorAll('.vw').forEach(function(x){ x.classList.toggle('on', x.id==='v-game'); }); }
+}
 render();
 if(_fromLink) toast('설정을 불러왔습니다 — 이제 앱 주소로 바로 들어오시면 됩니다');
 openOutsideKakao();

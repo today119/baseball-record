@@ -49,6 +49,11 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
 .btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:10px;padding:10px 18px;background:var(--k);color:#fff;cursor:pointer}
 .btn:disabled{opacity:.35;cursor:default}.btn.ghost{background:transparent;color:var(--mut);border:1.5px solid var(--line);margin-left:auto}.row2{align-items:center}
 .t.got{color:var(--k)}
+.m .t{display:flex;justify-content:space-between;gap:8px}.m .t i{font-style:normal;font-weight:900;color:var(--ink)}
+.m .t.win{background:var(--cb)}.m .t.win i{color:var(--c)}.m .t.lose{opacity:.45}
+.m .ft{font-size:12px;padding:4px 12px;color:var(--mut);border-top:1px dashed var(--line)}
+a.m{display:block;text-decoration:none;color:inherit;cursor:pointer}a.m:hover{box-shadow:0 0 0 3px var(--l)}
+.ft.live{color:var(--k);font-weight:700}
 @media (max-width:820px){.steps{grid-template-columns:1fr}}
 @media (max-width:820px){
  .br{grid-template-columns:1fr}.ch{flex-direction:row;gap:10px}.ch .cup{font-size:36px}
@@ -67,35 +72,23 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
  <div class="row2"><span class="st" id="hint"></span><button id="rst" class="btn ghost">다시 하기(선생님)</button></div>
 </div>
 <div class="br">
- <div class="col"><div class="lab">1라운드 · 점심</div>
-  <div class="m lunch"><div class="w">① 11.25.(수) 점심</div><div class="t" id="LA">점심조 A</div><div class="t" id="LB">점심조 B</div></div>
-  <div class="m lunch"><div class="w">② 11.26.(목) 점심</div><div class="t" id="LC">점심조 C</div><div class="t" id="LD">점심조 D</div></div>
- </div>
- <div class="col"><div class="lab">8강</div>
-  <div class="m cls"><div class="w" id="w3">③ 11.30.(월) 7교시 또는 12.1.(화) 4교시</div><div class="t">203</div><div class="t" id="O3">210 또는 209</div></div>
-  <div class="m lunch"><div class="w">④ 12.2.(수) 점심</div><div class="t">① 승자</div><div class="t">② 승자</div></div>
-  <div class="m cls"><div class="w" id="w5">⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시</div><div class="t">201</div><div class="t" id="O5">208 또는 205</div></div>
-  <div class="m cls"><div class="w">⑥ 12.3.(목) 5교시</div><div class="t">202</div><div class="t">207</div></div>
- </div>
- <div class="col"><div class="lab">4강 · 런치리그</div>
-  <div class="m top"><div class="w">⑦ 12.17.(목) 점심</div><div class="t">③ 승자</div><div class="t">④ 승자</div></div>
-  <div class="m top"><div class="w">⑧ 12.18.(금) 점심</div><div class="t">⑤ 승자</div><div class="t">⑥ 승자</div></div>
- </div>
- <div class="col"><div class="lab">결승</div>
-  <div class="m top"><div class="w">⑨ 12.22.(화) 점심</div><div class="t">⑦ 승자</div><div class="t">⑧ 승자</div></div>
- </div>
- <div class="ch"><div class="cup">🏆</div>우승</div>
+ <div class="col"><div class="lab">1라운드 · 점심</div><div id="M1"></div><div id="M2"></div></div>
+ <div class="col"><div class="lab">8강</div><div id="M3"></div><div id="M4"></div><div id="M5"></div><div id="M6"></div></div>
+ <div class="col"><div class="lab">4강 · 런치리그</div><div id="M7"></div><div id="M8"></div></div>
+ <div class="col"><div class="lab">결승</div><div id="M9"></div></div>
+ <div class="ch"><div class="cup">🏆</div><span id="champ">우승</span></div>
 </div>
 <div class="leg"><span><i style="background:var(--l)"></i>점심 경기</span><span><i style="background:var(--c)"></i>수업 시간 경기</span><span><i style="background:var(--k)"></i>4강·결승(학교장배 런치리그 12.16.~24.)</span></div>
 <div class="tb" id="tb"></div>
 <div class="note">※ 수업 시간이 같은 반끼리는 수업 중에 8강을 치르고(1라운드 부전승), 수업 시간이 겹치지 않는 반은 점심에 1라운드를 치릅니다.<br>※ 점심 경기는 2이닝, 수업 경기는 3이닝(시간 되는 만큼). 비가 오면 다음 같은 수업 시간으로 미룹니다.</div>
 </div><script>
-var DB='https://baseball-record-1d9a5-default-rtdb.asia-southeast1.firebasedatabase.app/baseball/cup2026_g2'+(/[?&]test/.test(location.search)?'_test':'')+'/draw.json';
+var CID='cup2026_g2'+(/[?&]test/.test(location.search)?'_test':''),BASE='https://baseball-record-1d9a5-default-rtdb.asia-southeast1.firebasedatabase.app/baseball/'+CID,DB=BASE+'/draw.json',R={};
 var D=null;
 function $(i){return document.getElementById(i)}
 function rnd(n){var a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n}
 function shuf(x){x=x.slice();for(var i=x.length-1;i>0;i--){var j=rnd(i+1),t=x[i];x[i]=x[j];x[j]=t}return x}
 function pool(){return D&&D.o203?['204','206',D.o203==='210'?'209':'210',D.o201==='208'?'205':'208']:null}
+function sc(n){var r=R[n];if(!r)return '';return ' — '+(r.status==='done'?'종료 ':r.status==='live'?'진행 중 ':'')+tn(r.h)+' '+r.hs+' : '+r.as+' '+tn(r.a)}
 function row(c,d,t,g){return '<div class="row '+c+'"><div class="d">'+d+'</div><div class="tm">'+t+'</div><div>'+g+'</div></div>'}
 var SL=['① 11.25.(수) 점심','① 11.25.(수) 점심','② 11.26.(목) 점심','② 11.26.(목) 점심'];
 var OPT={'203':['210','209'],'201':['208','205']},TM={'210':'11.30.(월) 7교시','209':'12.1.(화) 4교시','208':'12.2.(수) 2교시','205':'12.4.(금) 4교시'};
@@ -121,26 +114,45 @@ function render(){
   $('hint').textContent=!o3||!o5?'203·201반 대표가 카드를 1장씩 고르면 점심조 4팀이 정해져요.':L?'':lf.length?'지금 차례: '+SEL+'반 — 덮인 대진 카드 1장을 누르세요 (다른 반이면 위에서 반 번호를 먼저 누르기)':'';
   var d3=o3==='210'?'③ 11.30.(월) 7교시':o3==='209'?'③ 12.1.(화) 4교시':'③ 11.30.(월) 7교시 또는 12.1.(화) 4교시';
   var d5=o5==='208'?'⑤ 12.2.(수) 2교시':o5==='205'?'⑤ 12.4.(금) 4교시':'⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시';
-  $('w3').textContent=d3;$('w5').textContent=d5;
-  $('O3').textContent=o3||'210 또는 209';$('O3').className='t'+(o3?' got':'');
-  $('O5').textContent=o5||'208 또는 205';$('O5').className='t'+(o5?' got':'');
   var Lp=[null,null,null,null];if(D&&D.cards)for(var k in v)Lp[D.cards[k]]=v[k];
-  ['LA','LB','LC','LD'].forEach(function(k,i){$(k).textContent=Lp[i]||'점심조 '+'ABCD'[i];$(k).className='t'+(Lp[i]?' got':'')});
+  bracket(Lp,d3,d5);
   $('dst').textContent=L?'추첨 완료 · '+new Date(D.at).toLocaleString('ko-KR'):o3&&o5?'1단계 완료 — 2단계 진행 중':'아직 추첨 전이에요';
   var s=row('h','날짜','시간','경기');
   s+=row('','추첨',L?'완료':o3?'진행 중':'-','1단계 203·201 상대 → 2단계 점심조 짝');
-  s+=row('l','11.25.(수)','점심','① 1라운드 '+(L?L[0]+' vs '+L[1]:'점심조 A vs B'));
-  s+=row('l','11.26.(목)','점심','② 1라운드 '+(L?L[2]+' vs '+L[3]:'점심조 C vs D'));
-  s+=row('c',o3==='209'?'12.1.(화)':o3?'11.30.(월)':'11.30.(월) 또는 12.1.(화)',o3==='209'?'4교시':o3?'7교시':'7교시 / 4교시','③ 8강 203 vs '+(o3||'210 또는 209'));
-  s+=row('l','12.2.(수)','점심','④ 8강 ① 승자 vs ② 승자');
-  s+=row('c',o5==='205'?'12.4.(금)':o5?'12.2.(수)':'12.2.(수) 또는 12.4.(금)',o5==='205'?'4교시':o5?'2교시':'2교시 / 4교시','⑤ 8강 201 vs '+(o5||'208 또는 205'));
-  s+=row('c','12.3.(목)','5교시','⑥ 8강 202 vs 207');
-  s+=row('k','12.17.(목)','점심','⑦ 4강 ③ 승자 vs ④ 승자');
-  s+=row('k','12.18.(금)','점심','⑧ 4강 ⑤ 승자 vs ⑥ 승자');
-  s+=row('k','12.22.(화)','점심','⑨ 결승 (예비일 12.23.~24.)');
+  s+=row('l','11.25.(수)','점심','① 1라운드 '+(L?L[0]+' vs '+L[1]:'점심조 A vs B')+sc(1));
+  s+=row('l','11.26.(목)','점심','② 1라운드 '+(L?L[2]+' vs '+L[3]:'점심조 C vs D')+sc(2));
+  s+=row('c',o3==='209'?'12.1.(화)':o3?'11.30.(월)':'11.30.(월) 또는 12.1.(화)',o3==='209'?'4교시':o3?'7교시':'7교시 / 4교시','③ 8강 203 vs '+(o3||'210 또는 209')+sc(3));
+  s+=row('l','12.2.(수)','점심','④ 8강 '+slots(4).join(' vs ')+sc(4));
+  s+=row('c',o5==='205'?'12.4.(금)':o5?'12.2.(수)':'12.2.(수) 또는 12.4.(금)',o5==='205'?'4교시':o5?'2교시':'2교시 / 4교시','⑤ 8강 201 vs '+(o5||'208 또는 205')+sc(5));
+  s+=row('c','12.3.(목)','5교시','⑥ 8강 202 vs 207'+sc(6));
+  s+=row('k','12.17.(목)','점심','⑦ 4강 '+slots(7).join(' vs ')+sc(7));
+  s+=row('k','12.18.(금)','점심','⑧ 4강 '+slots(8).join(' vs ')+sc(8));
+  s+=row('k','12.22.(화)','점심','⑨ 결승 '+slots(9).join(' vs ')+' (예비일 12.23.~24.)'+sc(9));
   $('tb').innerHTML=s;
 }
-function load(){return fetch(DB+'?t='+Date.now()).then(function(r){return r.json()}).then(function(v){D=v;render()}).catch(function(){render()})}
+var CIRC='①②③④⑤⑥⑦⑧⑨',INN={1:2,2:2,3:3,4:2,5:3,6:3,7:2,8:2,9:2},WH={1:'① 11.25.(수) 점심',2:'② 11.26.(목) 점심',4:'④ 12.2.(수) 점심',6:'⑥ 12.3.(목) 5교시',7:'⑦ 12.17.(목) 점심',8:'⑧ 12.18.(금) 점심',9:'⑨ 12.22.(화) 점심'};
+function cn(t){return (+t-200)+'반'}function tn(c){var n=parseInt(c,10);return isNaN(n)?c:String(200+n)}
+function isT(x){return /^2\d\d$/.test(x||'')}
+function W(n){var r=R[n],s=slots(n);if(!r||r.status!=='done'||r.hs===r.as)return null;var w=tn(r.hs>r.as?r.h:r.a);return s.indexOf(w)>=0?w:null}
+var LP=[null,null,null,null];
+function slots(n){var o3=D&&D.o203,o5=D&&D.o201,f=function(k,p){return W(k)||p};
+ switch(n){case 1:return [LP[0]||'점심조 A',LP[1]||'점심조 B'];case 2:return [LP[2]||'점심조 C',LP[3]||'점심조 D'];case 3:return ['203',o3||'210 또는 209'];
+ case 4:return [f(1,'① 승자'),f(2,'② 승자')];case 5:return ['201',o5||'208 또는 205'];case 6:return ['202','207'];
+ case 7:return [f(3,'③ 승자'),f(4,'④ 승자')];case 8:return [f(5,'⑤ 승자'),f(6,'⑥ 승자')];default:return [f(7,'⑦ 승자'),f(8,'⑧ 승자')]}}
+function bracket(Lp,d3,d5){
+  LP=Lp;var wh={3:d3,5:d5};
+  for(var n=1;n<=9;n++){
+    var s=slots(n),r=R[n],both=isT(s[0])&&isT(s[1]),ok=r&&both&&s.indexOf(tn(r.h))>=0&&s.indexOf(tn(r.a))>=0,w=ok?W(n):null;
+    var cls=n<=2||n===4?'lunch':n<=6?'cls':'top';
+    var t=s.map(function(x){var sc=ok?(tn(r.h)===x?r.hs:r.as):null;return '<div class="t'+(isT(x)&&n!==6&&!(n===3&&x==='203')&&!(n===5&&x==='201')?' got':'')+(w?(w===x?' win':' lose'):'')+'"><span>'+x+'</span>'+(sc!=null?'<i>'+sc+'</i>':'')+'</div>'}).join('');
+    var ft=!both?'':ok&&r.status==='done'?(r.hs===r.as?'동점 종료 — 선생님이 승부치기 후 다시 기록':'경기 종료'):ok&&r.status==='live'?'● 진행 중 — 눌러서 기록 열기':'⚾ 눌러서 경기 기록 열기 (선생님)';
+    var inner='<div class="w">'+(wh[n]||WH[n])+'</div>'+t+(ft?'<div class="ft'+(ok&&r.status==='live'?' live':'')+'">'+ft+'</div>':'');
+    var href=both?'index.html#cup='+n+'&cid='+CID+'&h='+encodeURIComponent(cn(s[0]))+'&a='+encodeURIComponent(cn(s[1]))+'&inn='+INN[n]+'&cap=10&lbl='+encodeURIComponent('토너먼트 '+CIRC[n-1]+' '+s[0]+' vs '+s[1]):'';
+    $('M'+n).outerHTML=both?'<a id="M'+n+'" class="m '+cls+'" href="'+href+'" target="_blank" rel="noopener">'+inner+'</a>':'<div id="M'+n+'" class="m '+cls+'">'+inner+'</div>';
+  }
+  var ch=W(9);$('champ').textContent=ch?ch+' 우승!':'우승';
+}
+function load(){return Promise.all([fetch(DB+'?t='+Date.now()).then(function(r){return r.json()}),fetch(BASE+'/res.json?t='+Date.now()).then(function(r){return r.json()}).catch(function(){return null})]).then(function(v){D=v[0];R=v[1]||{};render()}).catch(function(){render()})}
 function save(){return fetch(DB,{method:'PUT',body:JSON.stringify(D)})}
 function okPin(){if(UNL)return true;var p=prompt('추첨 시작은 선생님 확인이 필요해요. 확인 번호(4자리)를 입력하세요');if(p!=='7543')return false;UNL=true;try{sessionStorage.setItem('cupUnl','1')}catch(e){}return true}
 function act(fn){if(BUSY||!okPin())return;BUSY=true;render();load().then(fn).then(function(){BUSY=false;render()},function(){BUSY=false;render()})}
