@@ -1,0 +1,69 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2학년 야구 토너먼트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--ink:#1d2b24;--mut:#5b6b62;--line:#e6e1d4;--box:#fbfaf6;--l:#e0a03a;--lb:#fdf1dc;--lt:#9a5a00;--c:#3b8a63;--cb:#eef3ef;--ct:#2f6b4f;--k:#c0392b;--kb:#fbe6e3;--kt:#a3281c;--p:#9aa59f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151a17;--card:#1f2622;--ink:#e8ede9;--mut:#9fb0a6;--line:#2f3833;--box:#232b26;--lb:#3a2d16;--lt:#f0c070;--cb:#1e3529;--ct:#8fd3b0;--kb:#3d1f1b;--kt:#f2a196}}
+:root[data-theme="dark"]{--bg:#151a17;--card:#1f2622;--ink:#e8ede9;--mut:#9fb0a6;--line:#2f3833;--box:#232b26;--lb:#3a2d16;--lt:#f0c070;--cb:#1e3529;--ct:#8fd3b0;--kb:#3d1f1b;--kt:#f2a196}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:'Noto Sans KR',system-ui,sans-serif;color:var(--ink)}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 40px}
+h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 span{color:var(--k)}
+.sub{margin:6px 0 20px;color:var(--mut);font-size:16px}
+.br{background:var(--card);border-radius:18px;padding:18px;display:grid;grid-template-columns:repeat(4,1fr) 90px;gap:18px;align-items:stretch}
+.col{display:flex;flex-direction:column;justify-content:space-around;gap:14px;position:relative;padding-top:26px}
+.lab{position:absolute;top:0;left:0;font-size:13px;font-weight:700;color:var(--mut)}
+.m{background:var(--box);border:2px solid var(--line);border-radius:10px;font-size:16px;overflow:hidden}
+.m .t{padding:7px 12px;border-top:1px solid var(--line);font-weight:700}
+.m .w{font-size:12.5px;padding:5px 12px;font-weight:700;line-height:1.35}
+.lunch{border-color:var(--l)}.lunch .w{background:var(--lb);color:var(--lt)}
+.cls{border-color:var(--c)}.cls .w{background:var(--cb);color:var(--ct)}
+.top{border-color:var(--k)}.top .w{background:var(--kb);color:var(--kt)}
+.ch{display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:20px}.ch .cup{font-size:54px}
+.leg{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;font-size:15px}.leg i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px}
+.tb{margin-top:22px;background:var(--card);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:170px 120px 1fr;gap:8px;padding:10px 12px;border-top:1px solid var(--line);border-left:6px solid var(--p);font-size:16px}
+.row.h{background:var(--ink);color:var(--bg);font-weight:700;border-top:none;border-left-color:var(--ink)}
+.row.l{border-left-color:var(--l)}.row.c{border-left-color:var(--c)}.row.k{border-left-color:var(--k)}
+.note{margin-top:14px;font-size:14.5px;color:var(--mut);line-height:1.7}
+@media (max-width:820px){
+ .br{grid-template-columns:1fr}.ch{flex-direction:row;gap:10px}.ch .cup{font-size:36px}
+ .row{grid-template-columns:1fr;gap:2px}.row.h{display:none}.row .d{font-weight:700}.row .tm{color:var(--mut);font-size:14px}
+}
+</style></head><body><div class="wrap">
+<h1>2학년 스포츠 생활2 <span>야구 토너먼트</span></h1>
+<div class="sub">10개 반 · 총 9경기 · 1라운드(점심) → 8강 → 4강 → 결승</div>
+<div class="br">
+ <div class="col"><div class="lab">1라운드 · 점심</div>
+  <div class="m lunch"><div class="w">① 11.25.(수) 점심</div><div class="t">점심조 A</div><div class="t">점심조 B</div></div>
+  <div class="m lunch"><div class="w">② 11.26.(목) 점심</div><div class="t">점심조 C</div><div class="t">점심조 D</div></div>
+ </div>
+ <div class="col"><div class="lab">8강</div>
+  <div class="m cls"><div class="w">③ 11.30.(월) 7교시 또는 12.1.(화) 4교시</div><div class="t">203</div><div class="t">210 또는 209</div></div>
+  <div class="m lunch"><div class="w">④ 12.2.(수) 점심</div><div class="t">① 승자</div><div class="t">② 승자</div></div>
+  <div class="m cls"><div class="w">⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시</div><div class="t">201</div><div class="t">208 또는 205</div></div>
+  <div class="m cls"><div class="w">⑥ 12.3.(목) 5교시</div><div class="t">202</div><div class="t">207</div></div>
+ </div>
+ <div class="col"><div class="lab">4강 · 12.16. 이후</div>
+  <div class="m top"><div class="w">⑦ 4강</div><div class="t">③ 승자</div><div class="t">④ 승자</div></div>
+  <div class="m top"><div class="w">⑧ 4강</div><div class="t">⑤ 승자</div><div class="t">⑥ 승자</div></div>
+ </div>
+ <div class="col"><div class="lab">결승</div>
+  <div class="m top"><div class="w">⑨ 결승</div><div class="t">⑦ 승자</div><div class="t">⑧ 승자</div></div>
+ </div>
+ <div class="ch"><div class="cup">🏆</div>우승</div>
+</div>
+<div class="leg"><span><i style="background:var(--l)"></i>점심 경기</span><span><i style="background:var(--c)"></i>수업 시간 경기</span><span><i style="background:var(--k)"></i>4강·결승(따로 모이는 날)</span></div>
+<div class="tb">
+ <div class="row h"><div>날짜</div><div>시간</div><div>경기</div></div>
+ <div class="row"><div class="d">11.20.(금)까지</div><div class="tm">-</div><div>201반·203반 8강 상대 선택 → 선택 안 된 2개 반은 점심조</div></div>
+ <div class="row"><div class="d">11.23.(월)</div><div class="tm">-</div><div>점심조 4개 반(204·206 + 2개 반) 공개 추첨 → ①② 대진 확정</div></div>
+ <div class="row l"><div class="d">11.25.(수)</div><div class="tm">점심</div><div>① 1라운드 점심조 A vs B</div></div>
+ <div class="row l"><div class="d">11.26.(목)</div><div class="tm">점심</div><div>② 1라운드 점심조 C vs D</div></div>
+ <div class="row c"><div class="d">11.30.(월) 또는 12.1.(화)</div><div class="tm">7교시 / 4교시</div><div>③ 8강 203 vs 210 (월) 또는 203 vs 209 (화)</div></div>
+ <div class="row l"><div class="d">12.2.(수)</div><div class="tm">점심</div><div>④ 8강 ① 승자 vs ② 승자</div></div>
+ <div class="row c"><div class="d">12.2.(수) 또는 12.4.(금)</div><div class="tm">2교시 / 4교시</div><div>⑤ 8강 201 vs 208 (수) 또는 201 vs 205 (금)</div></div>
+ <div class="row c"><div class="d">12.3.(목)</div><div class="tm">5교시</div><div>⑥ 8강 202 vs 207</div></div>
+ <div class="row k"><div class="d">12.16. 이후</div><div class="tm">추후 공지</div><div>⑦⑧ 4강 → ⑨ 결승</div></div>
+</div>
+<div class="note">※ 수업 시간이 같은 반끼리는 수업 중에 8강을 치르고(1라운드 부전승), 수업 시간이 겹치지 않는 반은 점심에 1라운드를 치릅니다.<br>※ 점심 경기는 2이닝, 수업 경기는 3이닝(시간 되는 만큼). 비가 오면 다음 같은 수업 시간으로 미룹니다.</div>
+</div></body></html>
