@@ -25,45 +25,120 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
 .row.h{background:var(--ink);color:var(--bg);font-weight:700;border-top:none;border-left-color:var(--ink)}
 .row.l{border-left-color:var(--l)}.row.c{border-left-color:var(--c)}.row.k{border-left-color:var(--k)}
 .note{margin-top:14px;font-size:14.5px;color:var(--mut);line-height:1.7}
+.draw{background:var(--card);border-radius:18px;padding:18px;margin-bottom:18px;border:2px dashed var(--l)}
+.dh{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:20px;margin-bottom:12px}.st{font-size:14px;color:var(--mut)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stp{background:var(--box);border-radius:12px;padding:12px;text-align:center}
+.sn{font-size:12px;font-weight:700;color:var(--lt)}.sq{font-weight:700;margin:2px 0 8px}
+.pool{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.pool span{border:1.5px solid var(--line);border-radius:8px;padding:3px 10px;font-weight:700;font-size:15px}
+.pool span.hit{background:var(--c);color:#fff;border-color:var(--c)}.pool span.off{opacity:.35}
+.res{margin-top:10px;font-size:30px;font-weight:900;min-height:40px}.res.sm{font-size:20px;line-height:1.5}
+.res.spin{color:var(--lt)}
+.row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:10px;padding:10px 18px;background:var(--k);color:#fff;cursor:pointer}
+.btn:disabled{opacity:.35;cursor:default}.btn.ghost{background:transparent;color:var(--mut);border:1.5px solid var(--line);margin-left:auto}
+.t.got{color:var(--k)}
+@media (max-width:820px){.steps{grid-template-columns:1fr}}
 @media (max-width:820px){
  .br{grid-template-columns:1fr}.ch{flex-direction:row;gap:10px}.ch .cup{font-size:36px}
  .row{grid-template-columns:1fr;gap:2px}.row.h{display:none}.row .d{font-weight:700}.row .tm{color:var(--mut);font-size:14px}
 }
 </style></head><body><div class="wrap">
 <h1>2학년 스포츠 생활2 <span>야구 토너먼트</span></h1>
-<div class="sub">10개 반 · 총 9경기 · 1라운드(점심) → 8강 → 4강 → 결승</div>
+<div class="sub">10개 반 · 총 9경기 · 추첨 → 1라운드(점심) → 8강 → 4강 → 결승</div>
+<div class="draw" id="draw">
+ <div class="dh"><b>🎲 대진 추첨</b><span id="dst" class="st"></span></div>
+ <div class="steps">
+  <div class="stp" id="s1"><div class="sn">1단계</div><div class="sq">203반 8강 상대</div><div class="pool"><span>210</span><span>209</span></div><div class="res" id="r203">?</div></div>
+  <div class="stp" id="s2"><div class="sn">1단계</div><div class="sq">201반 8강 상대</div><div class="pool"><span>208</span><span>205</span></div><div class="res" id="r201">?</div></div>
+  <div class="stp" id="s3"><div class="sn">2단계</div><div class="sq">점심 1라운드 짝</div><div class="pool" id="lp"><span>204</span><span>206</span><span>?</span><span>?</span></div><div class="res sm" id="rl">?</div></div>
+ </div>
+ <div class="row2"><button id="go1" class="btn">1단계 추첨</button><button id="go2" class="btn" disabled>2단계 추첨</button><button id="rst" class="btn ghost">다시 하기(선생님)</button></div>
+</div>
 <div class="br">
  <div class="col"><div class="lab">1라운드 · 점심</div>
-  <div class="m lunch"><div class="w">① 11.25.(수) 점심</div><div class="t">점심조 A</div><div class="t">점심조 B</div></div>
-  <div class="m lunch"><div class="w">② 11.26.(목) 점심</div><div class="t">점심조 C</div><div class="t">점심조 D</div></div>
+  <div class="m lunch"><div class="w">① 11.25.(수) 점심</div><div class="t" id="LA">점심조 A</div><div class="t" id="LB">점심조 B</div></div>
+  <div class="m lunch"><div class="w">② 11.26.(목) 점심</div><div class="t" id="LC">점심조 C</div><div class="t" id="LD">점심조 D</div></div>
  </div>
  <div class="col"><div class="lab">8강</div>
-  <div class="m cls"><div class="w">③ 11.30.(월) 7교시 또는 12.1.(화) 4교시</div><div class="t">203</div><div class="t">210 또는 209</div></div>
+  <div class="m cls"><div class="w" id="w3">③ 11.30.(월) 7교시 또는 12.1.(화) 4교시</div><div class="t">203</div><div class="t" id="O3">210 또는 209</div></div>
   <div class="m lunch"><div class="w">④ 12.2.(수) 점심</div><div class="t">① 승자</div><div class="t">② 승자</div></div>
-  <div class="m cls"><div class="w">⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시</div><div class="t">201</div><div class="t">208 또는 205</div></div>
+  <div class="m cls"><div class="w" id="w5">⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시</div><div class="t">201</div><div class="t" id="O5">208 또는 205</div></div>
   <div class="m cls"><div class="w">⑥ 12.3.(목) 5교시</div><div class="t">202</div><div class="t">207</div></div>
  </div>
- <div class="col"><div class="lab">4강 · 12.16. 이후</div>
-  <div class="m top"><div class="w">⑦ 4강</div><div class="t">③ 승자</div><div class="t">④ 승자</div></div>
-  <div class="m top"><div class="w">⑧ 4강</div><div class="t">⑤ 승자</div><div class="t">⑥ 승자</div></div>
+ <div class="col"><div class="lab">4강 · 런치리그</div>
+  <div class="m top"><div class="w">⑦ 12.17.(목) 점심</div><div class="t">③ 승자</div><div class="t">④ 승자</div></div>
+  <div class="m top"><div class="w">⑧ 12.18.(금) 점심</div><div class="t">⑤ 승자</div><div class="t">⑥ 승자</div></div>
  </div>
  <div class="col"><div class="lab">결승</div>
-  <div class="m top"><div class="w">⑨ 결승</div><div class="t">⑦ 승자</div><div class="t">⑧ 승자</div></div>
+  <div class="m top"><div class="w">⑨ 12.22.(화) 점심</div><div class="t">⑦ 승자</div><div class="t">⑧ 승자</div></div>
  </div>
  <div class="ch"><div class="cup">🏆</div>우승</div>
 </div>
-<div class="leg"><span><i style="background:var(--l)"></i>점심 경기</span><span><i style="background:var(--c)"></i>수업 시간 경기</span><span><i style="background:var(--k)"></i>4강·결승(따로 모이는 날)</span></div>
-<div class="tb">
- <div class="row h"><div>날짜</div><div>시간</div><div>경기</div></div>
- <div class="row"><div class="d">11.20.(금)까지</div><div class="tm">-</div><div>201반·203반 8강 상대 선택 → 선택 안 된 2개 반은 점심조</div></div>
- <div class="row"><div class="d">11.23.(월)</div><div class="tm">-</div><div>점심조 4개 반(204·206 + 2개 반) 공개 추첨 → ①② 대진 확정</div></div>
- <div class="row l"><div class="d">11.25.(수)</div><div class="tm">점심</div><div>① 1라운드 점심조 A vs B</div></div>
- <div class="row l"><div class="d">11.26.(목)</div><div class="tm">점심</div><div>② 1라운드 점심조 C vs D</div></div>
- <div class="row c"><div class="d">11.30.(월) 또는 12.1.(화)</div><div class="tm">7교시 / 4교시</div><div>③ 8강 203 vs 210 (월) 또는 203 vs 209 (화)</div></div>
- <div class="row l"><div class="d">12.2.(수)</div><div class="tm">점심</div><div>④ 8강 ① 승자 vs ② 승자</div></div>
- <div class="row c"><div class="d">12.2.(수) 또는 12.4.(금)</div><div class="tm">2교시 / 4교시</div><div>⑤ 8강 201 vs 208 (수) 또는 201 vs 205 (금)</div></div>
- <div class="row c"><div class="d">12.3.(목)</div><div class="tm">5교시</div><div>⑥ 8강 202 vs 207</div></div>
- <div class="row k"><div class="d">12.16. 이후</div><div class="tm">추후 공지</div><div>⑦⑧ 4강 → ⑨ 결승</div></div>
-</div>
+<div class="leg"><span><i style="background:var(--l)"></i>점심 경기</span><span><i style="background:var(--c)"></i>수업 시간 경기</span><span><i style="background:var(--k)"></i>4강·결승(학교장배 런치리그 12.16.~24.)</span></div>
+<div class="tb" id="tb"></div>
 <div class="note">※ 수업 시간이 같은 반끼리는 수업 중에 8강을 치르고(1라운드 부전승), 수업 시간이 겹치지 않는 반은 점심에 1라운드를 치릅니다.<br>※ 점심 경기는 2이닝, 수업 경기는 3이닝(시간 되는 만큼). 비가 오면 다음 같은 수업 시간으로 미룹니다.</div>
-</div></body></html>
+</div><script>
+var DB='https://baseball-record-1d9a5-default-rtdb.asia-southeast1.firebasedatabase.app/baseball/cup2026_g2'+(/[?&]test/.test(location.search)?'_test':'')+'/draw.json';
+var D=null;
+function $(i){return document.getElementById(i)}
+function rnd(n){var a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n}
+function shuf(x){x=x.slice();for(var i=x.length-1;i>0;i--){var j=rnd(i+1),t=x[i];x[i]=x[j];x[j]=t}return x}
+function pool(){return D&&D.o203?['204','206',D.o203==='210'?'209':'210',D.o201==='208'?'205':'208']:null}
+function row(c,d,t,g){return '<div class="row '+c+'"><div class="d">'+d+'</div><div class="tm">'+t+'</div><div>'+g+'</div></div>'}
+function render(){
+  var o3=D&&D.o203,o5=D&&D.o201,L=D&&D.lunch;
+  $('r203').textContent=o3||'?';$('r201').textContent=o5||'?';
+  [['s1',o3],['s2',o5]].forEach(function(q){[].forEach.call($(q[0]).querySelectorAll('.pool span'),function(sp){sp.className=q[1]?(sp.textContent===q[1]?'hit':'off'):''})});
+  var p=pool();$('lp').innerHTML=(p||['204','206','?','?']).map(function(x){return '<span>'+x+'</span>'}).join('');
+  $('rl').innerHTML=L?L[0]+' vs '+L[1]+'<br>'+L[2]+' vs '+L[3]:'?';
+  var d3=o3==='210'?'③ 11.30.(월) 7교시':o3==='209'?'③ 12.1.(화) 4교시':'③ 11.30.(월) 7교시 또는 12.1.(화) 4교시';
+  var d5=o5==='208'?'⑤ 12.2.(수) 2교시':o5==='205'?'⑤ 12.4.(금) 4교시':'⑤ 12.2.(수) 2교시 또는 12.4.(금) 4교시';
+  $('w3').textContent=d3;$('w5').textContent=d5;
+  $('O3').textContent=o3||'210 또는 209';$('O3').className='t'+(o3?' got':'');
+  $('O5').textContent=o5||'208 또는 205';$('O5').className='t'+(o5?' got':'');
+  ['LA','LB','LC','LD'].forEach(function(k,i){$(k).textContent=L?L[i]:'점심조 '+'ABCD'[i];$(k).className='t'+(L?' got':'')});
+  $('go1').disabled=!!o3;$('go2').disabled=!o3||!!L;
+  $('dst').textContent=L?'추첨 완료 · '+new Date(D.at).toLocaleString('ko-KR'):o3?'1단계 완료 — 2단계 추첨을 눌러 주세요':'아직 추첨 전이에요';
+  var s=row('h','날짜','시간','경기');
+  s+=row('','추첨',o3?'완료':'-','1단계 203·201 상대 → 2단계 점심조 짝');
+  s+=row('l','11.25.(수)','점심','① 1라운드 '+(L?L[0]+' vs '+L[1]:'점심조 A vs B'));
+  s+=row('l','11.26.(목)','점심','② 1라운드 '+(L?L[2]+' vs '+L[3]:'점심조 C vs D'));
+  s+=row('c',o3==='209'?'12.1.(화)':o3?'11.30.(월)':'11.30.(월) 또는 12.1.(화)',o3==='209'?'4교시':o3?'7교시':'7교시 / 4교시','③ 8강 203 vs '+(o3||'210 또는 209'));
+  s+=row('l','12.2.(수)','점심','④ 8강 ① 승자 vs ② 승자');
+  s+=row('c',o5==='205'?'12.4.(금)':o5?'12.2.(수)':'12.2.(수) 또는 12.4.(금)',o5==='205'?'4교시':o5?'2교시':'2교시 / 4교시','⑤ 8강 201 vs '+(o5||'208 또는 205'));
+  s+=row('c','12.3.(목)','5교시','⑥ 8강 202 vs 207');
+  s+=row('k','12.17.(목)','점심','⑦ 4강 ③ 승자 vs ④ 승자');
+  s+=row('k','12.18.(금)','점심','⑧ 4강 ⑤ 승자 vs ⑥ 승자');
+  s+=row('k','12.22.(화)','점심','⑨ 결승 (예비일 12.23.~24.)');
+  $('tb').innerHTML=s;
+}
+function load(){return fetch(DB+'?t='+Date.now()).then(function(r){return r.json()}).then(function(v){D=v;render()}).catch(function(){render()})}
+function save(){return fetch(DB,{method:'PUT',body:JSON.stringify(D)})}
+function spin(el,opts,final,ms){return new Promise(function(ok){var t0=Date.now(),i=0;el.classList.add('spin');(function f(){var p=(Date.now()-t0)/ms;if(p>=1){el.classList.remove('spin');el.innerHTML=final;return ok()}el.textContent=opts[i++%opts.length];setTimeout(f,40+p*220)})()})}
+$('go1').onclick=function(){
+  this.disabled=true;
+  load().then(function(){
+    if(D&&D.o203)return;
+    var a=['210','209'][rnd(2)],b=['208','205'][rnd(2)];
+    D={o203:a,o201:b,at:Date.now()};
+    return save().then(function(){return spin($('r203'),['210','209'],a,2600)}).then(function(){return spin($('r201'),['208','205'],b,2600)});
+  }).then(render);
+};
+$('go2').onclick=function(){
+  this.disabled=true;
+  load().then(function(){
+    if(!D||!D.o203||D.lunch)return;
+    D.lunch=shuf(pool());D.at=Date.now();
+    var L=D.lunch;
+    return save().then(function(){return spin($('rl'),pool(),L[0]+' vs '+L[1]+'<br>'+L[2]+' vs '+L[3],3200)});
+  }).then(render);
+};
+$('rst').onclick=function(){
+  var pin=prompt('선생님 확인 번호(4자리)를 입력하세요');
+  if(pin!=='7543')return;
+  D=null;fetch(DB,{method:'DELETE'}).then(load);
+};
+load();setInterval(load,15000);
+</script>
+</body></html>
