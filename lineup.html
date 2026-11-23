@@ -240,11 +240,14 @@ function render(){
     }).join('')+'</div>';
   var bench = pk.order.filter(function(id){ return pk.out.indexOf(id)<0 && !posOf(pk, id); }).map(function(id){ return person(me,id).n; });
   var filled = Object.keys(pk.pos).length, can = Math.min(9, nd.a.n);
-  h += '<div class="bench">수비 '+filled+'/'+can+(bench.length ? ' · 대기 '+bench.length+'명: '+esc(bench.join(', ')) : '')+'</div></div>';
+  // 런치리그(전 학급 카드): 수비에 여학생 3명 이상
+  var fNeed = D.multi ? Math.min(3, nd.a.F) : 0, fDef = Object.keys(pk.pos).filter(function(q){ return person(me, pk.pos[q]).g!=='남'; }).length;
+  h += '<div class="bench">수비 '+filled+'/'+can+(fNeed ? ' · 여학생 '+fDef+'/'+fNeed+'명 이상' : '')+(bench.length ? ' · 대기 '+bench.length+'명: '+esc(bench.join(', ')) : '')+'</div>'+
+    (fDef < fNeed ? '<div class="need bad">⚠ 수비에 <span class="ff">여학생이 '+fNeed+'명 이상</span> 들어가야 해요 (지금 '+fDef+'명)</div>' : '')+'</div>';
   // ④ 완성
-  var ready = nd.ok && filled >= can;
+  var ready = nd.ok && filled >= can && fDef >= fNeed;
   h += '<div class="card"><h2><span class="n">4</span>완성해서 단톡에 올리기</h2>'+
-    (ready ? '' : '<p class="hint" style="margin:0 0 6px">'+(!nd.ok ? '⚠ 1번의 반복타자를 먼저 맞춰 주세요. ' : '')+(filled < can ? '⚠ 수비 '+(can-filled)+'자리가 비었어요.' : '')+'</p>')+
+    (ready ? '' : '<p class="hint" style="margin:0 0 6px">'+(!nd.ok ? '⚠ 1번의 반복타자를 먼저 맞춰 주세요. ' : '')+(filled < can ? '⚠ 수비 '+(can-filled)+'자리가 비었어요. ' : '')+(fDef < fNeed ? '⚠ 수비 여학생이 '+fNeed+'명보다 적어요.' : '')+'</p>')+
     '<div class="btns"><button class="btn gold" id="make"'+(ready?'':' disabled')+'>🎴 완성 · 라인업 카드 만들기</button></div><div id="out"></div></div>';
   $('app').innerHTML = h;
   if(window.Sortable){

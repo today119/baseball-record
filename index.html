@@ -2434,9 +2434,9 @@ function cupAllMake(cid, cap){
 }
 /* ── 🏆 런치리그 메뉴 (11/23 사용자: «런치리그 라인업 메뉴를 하나 만들어 줘») ──
    전 학급 라인업 카드 만들기·링크 복사 + 반별 제출 현황 + 대진표 바로가기 */
-var CUP_ID = 'cup2026_g2', CUP_CAP = {F:10, M:10}, CUP_DATA = null, CUP_TOK = null, CUP_LOADING = false, CUP_OPEN = {};
+var CUP_FDEF = 3, CUP_ID = 'cup2026_g2', CUP_CAP = {F:10, M:10}, CUP_DATA = null, CUP_TOK = null, CUP_LOADING = false, CUP_OPEN = {};
 /* 반별 제출 현황 [보기] — 학생이 낸 라인업(타순·수비·빠진 사람·반복타자)을 그대로 펼쳐 보인다 */
-function cupLineupHTML(t, p){
+function cupLineupHTML(t, p, k){
   var pp = {}; (t.p||[]).forEach(function(x){ pp[x.id] = x; });
   var pos = {}; Object.keys(p.pos||{}).forEach(function(k){ pos[p.pos[k]] = k; });
   var pn = function(k){ for(var i=0;i<POS.length;i++) if(POS[i].k===k) return POS[i].n; return k; };
@@ -2446,26 +2446,61 @@ function cupLineupHTML(t, p){
     return '<div style="display:flex;gap:6px;align-items:center;padding:4px 6px;border-radius:7px;background:var(--panel2);margin-top:4px;font-size:13px"><b style="width:18px;text-align:right;color:var(--tx3)">'+(i+1)+'</b>'+
       '<b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.n)+'</b>'+gtag(x)+'<span style="margin-left:auto;font-size:11.5px;white-space:nowrap;color:'+(pos[id]?'#4cd28a':'var(--tx3)')+'">'+(pos[id] ? esc(pn(pos[id])) : '—')+'</span></div>'; };
   var blocks = '';
-  for(var b0=0; b0<order.length; b0+=4)
-    blocks += '<div style="min-width:0"><div style="font-size:11.5px;font-weight:800;color:var(--tx3);padding-left:4px">'+(b0+1)+'~'+Math.min(b0+4, order.length)+'번</div>'+
-      order.slice(b0, b0+4).map(function(id, j){ return row(id, b0+j); }).join('')+'</div>';
+  for(var b0=0; b0<order.length; b0+=5)
+    blocks += '<div style="min-width:0"><div style="font-size:11.5px;font-weight:800;color:var(--tx3);padding-left:4px">'+(b0+1)+'~'+Math.min(b0+5, order.length)+'번</div>'+
+      order.slice(b0, b0+5).map(function(id, j){ return row(id, b0+j); }).join('')+'</div>';
   var field = '<div class="lufield" style="margin:0;max-width:none">'+luFieldSVG()+LU_POS.map(function(q){
     var sid = (p.pos||{})[q.k], x = sid && pp[sid], no = x ? order.indexOf(sid)+1 : 0;
-    return '<div class="luspot '+q.z+'" style="left:'+q.x+'%;top:'+q.y+'%;cursor:default"><span class="pt">'+esc(pn(q.k))+'</span>'+
-      '<span class="pn'+(x?'':' no')+'">'+(x ? (no>0?'<span style="color:#6b7a99;font-size:11px">'+no+' </span>':'')+esc(x.n) : '비어 있음')+'</span></div>';
+    return '<button class="luspot '+q.z+'" data-cupsp="'+esc(k)+'" data-k="'+q.k+'" style="left:'+q.x+'%;top:'+q.y+'%"><span class="pt">'+esc(pn(q.k))+'</span>'+
+      '<span class="pn'+(x?'':' no')+'">'+(x ? (no>0?'<span style="color:#6b7a99;font-size:11px">'+no+' </span>':'')+esc(x.n) : '누르기')+'</span></button>';
   }).join('')+'</div>';
   var dup = (p.dup||[]).filter(function(id){ return pp[id]; }).map(function(id){ return esc(pp[id].n); });
-  var outN = out.filter(function(id){ return pp[id]; }).map(function(id){ return esc(pp[id].n); });
+  var fAll = order.filter(function(id){ return pp[id].g!=='남'; }).length, fNeed = Math.min(CUP_FDEF, fAll);
+  var fDef = Object.keys(p.pos||{}).filter(function(q){ var x = pp[p.pos[q]]; return x && x.g!=='남'; }).length;
   var miss = POS.filter(function(q){ return !(p.pos||{})[q.k]; }).map(function(q){ return q.n; });
   var notes = '<div style="margin-top:10px;font-size:12.5px;color:var(--tx2);line-height:1.7">'+
     (dup.length ? '🔁 반복타자: '+dup.join(', ')+'<br>' : '')+
-    (outN.length ? '🚫 빠지는 사람(결석·교체): '+outN.join(', ')+'<br>' : '')+
+    (fDef < fNeed ? '<span style="color:#e0a03a">⚠ 수비에 여학생이 '+fDef+'명이에요. '+fNeed+'명 이상이어야 해요.</span><br>' : '✔ 수비 여학생 '+fDef+'명<br>')+
     (miss.length ? '<span style="color:#e0a03a">⚠ 수비 안 정한 자리: '+miss.join(', ')+'</span>' : '✔ 수비 9자리 모두 정함')+
     '</div>';
   var h = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">'+
-    '<div style="flex:1 1 640px;min-width:0"><div class="cuplu" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px">'+blocks+'</div>'+notes+'</div>'+
+    '<div style="flex:1 1 560px;min-width:0"><div class="cuplu" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">'+blocks+'</div>'+notes+
+    '<p class="st" style="margin:6px 0 0;font-size:12px">오른쪽 그림에서 이름을 누르면 수비를 바꿀 수 있어요. 다른 자리 학생을 고르면 맞바꾸고, 수비가 없는 학생을 고르면 교체해요.</p></div>'+
     '<div style="flex:0 1 400px;width:400px;max-width:100%">'+field+'</div></div>';
   return h;
+}
+/* 수비 그림에서 이름 누르기 → 그 학생 말고 출전 선수 모두 띄움. 다른 자리면 맞바꾸고, 수비 없는 학생이면 교체 */
+function cupPosPick(k, posK){
+  var t = CUP_DATA.teams[k], p = CUP_DATA.pick[k]; if(!t || !p) return;
+  var pp = {}; (t.p||[]).forEach(function(x){ pp[x.id] = x; });
+  var cur = (p.pos||{})[posK], posOf = {}; Object.keys(p.pos||{}).forEach(function(q){ posOf[p.pos[q]] = q; });
+  var out = p.out || [], order = (p.order||[]).filter(function(id){ return pp[id] && out.indexOf(id)<0; });
+  var pn = function(q){ for(var i=0;i<POS.length;i++) if(POS[i].k===q) return POS[i].n; return q; };
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML = '<div class="card" style="max-width:560px;width:100%;margin:0;max-height:86vh;overflow:auto">'+
+    '<h3>'+esc(t.name)+' · '+esc(pn(posK))+' — '+(cur && pp[cur] ? esc(pp[cur].n)+' 대신 누구?' : '누가 맡을까요?')+'</h3>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">'+
+    order.filter(function(id){ return id!==cur; }).map(function(id){ var x = pp[id], q = posOf[id];
+      return '<button class="btn" data-pid="'+esc(id)+'" style="display:flex;gap:6px;align-items:center;text-align:left">'+
+        '<b>'+esc(x.n)+'</b><span style="font-size:11.5px;color:'+(x.g==='남'?'#4a9be0':'#e06aaf')+'">'+(x.g==='남'?'남':'여')+'</span>'+
+        '<span style="margin-left:auto;font-size:11.5px;color:'+(q?'#e0a03a':'var(--tx3)')+'">'+(q ? esc(pn(q))+' ⇄' : '수비 없음')+'</span></button>'; }).join('')+
+    '</div><div class="row" style="margin-top:10px">'+(cur ? '<button class="btn" data-clear="1">이 자리 비우기</button>' : '')+'<button class="btn" data-x="1">닫기</button></div></div>';
+  document.body.appendChild(d);
+  d.onclick = function(e){
+    var b = e.target.closest('button'); if(e.target===d || (b && b.dataset.x)) { d.remove(); return; }
+    if(!b) return;
+    var np = {}; Object.keys(p.pos||{}).forEach(function(q){ np[q] = p.pos[q]; });
+    if(b.dataset.clear) delete np[posK];
+    else if(b.dataset.pid){ var id = b.dataset.pid, q = posOf[id];
+      if(q){ if(cur) np[q] = cur; else delete np[q]; }
+      np[posK] = id; }
+    else return;
+    d.remove();
+    luRef(CUP_TOK).child('pick/'+k).update({pos:np, ts:Date.now()}).then(function(){
+      p.pos = np; p.ts = Date.now(); toast('수비를 바꿨어요'); vCup(true);
+    }, function(e){ toast('저장 실패: '+(e && e.message || e)); });
+  };
 }
 function cupLoad(){
   if(!DB || CUP_LOADING) return; CUP_LOADING = true;
@@ -2614,7 +2649,7 @@ function vCup(loaded){
       var when = p && p.ts ? new Date(p.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
       return '<tr><td><b>'+esc(t.name)+'</b></td><td>'+st+'</td><td class="n">'+(p ? '여 '+F+' · 남 '+M : '-')+'</td><td class="n">'+(p ? dfn+'/9' : '-')+'</td><td class="n" style="color:var(--tx3);font-size:12px">'+esc(when)+'</td>'+
         '<td class="n">'+(p && p.order ? '<button class="btn sm" data-cupv="'+esc(k)+'">'+(CUP_OPEN[k]?'접기 ▲':'보기 ▼')+'</button>' : '')+'</td></tr>'+
-        (p && p.order && CUP_OPEN[k] ? '<tr><td colspan="6" style="padding:8px 4px 14px">'+cupLineupHTML(t, p)+'</td></tr>' : '');
+        (p && p.order && CUP_OPEN[k] ? '<tr><td colspan="6" style="padding:8px 4px 14px">'+cupLineupHTML(t, p, k)+'</td></tr>' : '');
     }).join('');
   }
   el('v-cup').innerHTML =
@@ -2648,6 +2683,7 @@ function vCup(loaded){
       function(e){ b.disabled = false; toast('카드를 못 만들었어요: '+e.message); });
   };
   if(el('cupRe')) el('cupRe').onclick = function(){ cupLoad(); };
+  el('v-cup').querySelectorAll('[data-cupsp]').forEach(function(b){ b.onclick = function(){ cupPosPick(b.dataset.cupsp, b.dataset.k); }; });
   el('v-cup').querySelectorAll('[data-cupv]').forEach(function(b){ b.onclick = function(){ var k = b.dataset.cupv; CUP_OPEN[k] = !CUP_OPEN[k]; vCup(true); }; });
   if(el('cupBRe')) el('cupBRe').onclick = function(){ cupBLoad(); };
   if(el('cupRRe')) el('cupRRe').onclick = function(){ cupBLoad(); cupRecLoad(); };
