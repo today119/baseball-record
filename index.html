@@ -72,6 +72,7 @@ p.st{font-size:12.5px;color:var(--tx3);margin:0 0 16px}
 .btn{background:var(--line);border:1px solid var(--line2);border-radius:9px;padding:9px 15px;
   font-size:13.5px;font-weight:700;white-space:nowrap}
 .btn:hover{background:var(--line2)}
+a.btn{color:inherit;text-decoration:none;display:inline-block}
 .btn.pri{background:var(--info);border-color:var(--info);color:#fff}
 .btn.ok{background:var(--hit);border-color:var(--hit);color:#fff}
 .btn.dn{background:var(--out);border-color:var(--out);color:#fff}
@@ -2432,7 +2433,28 @@ function cupAllMake(cid, cap){
 }
 /* ── 🏆 런치리그 메뉴 (11/23 사용자: «런치리그 라인업 메뉴를 하나 만들어 줘») ──
    전 학급 라인업 카드 만들기·링크 복사 + 반별 제출 현황 + 대진표 바로가기 */
-var CUP_ID = 'cup2026_g2', CUP_CAP = {F:10, M:10}, CUP_DATA = null, CUP_TOK = null, CUP_LOADING = false;
+var CUP_ID = 'cup2026_g2', CUP_CAP = {F:10, M:10}, CUP_DATA = null, CUP_TOK = null, CUP_LOADING = false, CUP_OPEN = {};
+/* 반별 제출 현황 [보기] — 학생이 낸 라인업(타순·수비·빠진 사람·반복타자)을 그대로 펼쳐 보인다 */
+function cupLineupHTML(t, p){
+  var pp = {}; (t.p||[]).forEach(function(x){ pp[x.id] = x; });
+  var pos = {}; Object.keys(p.pos||{}).forEach(function(k){ pos[p.pos[k]] = k; });
+  var pn = function(k){ for(var i=0;i<POS.length;i++) if(POS[i].k===k) return POS[i].n; return k; };
+  var out = p.out || [], order = (p.order||[]).filter(function(id){ return pp[id] && out.indexOf(id)<0; });
+  var gtag = function(x){ return '<span style="font-size:11.5px;font-weight:800;color:'+(x.g==='남'?'#4a9be0':'#e06aaf')+'">'+(x.g==='남'?'남':'여')+'</span>'; };
+  var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:5px 14px">'+
+    order.map(function(id, i){ var x = pp[id];
+      return '<div style="display:flex;gap:8px;align-items:center;padding:4px 8px;border-radius:8px;background:var(--panel2)"><b style="width:22px;text-align:right;color:var(--tx3)">'+(i+1)+'</b>'+
+        '<b>'+esc(x.n)+'</b>'+gtag(x)+'<span style="margin-left:auto;font-size:12.5px;color:'+(pos[id]?'#4cd28a':'var(--tx3)')+'">'+(pos[id] ? esc(pn(pos[id])) : '—')+'</span></div>'; }).join('')+'</div>';
+  var dup = (p.dup||[]).filter(function(id){ return pp[id]; }).map(function(id){ return esc(pp[id].n); });
+  var outN = out.filter(function(id){ return pp[id]; }).map(function(id){ return esc(pp[id].n); });
+  var miss = POS.filter(function(q){ return !(p.pos||{})[q.k]; }).map(function(q){ return q.n; });
+  h += '<div style="margin-top:8px;font-size:12.5px;color:var(--tx2);line-height:1.7">'+
+    (dup.length ? '🔁 반복타자: '+dup.join(', ')+'<br>' : '')+
+    (outN.length ? '🚫 빠지는 사람(결석·교체): '+outN.join(', ')+'<br>' : '')+
+    (miss.length ? '<span style="color:#e0a03a">⚠ 수비 안 정한 자리: '+miss.join(', ')+'</span>' : '✔ 수비 9자리 모두 정함')+
+    '</div>';
+  return h;
+}
 function cupLoad(){
   if(!DB || CUP_LOADING) return; CUP_LOADING = true;
   DB.ref(ROOT()+'/luLinks/cupall_'+CUP_ID).once('value').then(function(s){
@@ -2578,7 +2600,9 @@ function vCup(loaded){
       (t.p||[]).forEach(function(x){ if(out.indexOf(x.id)<0){ if(x.g==='남') M++; else F++; } });
       var dfn = p && p.pos ? Object.keys(p.pos).length : 0;
       var when = p && p.ts ? new Date(p.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-      return '<tr><td><b>'+esc(t.name)+'</b></td><td>'+st+'</td><td class="n">'+(p ? '여 '+F+' · 남 '+M : '-')+'</td><td class="n">'+(p ? dfn+'/9' : '-')+'</td><td class="n" style="color:var(--tx3);font-size:12px">'+esc(when)+'</td></tr>';
+      return '<tr><td><b>'+esc(t.name)+'</b></td><td>'+st+'</td><td class="n">'+(p ? '여 '+F+' · 남 '+M : '-')+'</td><td class="n">'+(p ? dfn+'/9' : '-')+'</td><td class="n" style="color:var(--tx3);font-size:12px">'+esc(when)+'</td>'+
+        '<td class="n">'+(p && p.order ? '<button class="btn sm" data-cupv="'+esc(k)+'">'+(CUP_OPEN[k]?'접기 ▲':'보기 ▼')+'</button>' : '')+'</td></tr>'+
+        (p && p.order && CUP_OPEN[k] ? '<tr><td colspan="6" style="padding:8px 4px 14px">'+cupLineupHTML(t, p)+'</td></tr>' : '');
     }).join('');
   }
   el('v-cup').innerHTML =
@@ -2594,7 +2618,7 @@ function vCup(loaded){
       : '<p class="st" style="margin:0 0 8px">아직 카드가 없어요. 1~10반 명단으로 카드를 만들어요.</p><div class="row"><button class="btn pri" id="cupMk">🎴 라인업 카드 만들기</button></div>'))+
     '</div>'+
     '<div class="card"><h3>반별 제출 현황 <button class="btn sm" id="cupRe" style="margin-left:6px">새로고침</button></h3>'+
-    (rows ? '<table><tr><th>반</th><th>상태</th><th class="n">출전</th><th class="n">수비</th><th class="n">마지막 수정</th></tr>'+rows+'</table>'
+    (rows ? '<table><tr><th>반</th><th>상태</th><th class="n">출전</th><th class="n">수비</th><th class="n">마지막 수정</th><th class="n">라인업</th></tr>'+rows+'</table>'
           : '<div class="msg">'+(CUP_LOADING ? '불러오는 중…' : '카드를 만들면 여기에 반별 제출 현황이 보여요.')+'</div>')+
     '</div>'+
     '<div class="card"><h3>⚾ 대진표 · 경기 진행 <button class="btn sm" id="cupBRe" style="margin-left:6px">새로고침</button></h3>'+
@@ -2612,6 +2636,7 @@ function vCup(loaded){
       function(e){ b.disabled = false; toast('카드를 못 만들었어요: '+e.message); });
   };
   if(el('cupRe')) el('cupRe').onclick = function(){ cupLoad(); };
+  el('v-cup').querySelectorAll('[data-cupv]').forEach(function(b){ b.onclick = function(){ var k = b.dataset.cupv; CUP_OPEN[k] = !CUP_OPEN[k]; vCup(true); }; });
   if(el('cupBRe')) el('cupBRe').onclick = function(){ cupBLoad(); };
   if(el('cupRRe')) el('cupRRe').onclick = function(){ cupBLoad(); cupRecLoad(); };
   el('v-cup').querySelectorAll('[data-cupo]').forEach(function(b){ b.onclick = function(){ cupOpen(+b.dataset.cupo); }; });
