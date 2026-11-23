@@ -26,6 +26,7 @@ h1{font-size:21px;margin:2px 0 2px;font-weight:900}
 .card h2{font-size:16px;margin:0 0 10px;font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .card h2 .n{background:var(--gold);color:#1b1b1b;border-radius:50%;width:24px;height:24px;display:inline-grid;place-items:center;font-size:14px;flex:none}
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tabs.many{grid-template-columns:repeat(5,1fr);gap:6px}.tabs.many .tab{font-size:16px;padding:10px 2px}.tabs.many .tab small{display:none}
 .tab{font:inherit;font-size:18px;font-weight:900;padding:13px 8px;border-radius:12px;border:2px solid var(--ln);background:var(--p2);color:var(--tx2)}
 .tab.on{background:#2563eb;border-color:#5b8cff;color:#fff}
 .tab small{display:block;font-size:12px;font-weight:700;opacity:.85;margin-top:2px}
@@ -87,7 +88,7 @@ pre{white-space:pre-wrap;background:var(--p2);border:1px solid var(--ln);border-
 </style>
 </head>
 <body>
-<h1>⚾ 우리 조 라인업</h1>
+<h1 id="ttl">⚾ 우리 조 라인업</h1>
 <p class="sub" id="sub">불러오는 중…</p>
 <div id="app"></div>
 <div class="pick" id="pick"><div class="sheet"><h3 id="pickT"></h3><p class="hint" id="pickH" style="margin:0 0 4px"></p><div class="chips" id="pickC"></div>
@@ -118,7 +119,8 @@ function posName(k){ for(var i=0;i<POS.length;i++) if(POS[i].k===k) return POS[i
 
 /* ── 자료 ── */
 function team(side){ return (D && D.teams && D.teams[side]) || {name:side, p:[]}; }
-function other(side){ return side==='H' ? 'A' : 'H'; }
+function other(side){ return D && D.multi ? '-' : side==='H' ? 'A' : 'H'; }   // 11/23 전 학급 카드(multi)는 상대 비교 없음
+function sideList(){ return D && D.multi ? Object.keys(D.teams||{}).sort(function(a,b){ return parseInt(team(a).name,10)-parseInt(team(b).name,10); }) : ['H','A']; }
 function pick(side){                                      // 학생이 정한 것 — 없으면 명단 순서 그대로
   var tm = team(side), p = (D.pick && D.pick[side]) || {};
   var ids = tm.p.map(function(x){ return x.id; });
@@ -170,24 +172,31 @@ function save(side, p, quiet){
 /* ── 화면 ── */
 function render(){
   if(!D){ return; }
-  $('sub').innerHTML = esc(D.game||'')+' · '+esc(team('H').name)+' vs '+esc(team('A').name)+
+  if(D.multi && $('ttl')){ $('ttl').textContent = '⚾ 우리 반 라인업'; document.title = '우리 반 라인업'; }
+  $('sub').innerHTML = esc(D.game||'')+(D.multi ? '' : ' · '+esc(team('H').name)+' vs '+esc(team('A').name))+
     ' <span class="live'+(live?' on':'')+'"><i></i>'+(live?'실시간 연결':'연결 중')+'</span>';
-  var sides = ['H','A'].filter(function(s){ return team(s).p.length; });
-  var h = '<div class="tabs">'+sides.map(function(s){
+  var sides = sideList().filter(function(s){ return team(s).p.length; });
+  var h = '<div class="tabs'+(D.multi?' many':'')+'">'+sides.map(function(s){
     var c = counts(s), pk = pick(s);
     var okNow = needOf(s).ok;
     return '<button class="tab'+(ME===s?' on':'')+'" data-side="'+s+'">'+esc(team(s).name)+(pk.done ? (okNow?' ✅':' ⚠') : '')+
       '<small>출전 '+c.n+' · 남 '+c.M+' 여 '+c.F+(c.rM+c.rF ? ' · 반복 '+(c.rM+c.rF) : '')+'</small></button>';
   }).join('')+'</div>';
   if(!ME || !team(ME).p.length){
-    $('app').innerHTML = h + '<div class="card"><p class="msg" style="padding:16px">우리 조를 눌러 주세요 👆<br><span class="hint">주장이 자기 조 하나만 정하면 돼요. 상대 조 인원은 자동으로 비교돼요.</span></p></div>';
+    $('app').innerHTML = h + (D.multi ? '<div class="card"><p class="msg" style="padding:16px">우리 반을 눌러 주세요 👆<br><span class="hint">반 대표 한 명이 우리 반 라인업만 정하면 돼요. 정한 내용은 바로 선생님 앱으로 저장돼요.</span></p></div>' : '<div class="card"><p class="msg" style="padding:16px">우리 조를 눌러 주세요 👆<br><span class="hint">주장이 자기 조 하나만 정하면 돼요. 상대 조 인원은 자동으로 비교돼요.</span></p></div>');
     return;
   }
   var me = ME, pk = pick(me), nd = needOf(me), op = other(me);
   // ① 상대와 비교 + 반복타자 안내
+  if(D.multi){
+    var cm = counts(me);
+    h += '<div class="card"><h2><span class="n">1</span>출전 20명 정하기</h2>'+
+      '<div class="need '+(cm.F<=D.cap.F&&cm.M<=D.cap.M?'ok':'bad')+'">지금 출전: <span class="ff">여 '+cm.F+'명</span> · <span class="mm">남 '+cm.M+'명</span> (최대 여 '+D.cap.F+' · 남 '+D.cap.M+')</div>';
+  } else
   h += '<div class="card"><h2><span class="n">1</span>출전 인원 맞추기</h2>'+
     '<div class="vs"><div class="t"><b>'+esc(team(me).name)+'</b><span>남 <span class="mm">'+(nd.a.M+nd.a.rM)+'</span> · 여 <span class="ff">'+(nd.a.F+nd.a.rF)+'</span></span></div><b>vs</b>'+
     '<div class="t"><b>'+esc(team(op).name)+'</b><span>남 <span class="mm">'+(nd.b.M+nd.b.rM)+'</span> · 여 <span class="ff">'+(nd.b.F+nd.b.rF)+'</span></span></div></div>';
+  if(!D.multi){
   var msgs = [];
   if(nd.M>0) msgs.push('반복타자 <span class="mm">남자 '+nd.M+'명</span>을 더 선택하세요.');
   if(nd.F>0) msgs.push('반복타자 <span class="ff">여자 '+nd.F+'명</span>을 더 선택하세요.');
@@ -200,8 +209,9 @@ function render(){
     var cand = team(me).p.filter(function(x){ return pk.out.indexOf(x.id)<0 && pk.dup.indexOf(x.id)<0 && ((nd.M>0 && x.g==='남') || (nd.F>0 && x.g!=='남')); });
     h += '<div class="chips">'+cand.map(function(x){ return '<button class="chip '+(x.g==='남'?'m':'f')+'" data-dupadd="'+x.id+'">+ '+esc(x.n)+'</button>'; }).join('')+'</div>';
   }
+  }
   if(D.cap) h += '<div class="need ok" style="background:rgba(255,200,61,.12);border-color:var(--gold);color:#ffe7a6">🏆 이번 경기는 <span class="ff">여 '+D.cap.F+'명</span> · <span class="mm">남 '+D.cap.M+'명</span>이 출전해요.<br><span style="font-weight:600;font-size:13px">타순 위쪽부터 성별마다 '+D.cap.F+'명까지 출전하고, 나머지는 「교체」예요. 교체 친구를 내보내려면 ≡ 로 위로 끌어 올리세요.</span></div>';
-  h += '<p class="hint">결석한 친구는 아래 목록에서 ✓를 끄세요. 상대 조가 바꾸면 이 안내도 바로 바뀝니다.</p></div>';
+  h += '<p class="hint">'+(D.multi ? '경기에 못 나오는 친구는 아래 목록에서 ✓를 끄세요. 바꾼 내용은 바로 저장돼요.' : '결석한 친구는 아래 목록에서 ✓를 끄세요. 상대 조가 바꾸면 이 안내도 바로 바뀝니다.')+'</p></div>';
   // ② 타순
   var oi = 0;
   h += '<div class="card"><h2><span class="n">2</span>타순 — 오른쪽 ≡ 를 끌어서 바꾸기</h2><ul class="list" id="olist">'+
@@ -314,7 +324,7 @@ function makeCard(side){
   var c = cv.getContext('2d'), F = "'Noto Sans KR', system-ui, sans-serif";
   var bg = c.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#13204a'); bg.addColorStop(1,'#0b1328'); c.fillStyle = bg; c.fillRect(0,0,W,H);
   c.fillStyle = '#ffc83d'; c.font = '900 62px '+F; c.fillText('⚾ '+team(side).name+' 라인업', 52, 102);
-  c.fillStyle = '#a9b8dc'; c.font = '700 30px '+F; c.fillText((D.game||'')+'  ·  vs '+team(other(side)).name, 56, 152);
+  c.fillStyle = '#a9b8dc'; c.font = '700 30px '+F; c.fillText((D.game||'')+(D.multi ? '' : '  ·  vs '+team(other(side)).name), 56, 152);
   // 타격순서
   var rows = [];
   p.order.forEach(function(id){ if(p.out.indexOf(id)<0) rows.push({x:person(side,id), ps:posOf(p,id)}); });

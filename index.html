@@ -953,7 +953,16 @@ function syncState(cn, g, extra){
 function cupPush(g, del){
   if(!DB || !g || !g.cup || !g.cupId) return;
   var r = DB.ref('baseball/'+ck(g.cupId)+'/res/'+ck(g.cup));
-  (del ? r.remove() : r.set({h:g.home, a:g.away, hs:g.hs||0, as:g.as||0, status:g.status, at:Date.now()})).catch(function(){});
+  (del ? r.remove() : r.set({h:g.home, a:g.away, hs:g.hs||0, as:g.as||0, status:g.status, win:g.cupWin||null, at:Date.now()})).catch(function(){});
+}
+/* 11/23 사용자: 토너먼트는 1이닝, 동점이면 잔류 주자(이닝 끝날 때 베이스에 남은 주자) 많은 반 승, 그것도 같으면 승부치기.
+   잔류 주자는 공수교대를 만든 타석에 rec.lob 로 남긴다(되돌리기로 그 타석을 지우면 같이 사라짐). */
+function lobOf(g, side){ return (g.atbats||[]).reduce(function(n,r){ return n + (r.side===side ? (r.lob||0) : 0); }, 0); }
+function cupTie(g){
+  if(!g.cup || g.status!=='done' || g.hs!==g.as){ if(g.hs!==g.as) delete g.cupWin; return ''; }
+  var lh = lobOf(g,'H'), la = lobOf(g,'A');
+  if(lh!==la){ g.cupWin = lh>la ? 'H' : 'A'; return '동점 '+g.hs+':'+g.as+' → 잔류 주자 '+g.home+' '+lh+'명 · '+g.away+' '+la+'명\n'+(g.cupWin==='H'?g.home:g.away)+' 승리!'; }
+  return '동점 '+g.hs+':'+g.as+' · 잔류 주자도 '+lh+':'+la+'로 같아요.\n승부치기를 한 뒤 「지난 경기」의 [🏆 승부치기 승자] 버튼으로 이긴 반을 골라 주세요.';
 }
 /* 타석 한 건 */
 function syncAB(cn, g, rec){ save(); if(DB && rec && rec.id) push(gPath(cn,g)+'/ab/'+rec.id, rec); }
@@ -2054,7 +2063,7 @@ function vGame(){
       '<div class="row" style="margin-bottom:10px"><div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">선공 (가위바위보)</label>'+
       '<select id="cupFirst"><option value="H">'+esc(CUP.h)+' 선공</option><option value="A">'+esc(CUP.a)+' 선공</option></select></div>'+
       '<div style="flex:1"><label style="font-size:11.5px;color:var(--tx3)">이닝</label><select id="cupInn">'+[1,2,3].map(function(n){ return '<option value="'+n+'"'+(n===CUP.inn?' selected':'')+'>'+n+'이닝</option>'; }).join('')+'</select></div></div>'+
-      '<div class="row"><button class="btn" id="cupLu">📤 학생용 라인업 링크 (미리 보내기)</button>'+
+      '<div class="row"><button class="btn" id="cupAll">🎴 전 학급 라인업 카드 (링크 1개)</button><button class="btn" id="cupLu">📤 이 경기 라인업 링크</button>'+
       '<button class="btn pri" id="cupGo">⚾ 이 경기 시작</button><button class="btn" id="cupX">닫기</button></div></div>' : '') +
     '<div class="card"><h3>새 경기</h3>' +
     '<div class="row" style="margin-bottom:11px">' +
@@ -2078,7 +2087,7 @@ function vGame(){
           '<td>'+(g.mode==='intra'?'학급내':'학급대항')+'</td>'+
           '<td>'+esc(g.home)+' vs '+esc(g.away)+'</td>'+
           '<td class="n">'+g.hs+' : '+g.as+'</td>'+
-          '<td class="n">'+(g.status==='done' ? '<button class="btn sm" data-rg="'+g.no+'">▶ 다시 열기</button> ' : '')+
+          '<td class="n">'+(g.status==='done' && g.cup && g.hs===g.as ? '<button class="btn sm" data-tb="'+g.no+'">🏆 승부치기 승자'+(g.cupWin?' ('+esc(g.cupWin==='H'?g.home:g.away)+')':'')+'</button> ' : '')+(g.status==='done' ? '<button class="btn sm" data-rg="'+g.no+'">▶ 다시 열기</button> ' : '')+
           '<button class="btn sm dn" data-dg="'+g.no+'">삭제</button></td></tr>';
       }).join('')+'</table>' : '<div class="msg">아직 경기가 없습니다</div>') + '</div>';
 
@@ -2151,6 +2160,13 @@ function vGame(){
       var f = el('cupFirst').value; q.inn = +el('cupInn').value || q.inn;
       el('cupFirst').outerHTML = '<input type="hidden" id="first" value="'+f+'">';
       startGame('inter', {opp:q.a, inn:q.inn, cup:q.n, cid:q.cid, lbl:q.lbl, cap:q.cap});
+      var ng = c.games[c.games.length-1];
+      if(ng && ng.cup) luFind(ng).then(function(tok){ if(tok && ng.luMulti) return luImport(ng).then(function(r){ lineupView(ng); alert('학생이 낸 라인업을 불러왔어요\n\n'+r+'\n\n틀린 곳은 아래에서 바로 고치면 됩니다.'); }); }).catch(function(){});
+    };
+    el('cupAll').onclick = function(){
+      var b = this; b.disabled = true;
+      cupAllMake(CUP.cid, CUP.cap).then(function(r){ b.disabled = false; luShow({luMulti:true}, r.tok); toast(r.n+'개 반 명단으로 카드를 만들었어요'); },
+        function(e){ b.disabled = false; toast('카드를 못 만들었어요: '+e.message); });
     };
     el('cupLu').onclick = function(){
       if(!oc || !oc.roster || !oc.roster.length) return toast(CUP.a+' 명단을 아직 못 받았어요 — 잠시 뒤 다시 눌러 주세요');
@@ -2162,6 +2178,17 @@ function vGame(){
   }
   /* 10/27: 실수로 「경기 종료」를 누른 경기를 이어서 한다 (9반 — 1회 초만 하고 종료됨).
      made 를 새로 찍어야 다른 기기가 갖고 있는 «종료» 사본을 서버의 «진행 중»으로 바꿔 받는다 */
+  el('v-game').querySelectorAll('[data-tb]').forEach(function(b){
+    b.onclick = function(){
+      var g = c.games.filter(function(x){ return String(x.no)===b.dataset.tb; })[0]; if(!g) return;
+      var lh = lobOf(g,'H'), la = lobOf(g,'A');
+      var w = prompt('동점 '+g.hs+':'+g.as+' (잔류 주자 '+g.home+' '+lh+' · '+g.away+' '+la+')\n승부치기에서 이긴 반을 적어 주세요: '+g.home+' 또는 '+g.away, g.cupWin ? (g.cupWin==='H'?g.home:g.away) : '');
+      if(w==null) return; w = w.trim();
+      if(w!==g.home && w!==g.away) return toast(g.home+' 또는 '+g.away+' 로 적어 주세요');
+      g.cupWin = w===g.home ? 'H' : 'A'; g.made = g.made || Date.now();
+      syncGameFull(S.cur, g); cupPush(g); render(); toast(w+' 승리로 대진표에 올렸어요');
+    };
+  });
   el('v-game').querySelectorAll('[data-rg]').forEach(function(b){
     b.onclick = function(){
       var g = c.games.filter(function(x){ return String(x.no)===b.dataset.rg; })[0];
@@ -2320,6 +2347,15 @@ function luKey(g){
    공용 링크가 아직 없는데 경기에 링크가 있으면 그걸 공용으로 등록한다. */
 function luFind(g){
   if(!DB) return Promise.resolve(g.luTok || null);
+  /* 11/23 토너먼트 전 학급 카드(링크 1개)가 있으면 그것을 쓴다 */
+  if(g.cup) return DB.ref(ROOT()+'/luLinks/cupall_'+ck(g.cupId||'cup')).once('value').then(function(s){
+    var t = s.val(); if(t){ if(g.luTok!==t){ g.luTok = t; g.luMulti = true; save(); } else g.luMulti = true; return t; }
+    return luFindOne(g);
+  }, function(){ return luFindOne(g); });
+  return luFindOne(g);
+}
+function luFindOne(g){
+  if(!DB) return Promise.resolve(g.luTok || null);
   var ref = DB.ref(ROOT()+'/luLinks/'+luKey(g));
   return ref.once('value').then(function(s){
     var tok = s.val();
@@ -2340,6 +2376,7 @@ function luMake(g){
     return {name: side==='H'?g.home:g.away, p: seq.map(function(sid){ var x=findP(g,sid); return x ? {id:sid, n:x.name, g:x.gender||''} : null; }).filter(Boolean)};
   }
   return luFind(g).then(function(tok){
+    if(tok && g.luMulti) return tok;          // 전 학급 카드는 반 명단을 그대로 둔다
     var fresh = !tok;
     if(fresh){ var a = new Uint8Array(15); crypto.getRandomValues(a); tok = Array.prototype.map.call(a, function(x){ return 'abcdefghijkmnpqrstuvwxyz23456789'[x%32]; }).join(''); }
     return (fresh ? Promise.resolve(null) : luRef(tok).child('teams').once('value').then(function(s){ return s.val(); })).then(function(old){
@@ -2353,9 +2390,33 @@ function luMake(g){
     });
   });
 }
+/* 11/23 사용자: «카드 받으면 학급 누르고 라인업 정하고 제출» — 토너먼트 전체에 링크 1개.
+   모든 반 명단(이름·성별만)을 baseball/lu_<토큰> 에 teams[반] 으로 올리고, 학생 선택은 pick[반].
+   경기를 시작하면(이 대회 경기) 위 luFind 가 이 링크를 찾아 두 반 것을 자동으로 불러온다. */
+function cupAllMake(cid, cap){
+  if(!DB) return Promise.reject(new Error('Firebase 연결이 필요합니다 (학교 코드)'));
+  var names = [1,2,3,4,5,6,7,8,9,10].map(function(i){ return i+'반'; });   // 이 기기에 안 열어 본 반도 DB에서 명단을 읽는다
+  var key = DB.ref(ROOT()+'/luLinks/cupall_'+ck(cid));
+  return Promise.all(names.map(function(n){ return DB.ref(ROOT()+'/classes/'+ck(n)+'/roster').once('value').then(function(s){ return [n, s.val()]; }); })).then(function(rs){
+    var teams = {};
+    rs.forEach(function(r){
+      var ro = r[1] ? (Array.isArray(r[1]) ? r[1] : Object.keys(r[1]).map(function(k){ return r[1][k]; })) : ((S.classes[r[0]]||{}).roster||[]);
+      ro = ro.filter(Boolean);
+      if(ro.length) teams[ck(r[0])] = {name:r[0], p: ro.map(function(x){ return {id:x.sid, n:x.name, g:x.gender||''}; })};
+    });
+    if(!Object.keys(teams).length) throw new Error('반 명단을 못 찾았어요');
+    return key.once('value').then(function(s){
+      var tok = s.val(), fresh = !tok;
+      if(fresh){ var a = new Uint8Array(15); crypto.getRandomValues(a); tok = Array.prototype.map.call(a, function(x){ return 'abcdefghijkmnpqrstuvwxyz23456789'[x%32]; }).join(''); }
+      return luRef(tok).update({v:1, multi:true, made:Date.now(), game:'학교장배 런치리그 야구', teams:teams, cap:cap||{F:10,M:10}}).then(function(){
+        return fresh ? key.set(tok) : null; }).then(function(){ return {tok:tok, n:Object.keys(teams).length}; });
+    });
+  });
+}
 function luShow(g, tok){
   var url = luLink(tok);
-  var msg = '⚾ '+gLabel(g)+' 라인업\n각 조 주장은 아래 링크에서 결석·타순·수비·반복타자를 정하고, 완성된 카드를 여기에 올려 주세요!\n'+url;
+  var msg = g.luMulti ? '⚾ 야구 토너먼트 라인업 카드\n반 대표는 아래 링크에서 우리 반을 누르고, 출전 20명(여 10·남 10) 타순과 수비를 정한 뒤 [완성]을 눌러 주세요!\n'+url
+            : '⚾ '+gLabel(g)+' 라인업\n각 조 주장은 아래 링크에서 결석·타순·수비·반복타자를 정하고, 완성된 카드를 여기에 올려 주세요!\n'+url;
   var d = document.createElement('div');
   d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;display:flex;align-items:center;justify-content:center;padding:16px';
   d.innerHTML = '<div class="card" style="max-width:560px;width:100%;margin:0">'+
@@ -2378,7 +2439,7 @@ function luImport(g){
     if(!tok) throw new Error('학생용 링크를 먼저 만들어 주세요');
     return luRef(tok).once('value');
   }).then(function(s){
-    var all = s.val() || {}, raw = all.pick || {}, m = luSides(g, all.teams), pk = {H: raw[m.H], A: raw[m.A]}, rep = [];
+    var all = s.val() || {}, raw = all.pick || {}, m = luSides(g, all.teams), pk = all.multi ? {H: raw[ck(g.home)], A: raw[ck(g.away)]} : {H: raw[m.H], A: raw[m.A]}, rep = [];
     ['H','A'].forEach(function(side){
       var p = pk[side]; if(!p || !p.order) { rep.push((side==='H'?g.home:g.away)+': 아직 안 정함'); return; }
       var seq = side==='H'?g.seqH:g.seqA;
@@ -3492,7 +3553,8 @@ function boardImpl(g){
     stopAll();
     g.status='done'; document.body.classList.remove('fs');
     ['_s','_b','_o','_pick','_swap'].forEach(function(k){ delete g[k]; });
-    unwatch(); syncGameFull(S.cur,g); render(); toast(gLabel(g)+' 종료');
+    var tie = cupTie(g);
+    unwatch(); syncGameFull(S.cur,g); render(); toast(gLabel(g)+' 종료'); if(tie) setTimeout(function(){ alert(tie); }, 300);
   };
 
   function swing(kind, fcIdx){
@@ -3535,12 +3597,14 @@ function boardImpl(g){
     g._s=0; g._b=0; g._pick=[];
     if(g.st.idx+1 >= order.length) awardDef(g, onField(g, dside), 'end');   // 수비 이닝 끝 → 9명 수비 참여
     g.st = nextState(g.st, order.length);
+    if(g.st.idx===0) rec.lob = g.bases.filter(function(x){ return x; }).length;   // 11/23 잔류 주자
     /* 공수교대 — 주자·아웃 리셋. 교대 모드도 꺼서 다음 회에 헛눌리지 않게 한다 */
     if(g.st.idx===0){ g._o=0; g.bases=[null,null,null]; g._swap=false; }
     if(isGameOver(g.st, g.innings)){
       stopAll();
       g.status='done'; document.body.classList.remove('fs');
-      unwatch(); syncGameFull(S.cur,g); render(); toast('경기 종료'); return;
+      var tie = cupTie(g);
+      unwatch(); syncGameFull(S.cur,g); render(); toast('경기 종료'); if(tie) setTimeout(function(){ alert(tie); }, 300); return;
     }
     syncAB(S.cur, g, rec);                                  // 새 타석은 자기 칸에
     dfMade.forEach(function(r){ syncDF(S.cur, g, r); });
