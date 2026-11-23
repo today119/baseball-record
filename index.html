@@ -821,7 +821,17 @@ function advance(bases, batterSid, kind, fcIdx){
     return {bases:b, runs:runs, fc:true, fcOut:out};
   }
 
-  var step = kind===7 ? 1 : kind;     // 실책 출루 = 주자 진루는 1루타와 같다 (기록상 안타는 아님)
+  /* 11/23 사용자: «2·3루에서 1루타를 쳐도 주자가 못 가는 경우가 많다» → 1루타·실책은 밀리는 주자만 자동으로 민다.
+     더 간 주자는 다이아몬드에서 그 주자를 눌러 옮긴다(홈이면 득점·타점까지 들어감). 2루타 이상은 예전처럼 한꺼번에 */
+  if(kind===1 || kind===7){
+    var held = 0;
+    if(b[0]){ if(b[1]){ if(b[2]) runs.push(b[2]); b[2]=b[1]; } b[1]=b[0]; }
+    else held = (b[1]?1:0) + (b[2]?1:0);
+    if(b[0] && !(bases||[])[1] && b[2] && (bases||[])[2]) held = 1;       // 1·3루 → 3루 주자는 그대로
+    b[0] = batterSid;
+    return {bases:b, runs:runs, held:held};
+  }
+  var step = kind;
   for(var i=2;i>=0;i--){              // 안타·홈런·실책
     if(!b[i]) continue;
     var to = i + step;
@@ -3621,6 +3631,7 @@ function boardImpl(g){
     if(kind===6 && fcIdx===undefined && g.bases.some(function(x){ return x; }))
       return fcPop(g, function(i){ swing(6, i); });
     var before = g.bases.slice();
+    g._rbiAb = null;
     var res = advance(g.bases, b.sid, kind, fcIdx);
     g.bases = res.bases;
     var scored = res.runs.length;
@@ -3632,6 +3643,7 @@ function boardImpl(g){
                stBefore:Object.assign({},g.st), basesBefore:before};
     if(res.fcOut){ rec.fcOut = res.fcOut; rec.fcBase = fcIdx; }
     g.atbats.push(rec);
+    if(kind===1) g._rbiAb = rec.id;      // 이 타석 뒤 주자를 눌러 홈인시키면 이 타자 타점
     var touched=[];
     rec.rs = res.runs.filter(function(sid){ return sid!==b.sid; });   // 되돌리기용 — 이 타석으로 홈인한 앞 주자
     res.runs.forEach(function(sid){
@@ -3670,6 +3682,7 @@ function boardImpl(g){
     syncState(S.cur, g);
     board(g);
     cheerBatter(g);                                         // 다음 타자 소개 → 응원가
+    if(res.held) toast('주자가 더 갔으면 다이아몬드에서 그 주자를 눌러 옮기세요');
     if(kind===6) toast(res.fcOut ? '야수선택 — '+pName(g,res.fcOut)+'('+(fcIdx+1)+'루 주자) 아웃' : '야수선택 — 주자 모두 세이프');
     else if(kind===7) toast('실책 출루 — 주자가 더 갔으면 베이스를 눌러 고치세요');
     else if(scored) toast(b.name+' · '+scored+'점');
@@ -3720,6 +3733,10 @@ function runnerPop(g, idx, sid){
       } else if(to!=='O'){ g.bases[+to] = sid; }
       d.remove();
       if(hit) syncABRun(S.cur, g, hit);
+      if(to==='H' && g._rbiAb){                // 방금 1루타 친 타자에게 타점
+        var rb = g.atbats.filter(function(a){ return a.id===g._rbiAb; })[0];
+        if(rb && rb.sid!==sid){ rb.rbi = (rb.rbi||0)+1; if(DB) patch(gPath(S.cur,g)+'/ab/'+rb.id, {rbi:rb.rbi}); }
+      }
       syncState(S.cur,g); board(g);
       toast(pName(g,sid)+' → '+(to==='H'?'득점':to==='O'?'아웃':(+to+1)+'루'));
     };
