@@ -25,6 +25,7 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
 .row.h{background:var(--ink);color:var(--bg);font-weight:700;border-top:none;border-left-color:var(--ink)}
 .row.l{border-left-color:var(--l)}.row.c{border-left-color:var(--c)}.row.k{border-left-color:var(--k)}
 .note{margin-top:14px;font-size:14.5px;color:var(--mut);line-height:1.7}
+.rule{background:var(--card);border-radius:16px;border-left:8px solid var(--l);padding:14px 18px;margin-bottom:18px;font-size:18px;line-height:1.7}.rule>b{font-size:19px}.rule div b{color:var(--lt)}
 .draw{background:var(--card);border-radius:18px;padding:18px;margin-bottom:18px;border:2px dashed var(--l)}
 .dh{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:20px;margin-bottom:12px}.st{font-size:14px;color:var(--mut)}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -66,6 +67,10 @@ a.m{display:block;text-decoration:none;color:inherit;cursor:pointer}a.m:hover{bo
 </style></head><body><div class="wrap">
 <h1>2학년 스포츠 생활2 <span>야구 토너먼트</span></h1>
 <div class="sub">10개 반 · 총 9경기 · 추첨 → 1라운드(점심) → 8강 → 4강 → 결승</div>
+<div class="rule"><b>📢 출전 안내</b>
+ <div>① 학급별 명단 <b>남자 10명 · 여자 10명</b> 출전</div>
+ <div>② 점심 경기는 <b>우선 급식</b> 후 <b>13:00 정각</b> 집합</div>
+</div>
 <div class="draw" id="draw">
  <div class="dh"><b>🎲 대진 추첨</b><span id="dst" class="st"></span></div>
  <div class="steps">
