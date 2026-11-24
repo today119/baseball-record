@@ -2485,7 +2485,11 @@ function cupLineupHTML(t, p, k){
   var fAll = order.filter(function(id){ return pp[id].g!=='남'; }).length, fNeed = Math.min(CUP_FDEF, fAll);
   var fDef = Object.keys(p.pos||{}).filter(function(q){ var x = pp[p.pos[q]]; return x && x.g!=='남'; }).length;
   var miss = POS.filter(function(q){ return !(p.pos||{})[q.k]; }).map(function(q){ return q.n; });
+  /* 11/24: 명단에 나중에 넣은 학생은 반이 타순을 다시 저장하기 전까지 order 에 없다 — 학생 화면은 맨 아래에 붙여 보여 준다 */
+  var inOrd = {}; (p.order||[]).forEach(function(id){ inOrd[id] = 1; });
+  var fresh = (t.p||[]).filter(function(x){ return !inOrd[x.id]; }).map(function(x){ return esc(x.n); });
   var notes = '<div style="margin-top:10px;font-size:12.5px;color:var(--tx2);line-height:1.7">'+
+    (fresh.length ? '<span style="color:#5b9cf0">🆕 명단에 새로 들어온 학생: '+fresh.join(', ')+' — 반에서 링크를 열어 타순을 정하고 다시 저장하면 들어가요</span><br>' : '')+
     (dup.length ? '🔁 반복타자: '+dup.join(', ')+'<br>' : '')+
     (fDef < fNeed ? '<span style="color:#e0a03a">⚠ 수비에 여학생이 '+fDef+'명이에요. '+fNeed+'명 이상이어야 해요.</span><br>' : '✔ 수비 여학생 '+fDef+'명<br>')+
     (miss.length ? '<span style="color:#e0a03a">⚠ 수비 안 정한 자리: '+miss.join(', ')+'</span>' : '✔ 수비 9자리 모두 정함')+
