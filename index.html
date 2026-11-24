@@ -1662,6 +1662,15 @@ function vRoster(){
     '<p class="st" style="margin:9px 0 0">시트 양식 &nbsp;<b>학급 | 번호 | 이름 | 성별 | 조</b>&nbsp; · '+
     '시트의 <b>「학급」 칸 = '+esc(S.cur)+'</b> 인 줄만 가져옵니다. '+
     '시트가 없으면 <b>설정 → 시트 양식 만들기</b> 를 먼저 누르세요.</p></div>' +
+    /* 11/24 사용자: 4반 주장이 명단에서 빠짐 — 붙여넣기는 반 전체를 갈아엎어서 한 명만 되살릴 방법이 없었다.
+       번호·이름이 같으면 학생 ID(s번호_이름)도 같아져 지난 경기 기록과 그대로 이어진다. */
+    '<div class="card"><h3>한 명 추가</h3>' +
+    '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">' +
+    '<input id="addNum" inputmode="numeric" placeholder="번호" style="width:70px">' +
+    '<input id="addName" placeholder="이름" style="width:120px">' +
+    '<select id="addG"><option>남</option><option>여</option></select>' +
+    '<button class="btn pri" id="addGo">추가</button></div>' +
+    '<p class="st" style="margin:8px 0 0">지금 명단과 조는 그대로 두고 한 명만 넣어요. 예전과 같은 번호·이름으로 넣으면 지난 경기 기록과 이어져요.</p></div>' +
     '<div class="card"><h3>등록 '+c.roster.length+'명 · 남 '+
       c.roster.filter(function(s){return s.gender==='남';}).length+' / 여 '+
       c.roster.filter(function(s){return s.gender==='여';}).length+'</h3>' +
@@ -1688,7 +1697,21 @@ function vRoster(){
                 gender:(g==='여'||g==='F'||g==='f')?'여':'남', group:'A'});
     });
     if(!add.length) return toast('읽을 수 있는 줄이 없습니다');
+    if(c.roster.length && !confirm('지금 명단 '+c.roster.length+'명을 붙여넣은 '+add.length+'명으로 통째로 바꿀까요?\n(같은 학생의 조 배정은 그대로 둡니다. 한 명만 넣으려면 아래 「한 명 추가」를 쓰세요)')) return;
+    var oldG = {}; c.roster.forEach(function(s){ oldG[s.sid] = s.group; });
+    add.forEach(function(s){ if(oldG[s.sid]) s.group = oldG[s.sid]; });
     c.roster = add; syncRoster(S.cur); render(); toast(add.length+'명 등록');
+  };
+  el('addGo').onclick = function(){
+    var num = el('addNum').value.trim().replace(/[^0-9]/g,''), name = el('addName').value.trim().replace(/\s+/g,''), g = el('addG').value;
+    if(!num || !name) return toast('번호와 이름을 넣어 주세요');
+    var sid = 's'+num+'_'+name;
+    if(c.roster.some(function(s){ return s.sid===sid; })) return toast(num+'번 '+name+'은(는) 이미 명단에 있어요');
+    var same = c.roster.filter(function(s){ return String(s.num)===num; })[0];
+    if(same && !confirm(num+'번에 이미 '+same.name+' 학생이 있어요. 그래도 '+name+'을(를) 추가할까요?')) return;
+    c.roster.push({sid:sid, num:num, name:name, gender:g, group:'A'});
+    c.roster.sort(function(a,b){ return (parseInt(a.num,10)||0)-(parseInt(b.num,10)||0); });
+    syncRoster(S.cur); render(); toast(num+'번 '+name+' 추가');
   };
   el('clr').onclick = function(){ if(confirm('명단을 전부 지울까요?')){ c.roster=[]; save(); render(); } };
   el('toSheet').onclick = function(){
@@ -1717,7 +1740,11 @@ function vRoster(){
     }).catch(function(e){ toast(e.message); });
   };
   el('v-roster').querySelectorAll('[data-del]').forEach(function(b){
-    b.onclick = function(){ c.roster.splice(+b.dataset.del,1); syncRoster(S.cur); render(); };
+    b.onclick = function(){                                  // 11/24: 확인 없이 지워져 4반 주장이 빠졌다
+      var s = c.roster[+b.dataset.del]; if(!s) return;
+      if(!confirm(s.num+'번 '+s.name+' 학생을 명단에서 지울까요?\n(지난 경기 기록은 남아요)')) return;
+      c.roster.splice(+b.dataset.del,1); syncRoster(S.cur); render(); toast(s.num+'번 '+s.name+' 삭제');
+    };
   });
   el('v-roster').querySelectorAll('[data-g]').forEach(function(sel){
     sel.onchange = function(){ c.roster[+sel.dataset.g].group = sel.value; syncRoster(S.cur); };
