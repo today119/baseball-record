@@ -64,9 +64,11 @@ a.m{display:block;text-decoration:none;color:inherit;cursor:pointer}a.m:hover{bo
  .br{grid-template-columns:1fr}.br>.col:nth-child(1),.br>.col:nth-child(2){display:flex}.ch{flex-direction:row;gap:10px}.ch .cup{font-size:36px}
  .row{grid-template-columns:1fr;gap:2px}.row.h{display:none}.row .d{font-weight:700}.row .tm{color:var(--mut);font-size:14px}
 }
+.snap .rule,.snap #draw{display:none}.snap .wrap{padding-bottom:8px}
+#snapAt{display:none}.snap #snapAt{display:block;font-size:13px;color:var(--mut);margin-top:4px}
 </style></head><body><div class="wrap">
 <h1>2026학년도 2학기 <span>학교장배 런치리그</span></h1>
-<div class="sub">2학년 야구 토너먼트 · 10개 반 · 총 9경기 · 모든 경기 1이닝</div>
+<div class="sub">2학년 야구 토너먼트 · 10개 반 · 총 9경기 · 모든 경기 1이닝</div><div id="snapAt"></div>
 <div class="rule"><b>📢 출전 안내</b>
  <div>① 학급별 명단 <b>남자 10명 · 여자 10명</b> 출전</div>
  <div>② 점심 경기는 <b>우선 급식</b> 후 <b>13:00 정각</b> 집합</div>
@@ -91,6 +93,8 @@ a.m{display:block;text-decoration:none;color:inherit;cursor:pointer}a.m:hover{bo
 <div class="tb" id="tb"></div>
 <div class="note">※ 수업 시간이 같은 반끼리는 수업 중에 8강을 치르고(1라운드 부전승), 수업 시간이 겹치지 않는 반은 점심에 1라운드를 치릅니다.<br>※ 모든 경기 1이닝. 동점이면 잔류 주자(이닝이 끝날 때 베이스에 남은 주자)가 많은 반이 이기고, 그것도 같으면 승부치기로 정합니다.<br>※ 비가 오면 다음 같은 수업 시간(점심 경기는 다음 점심)으로 미룹니다.</div>
 </div><script>
+/* 11/26 ?snap = 학교 홈페이지용 그림(cup2.png)을 찍는 화면 — 추첨·출전 안내·선생님 안내 문구를 뺀다 */
+var SNAP=/[?&]snap/.test(location.search);if(SNAP){document.documentElement.className+=' snap';document.getElementById('snapAt').textContent=new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',weekday:'short',hour:'numeric',minute:'2-digit'})+' 기준';}
 var CID='cup2026_g2'+(/[?&]test/.test(location.search)?'_test':''),BASE='https://baseball-record-1d9a5-default-rtdb.asia-southeast1.firebasedatabase.app/baseball/'+CID,DB=BASE+'/draw.json',R={};
 var D=null;
 function $(i){return document.getElementById(i)}
@@ -154,7 +158,7 @@ function bracket(Lp,d3,d5){
     var s=slots(n),r=R[n],both=isT(s[0])&&isT(s[1]),ok=r&&both&&s.indexOf(tn(r.h))>=0&&s.indexOf(tn(r.a))>=0,w=ok?W(n):null;
     var cls=n<=2||n===4?'lunch':n<=6?'cls':'top';
     var t=s.map(function(x){var sc=ok?(tn(r.h)===x?r.hs:r.as):null;return '<div class="t'+(isT(x)&&n!==6&&!(n===3&&x==='203')&&!(n===5&&x==='201')?' got':'')+(w?(w===x?' win':' lose'):'')+'"><span>'+x+'</span>'+(sc!=null?'<i>'+sc+'</i>':'')+'</div>'}).join('');
-    var ft=!both?'':ok&&r.status==='done'?(r.hs===r.as?(r.win?'동점 → 잔류 주자·승부치기로 승부':'동점 — 잔류 주자 같음, 승부치기 결과 기다리는 중'):'경기 종료'):ok&&r.status==='live'?'● 진행 중 — 눌러서 기록 열기':'⚾ 눌러서 경기 기록 열기 (선생님)';
+    var ft=!both?'':ok&&r.status==='done'?(r.hs===r.as?(r.win?'동점 → 잔류 주자·승부치기로 승부':'동점 — 잔류 주자 같음, 승부치기 결과 기다리는 중'):'경기 종료'):ok&&r.status==='live'?(SNAP?'● 진행 중':'● 진행 중 — 눌러서 기록 열기'):SNAP?'경기 전':'⚾ 눌러서 경기 기록 열기 (선생님)';
     var inner='<div class="w">'+(wh[n]||WH[n])+'</div>'+t+(ft?'<div class="ft'+(ok&&r.status==='live'?' live':'')+'">'+ft+'</div>':'');
     var href=both?'index.html#cup='+n+'&cid='+CID+'&h='+encodeURIComponent(cn(s[0]))+'&a='+encodeURIComponent(cn(s[1]))+'&inn='+INN[n]+'&cap=10&lbl='+encodeURIComponent('토너먼트 '+CIRC[n-1]+' '+s[0]+' vs '+s[1]):'';
     $('M'+n).outerHTML=both?'<a id="M'+n+'" class="m '+cls+'" href="'+href+'" target="_blank" rel="noopener">'+inner+'</a>':'<div id="M'+n+'" class="m '+cls+'">'+inner+'</div>';
