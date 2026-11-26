@@ -72,9 +72,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
  .br{grid-template-columns:1fr}.col{display:flex;flex-direction:column;gap:12px}.ch{flex-direction:row;gap:10px}.ch .cup{font-size:36px}
  .row{grid-template-columns:1fr;gap:2px}.row.h{display:none}.row .d{font-weight:700}
 }
+.snap #draw{display:none}
+#snapAt{display:none}.snap #snapAt{display:block;font-size:13px;color:var(--mut);margin-top:4px}
 </style></head><body><div class="wrap">
 <h1>2026학년도 2학기 <span>1학년 다트 런치리그</span></h1>
-<div class="sub">1학년 다트 토너먼트 · 10개 반 · 총 9경기 · 12.16.(수)~22.(화) 점심시간</div>
+<div class="sub">1학년 다트 토너먼트 · 10개 반 · 총 9경기 · 12.16.(수)~22.(화) 점심시간</div><div id="snapAt"></div>
 <div class="rule"><b>🎯 경기 방식</b>
  <div>① 학급별 <b>남자 복식 2명 · 여자 복식 2명 · 혼합 복식 2명</b> 출전</div>
  <div>② 같은 종목끼리 <b>501 게임</b> (501점에서 시작해 먼저 0점을 만드는 팀이 승)</div>
@@ -104,8 +106,10 @@ var CID='dart2026_g1'+(/[?&]test/.test(location.search)?'_test':''),BASE='https:
 var CLS=['101','102','103','104','105','106','107','108','109','110'];
 var GN=[['m','남자 복식'],['f','여자 복식'],['x','혼합 복식']];
 var CIRC='①②③④⑤⑥⑦⑧⑨';
-var D=null,R={},WH={},BUSY=false,UNL=false,VIEW=/[?&]view/.test(location.search);
+var D=null,R={},WH={},BUSY=false,UNL=false,VIEW=/[?&](view|snap)/.test(location.search);
 if(VIEW)document.documentElement.classList.add('view');
+/* 11/26 ?snap = 학교 홈페이지용 그림(dart1.png)을 찍는 화면 — 사다리 추첨 칸을 뺀다 */
+if(/[?&]snap/.test(location.search)){document.documentElement.classList.add('snap');document.getElementById('snapAt').textContent=new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',weekday:'short',hour:'numeric',minute:'2-digit'})+' 기준';}
 try{UNL=sessionStorage.getItem('dartUnl')==='1'}catch(e){}
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
