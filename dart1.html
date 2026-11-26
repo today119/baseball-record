@@ -16,6 +16,7 @@ h1{margin:0;font-size:clamp(26px,5vw,38px);font-weight:900;line-height:1.25}h1 s
 .pool button{font:inherit;cursor:pointer;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:8px;padding:6px 14px;font-weight:700;font-size:17px}
 .pool .done{opacity:.35;text-decoration:line-through;cursor:default}.pool .undo{border-style:dashed;color:var(--mut)}
 #lad .no{font-size:20px;font-weight:700;fill:var(--mut)}
+.view #reg,.view #mk,.view #all,.view #rst,.view #lock,.view #admt{display:none!important}.view #lad g.top{cursor:default}.view button.m{cursor:default}.view button.m:hover{box-shadow:none}
 .lad{background:var(--box);border-radius:14px;padding:6px}
 #lad{display:block;width:100%;height:auto}
 #lad .rail{stroke:var(--p);stroke-width:5}#lad .rung{stroke:var(--p);stroke-width:5}
@@ -103,7 +104,8 @@ var CID='dart2026_g1'+(/[?&]test/.test(location.search)?'_test':''),BASE='https:
 var CLS=['101','102','103','104','105','106','107','108','109','110'];
 var GN=[['m','남자 복식'],['f','여자 복식'],['x','혼합 복식']];
 var CIRC='①②③④⑤⑥⑦⑧⑨';
-var D=null,R={},WH={},BUSY=false,UNL=false;
+var D=null,R={},WH={},BUSY=false,UNL=false,VIEW=/[?&]view/.test(location.search);
+if(VIEW)document.documentElement.classList.add('view');
 try{UNL=sessionStorage.getItem('dartUnl')==='1'}catch(e){}
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -146,7 +148,7 @@ function ladder(){
   for(var k=0;k<10;k++){var tx=slotTxt(k),who=p[k],ci=who?o.indexOf(who):-1;
     h+='<g class="bt'+(SLOTM[k]>=3?' bye':'')+'"><rect x="'+(X(k)-44)+'" y="552" width="88" height="120" rx="12"'+(who?' style="stroke:'+COL[ci]+';stroke-width:6"':'')+'/><text class="s1" x="'+X(k)+'" y="592">'+tx[0]+'</text><text class="s2" x="'+X(k)+'" y="620">'+tx[1].replace(' 부전승','')+'</text>'+(SLOTM[k]>=3?'<text class="s2" x="'+X(k)+'" y="642">부전승</text>':'')+(who?'<text class="cl" x="'+X(k)+'" y="'+(SLOTM[k]>=3?666:652)+'" style="fill:'+COL[ci]+'">'+who+'</text>':'')+'</g>'}
   $('lad').innerHTML=h;
-  [].forEach.call($('lad').querySelectorAll('g.top:not(.gone)'),function(el){el.onclick=function(){goCls(el.dataset.c)}});
+  if(!VIEW)[].forEach.call($('lad').querySelectorAll('g.top:not(.gone)'),function(el){el.onclick=function(){goCls(el.dataset.c)}});
   CLS.forEach(function(c){if(ANIM[c]===1){ANIM[c]=2;var el=$('pa'+c);if(!el)return;el.getBoundingClientRect();el.style.transition='stroke-dashoffset 2.6s ease-in-out';el.style.strokeDashoffset='0';
     setTimeout(function(){delete ANIM[c];render()},2700)}else if(ANIM[c]===2){var e2=$('pa'+c);if(e2)e2.style.strokeDashoffset='0'}});
 }
@@ -174,7 +176,7 @@ function bracket(){
   for(var n=1;n<=9;n++){
     var s=slots(n),r=R[n],both=isT(s[0])&&isT(s[1]),ok=r&&both&&r.h===s[0]&&r.a===s[1],w=ok?W(n):null,ws=ok?wins(r):null;
     var t=s.map(function(x,i){return '<div class="t'+(w?(w===x?' win':' lose'):'')+'"><span>'+esc(x)+'</span>'+(ws?'<i>'+ws[i]+'</i>':'')+'</div>'}).join('');
-    var ft=!both?'':w?'경기 종료 · '+sline(n).txt:ok&&(ws[0]+ws[1])?'진행 중 · '+sline(n).txt:'✏️ 눌러서 결과 넣기 (선생님)';
+    var ft=!both?'':w?'경기 종료 · '+sline(n).txt:ok&&(ws[0]+ws[1])?'진행 중 · '+sline(n).txt:VIEW?'':'✏️ 눌러서 결과 넣기 (선생님)';
     var inner='<div class="w">'+CIRC[n-1]+' '+rname(n)+' · '+esc(when(n))+'</div>'+t+(ft?'<div class="ft">'+ft+'</div>':'');
     $('M'+n).outerHTML='<button type="button" id="M'+n+'" class="m '+rcls(n)+'" onclick="tapM('+n+')">'+inner+'</button>';
   }
@@ -233,7 +235,7 @@ function saveM(){var n=CUR.n,wv=$('dw').value.trim(),ps=[];
     var w=wins({g:g});if(w[0]>=2&&w[1]>=2)return alert('두 반이 모두 2승일 수는 없어요.');
     if(Object.keys(g).length||Object.keys(CUR.lf).length)ps.push(fetch(BASE+'/res/'+n+'.json',{method:'PUT',body:JSON.stringify({h:CUR.h,a:CUR.a,g:g,lf:CUR.lf,at:Date.now()})}))}
   $('dsv').disabled=true;Promise.all(ps).then(function(){$('dg').close();load()},function(){$('dsv').disabled=false;alert('저장하지 못했어요. 인터넷 연결을 확인해 주세요.')})}
-function tapM(n){if(!okPin())return;render();openM(n)}
+function tapM(n){if(VIEW||!okPin())return;render();openM(n)}
 window.tapM=tapM;
 load().catch(render);setInterval(function(){if(!BUSY&&!$('dg').open&&!Object.keys(ANIM).length)load().catch(function(){})},4000);
 </script>
