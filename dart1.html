@@ -77,7 +77,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <div class="sub">1학년 다트 토너먼트 · 10개 반 · 총 9경기 · 12.16.(수)~22.(화) 점심시간</div>
 <div class="rule"><b>🎯 경기 방식</b>
  <div>① 학급별 <b>남자 복식 2명 · 여자 복식 2명 · 혼합 복식 2명</b> 출전</div>
- <div>② 같은 종목끼리 <b>301 게임</b> (301점에서 시작해 먼저 0점을 만드는 팀이 승)</div>
+ <div>② 같은 종목끼리 <b>501 게임</b> (501점에서 시작해 먼저 0점을 만드는 팀이 승)</div>
  <div>③ <b>3판 중 2판을 먼저 이긴 반</b>이 다음 라운드 진출</div>
 </div>
 <div class="draw" id="draw">
@@ -215,14 +215,14 @@ function openM(n){var s=slots(n),both=isT(s[0])&&isT(s[1]),r=R[n],ok=r&&both&&r.
   CUR={n:n,h:s[0],a:s[1],g:ok&&r.g?JSON.parse(JSON.stringify(r.g)):{},lf:ok&&r.lf?JSON.parse(JSON.stringify(r.lf)):{}};
   var f=$('dgf'),h='<h3>'+CIRC[n-1]+' '+rname(n)+' '+esc(s[0])+' vs '+esc(s[1])+'</h3>'+
    '<label class="fld">일정 바꾸기 (비워 두면 기본: '+WHD[n]+')<input id="dw" value="'+esc(WH[n]||'')+'"></label>';
-  if(both){GN.forEach(function(g){h+='<div class="gm"><div class="gt">'+g[1]+' 301</div><div class="opts"><button type="button" data-g="'+g[0]+'" data-v="h">'+s[0]+' 승</button><button type="button" data-g="'+g[0]+'" data-v="a">'+s[1]+' 승</button></div>'+
+  if(both){GN.forEach(function(g){h+='<div class="gm"><div class="gt">'+g[1]+' 501</div><div class="opts"><button type="button" data-g="'+g[0]+'" data-v="h">'+s[0]+' 승</button><button type="button" data-g="'+g[0]+'" data-v="a">'+s[1]+' 승</button></div>'+
     '<div class="lf"><input inputmode="numeric" data-l="'+g[0]+'h" placeholder="'+s[0]+' 남은 점수(선택)"><input inputmode="numeric" data-l="'+g[0]+'a" placeholder="'+s[1]+' 남은 점수(선택)"></div></div>'});
     h+='<div class="sum" id="dsum"></div>'}
   else h+='<p class="st">아직 두 반이 정해지지 않았어요. 사다리 추첨(또는 앞 경기 결과)으로 두 반이 정해지면 이 칸에서 남자·여자·혼합 복식 결과를 넣을 수 있어요. 지금은 일정만 바꿀 수 있어요.</p>';
   h+='<div class="row2">'+(ok?'<button type="button" class="btn ghost" id="dclr">결과 지우기</button>':'')+'<button type="button" class="btn ghost ml" id="dx">닫기</button><button type="button" class="btn" id="dsv">저장</button></div>';
   f.innerHTML=h;
   [].forEach.call(f.querySelectorAll('.opts button'),function(b){b.onclick=function(){var g=b.dataset.g;CUR.g[g]=CUR.g[g]===b.dataset.v?null:b.dataset.v;paint()}});
-  [].forEach.call(f.querySelectorAll('.lf input'),function(i){var k=i.dataset.l;i.value=CUR.lf[k]!=null?CUR.lf[k]:'';i.oninput=function(){var v=i.value.replace(/\D/g,'');i.value=v;if(v==='')delete CUR.lf[k];else CUR.lf[k]=Math.min(301,+v)}});
+  [].forEach.call(f.querySelectorAll('.lf input'),function(i){var k=i.dataset.l;i.value=CUR.lf[k]!=null?CUR.lf[k]:'';i.oninput=function(){var v=i.value.replace(/\D/g,'');i.value=v;if(v==='')delete CUR.lf[k];else CUR.lf[k]=Math.min(501,+v)}});
   $('dx').onclick=function(){$('dg').close()};
   $('dsv').onclick=saveM;
   if($('dclr'))$('dclr').onclick=function(){if(!confirm('이 경기 결과를 지울까요?'))return;fetch(BASE+'/res/'+n+'.json',{method:'DELETE'}).then(function(){$('dg').close();load()})};
