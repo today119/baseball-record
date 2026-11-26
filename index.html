@@ -3321,7 +3321,7 @@ function benchOf(g, side){
     if(seen[p.sid] || on[p.sid]) return false; seen[p.sid]=1; return true; });
 }
 function pName(g, sid){
-  var f = g.orderH.concat(g.orderA).filter(function(p){return p.sid===sid;})[0];
+  var f = g.orderH.concat(g.orderA).filter(function(p){return p.sid===sid;})[0] || findP(g, sid);
   return f ? f.name : '';
 }
 /* 야구장 그림 — 그림이 칸을 꽉 채우도록 세로를 78 로 잡은 좌표계.
@@ -3440,7 +3440,12 @@ function goodOf(g, sid){
    누르면 «수비에 안 들어간 학생»을 여러 명 골라 넣는다. 한 학생이 역할 여러 개도 가능(role = '볼보이·기록자') */
 function sideSids(g, side){
   var seen = {};
-  return (side==='H' ? g.orderH : g.orderA).map(function(p){ return p.sid; }).filter(function(s){ if(seen[s]) return false; return seen[s] = 1; });
+  return (side==='H' ? g.orderH : g.orderA).map(function(p){ return p.sid; }).concat(offSids(g, side)).filter(function(s){ if(seen[s]) return false; return seen[s] = 1; });
+}
+/* 11/26 (사용자): 라인업에 체크 안 된 학생(빠진 사람·출전 20명 밖)도 볼보이·배트 정리는 맡을 수 있게 */
+function offSids(g, side){
+  var seq = (side==='H' ? g.seqH : g.seqA) || [], out = (side==='H' ? g.outH : g.outA) || [];
+  return seq.filter(function(sid){ return out.indexOf(sid)>=0; });
 }
 function rolesOf(g, sid){ return roleOf(g, sid).split('·').filter(Boolean); }
 function setRoles(g, sid, arr){
@@ -3459,7 +3464,8 @@ function setRoles(g, sid, arr){
   else awardDef(g, [sid], 'role', {role:s});
 }
 function rolePick(g, side, role){
-  var bench = benchOf(g, side), ids = bench.map(function(p){ return p.sid; });
+  var bench = benchOf(g, side), ids = bench.map(function(p){ return p.sid; }), off = {};
+  offSids(g, side).forEach(function(sid){ if(ids.indexOf(sid)<0){ ids.push(sid); off[sid] = 1; } });
   /* 이 역할을 맡았다가 수비로 들어간 학생도 목록에 남겨 뺄 수 있게 */
   sideSids(g, side).forEach(function(sid){
     if(rolesOf(g, sid).indexOf(role)>=0 && ids.indexOf(sid)<0) ids.push(sid);
@@ -3470,10 +3476,11 @@ function rolePick(g, side, role){
   function draw(){
     var who = ids.filter(function(sid){ return sel[sid]; });
     d.innerHTML = '<div class="popbox rolebox"><h4>'+esc(role)+' 맡을 학생</h4>'+
-      '<p>수비에 안 들어간 학생 · 여러 명 고를 수 있어요 · 맡으면 «수비 참여»와 같은 점수</p>'+
+      '<p>수비에 안 들어간 학생(라인업 밖 학생 포함) · 여러 명 고를 수 있어요 · 맡으면 «수비 참여»와 같은 점수</p>'+
       (ids.length ? '<div class="rpick">'+ids.map(function(sid){
         var other = rolesOf(g, sid).filter(function(r){ return r!==role; }), n = goodOf(g, sid).length;
         return '<button data-s="'+sid+'" class="'+(sel[sid]?'ok':'')+'">'+esc(pName(g,sid))+
+          (off[sid] ? '<small>라인업 밖</small>' : '')+
           (other.length ? '<small>'+esc(other.join('·'))+'</small>' : '')+(n ? '<small>👍'+n+'</small>' : '')+'</button>';
       }).join('')+'</div>' : '<p>대기 학생이 없어요 (모두 수비 중)</p>')+
       (who.length ? '<div class="rgood"><b>👍 잘했어요 (수비 기여 +1)</b>'+who.map(function(sid){
